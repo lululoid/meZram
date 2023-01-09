@@ -14,3 +14,5 @@ else
 	chmod 0600 $swapz
 	mkswap $swap
 fi
+
+ui_print "- Please reboot to take effect"
