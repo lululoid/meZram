@@ -4,15 +4,66 @@
 totalmem=`LC_ALL=C free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
 swap=/data/swap_file
 size=$((totalmem / 2))
+available=`df | grep -e "^/data" | sed -n 1p | awk '{print $4}'`
 
-ui_print "- Set up zram size"
+ui_print ""
+ui_print "  Made with pain from "; sleep 2
+ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
+ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
+ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
+ui_print " ==================:)====================="; sleep 2
 
-if [ -f "$swap" ]; then
-	swapon $swap 2> /dev/null
-else
-	dd if=/dev/zero of=$swap bs=1024 count=${size}
-	chmod 0600 $swapz
-	mkswap $swap
-fi
+# Checking if lmkd is costumizable or not
+lmkd_check()
+    local is_cos=False
+    local default_thrashing_limit=`grep_get_prop ro.lmk.thrashing_limit`
+    
+    if [[ $(grep_get_prop ro.lmk.thrashing_limit) != 100 ]]; then
+        resetprop ro.lmk.thrashing_limit $((default_thrashing_limit + 10))
+    else
+        resetprop ro.lmk.thrashing_limit $((default_thrashing_limit - 10))
+    fi
+    if [ $default_thrashing_limit != $(grep_get_prop ro.lmk.thrashing_limit) ]; then
+        ui_print "- lmkd tweak is not supported"
+        ui_print "  some memory tweak benefit may not be achieveble."
+    fi
+    
+is_miui() {
+	is_miui_14=$(grep_get_prop ro.miui.ui.version.code)
+	ui_print $is_miui_14
 
-ui_print "- Please reboot to take effect"
+	if [[ ! -z $is_miui_14 && ${is_miui_14} != 14 ]]; then
+		ui_print "  MIUI memory management sucks. lmkd tweak won't work."
+		ui_print "  lmkd tweak may not applied"; sleep 2
+	elif [ ${is_miui_14} == 14 ]; then
+		ui_print "  Maybe lmkd tweak working on MIUI 14?. Tell me if it wasn't"; sleep 2
+	else
+        ui_print "- lmkd multitasking tweak applied."
+    	ui_print "  Give the better of your RAM."
+    	ui_print "  RAM better being filled than left unused"
+	fi
+}
+
+make_swap() {
+	if [ -f "$swap" ]; then
+		swapon $swap 2> /dev/null
+	else
+		dd if=/dev/zero of=$swap bs=1024 count=${size} > /dev/null 2> install_error.txt
+		chmod 0600 $swap
+		mkswap $swap
+	fi
+}
+
+ui_print "- Checking available storage"; sleep 2
+ui_print "  $((available / 1024))MB is available"; sleep 2
+ui_print "  $((size / 1024))MB needed";sleep 2
+if [ ${available} > ${size} ]; then
+		make_swap; is_miui; lmkd_check
+		ui_print "- Set up ZRAM size and SWAP size"; sleep 2
+		ui_print "  $((size / 1024))MB ZRAM + $((size / 1024))MB SWAP"; sleep 2
+		ui_print "- If this your first installation."
+		ui_print "  Please reboot to take effect."
+	else
+		ui_print "- Please free up your storage"
+		ui_print "! Installation failed"
+	fi
