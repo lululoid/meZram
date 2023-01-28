@@ -19,7 +19,7 @@ ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀�
 ui_print " ==================:)====================="; sleep 2
     
 lmkd_apply() {
-    for prop in $(cat $MODDIR/system.prop); do
+    for prop in $(cat $MODPATH/system.prop); do
         resetprop $(echo $prop | sed s/=/' '/)
     done
     ui_print "- lmkd multitasking tweak applied."
