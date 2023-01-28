@@ -7,6 +7,7 @@ totalmem=`LC_ALL=C free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
 mem=$((totalmem * 50 / 100 * 1024))
 swap=/data/swap_file
 size=$((totalmem / 2))
+lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
 for zram0 in /dev/block/zram0 /dev/zram0; do
 	if [ ! -z $(ls $zram0) ]; then
@@ -30,3 +31,4 @@ if [ -f "$swap" ]; then
 fi
 
 lmkd --reinit
+logcat --pid ${lmkd_pid} -t 1000 -f $MODDIR/lmkd.log

@@ -4,7 +4,12 @@
 totalmem=`LC_ALL=C free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
 swap=/data/swap_file
 size=$((totalmem / 2))
-available=`df | grep -e "^/data" | sed -n 1p | awk '{print $4}'`
+
+if $BOOTMODE; then
+    available=`df | grep -e "^/data" | sed -n 1p | awk '{print $4}'`
+else
+    available=`df | grep /data | sed -n 1p | awk '{print $4}'`
+fi
 
 ui_print ""
 ui_print "  Made with pain from "; sleep 2
@@ -48,7 +53,8 @@ make_swap() {
 	if [ -f "$swap" ]; then
 		swapon $swap 2> /dev/null
 	else
-		dd if=/dev/zero of=$swap bs=1024 count=${size} > /dev/null 2> install_error.txt
+        mount /data 2> /dev/null
+		dd if=/dev/zero of=$swap bs=1024 count=${size} 2> install_error.txt 1> /dev/null
 		chmod 0600 $swap
 		mkswap $swap
 	fi
