@@ -1,8 +1,10 @@
 LICENSE
 META-INF
 README.md
+changelog.md
 customize.sh
 meZram-cleaner.zip
+meZram.json
 module.prop
 service.sh
 system.prop
