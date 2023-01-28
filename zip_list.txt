@@ -1,0 +1,9 @@
+LICENSE
+META-INF
+README.md
+customize.sh
+meZram-cleaner.zip
+module.prop
+service.sh
+system.prop
+uninstall.sh
