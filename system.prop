@@ -8,5 +8,5 @@ ro.lmk.debug=true
 ro.lmk.swap_free_low_percentage=15
 ro.lmk.thrashing_limit=65
 ro.lmk.thrashing_limit_decay=30
-ro.lmk.psi_partial_stall_ms=123
+ro.lmk.psi_partial_stall_ms=145
 ro.lmk.psi_complete_stall_ms=700
