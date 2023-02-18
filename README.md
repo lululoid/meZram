@@ -9,3 +9,4 @@ Add ZRAM and swap to your android. It works by change default ZRAM size and add 
 ## TODO
   - Add option for swap size
   - Option for swap size
+  - Find a way to efficiently test lmkd on the system performance.
