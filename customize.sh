@@ -19,6 +19,14 @@ ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀�
 ui_print " ==================:)====================="; sleep 2
     
 lmkd_apply() {
+    # determine if device is lowram?
+    if [ ${totalmem} < 2097152 ]; then
+	mv $MODPATH/system.props/low-ram-system.prop $MODPATH/system.prop
+    else
+	mv $MODPATH/system.props/high-performance-system.prop $MODPATH/system.prop
+    fi
+    
+    # applying lmkd tweaks
     for prop in $(cat $MODPATH/system.prop); do
         resetprop $(echo $prop | sed s/=/' '/)
     done
@@ -29,26 +37,71 @@ lmkd_apply() {
 }
 
 make_swap() {
-	if [ -f "$swap" ]; then
-		swapon $swap 2> /dev/null
-	else
-        mount /data 2> /dev/null
-		dd if=/dev/zero of=$swap bs=1024 count=${size} 2> install_error.txt 1> /dev/null
-		chmod 0600 $swap
-		mkswap $swap
+    swap_size=${size}
+    local count=0
+    local mem_in_gb=$(((totalmem/1024/1024)+1))
+    local text="Press VOL_UP to increase SWAP SIZE up to $((totalmem / 1024))MB"
+    local done_text="Press VOL_DOWN if you're done"
+
+    ui_print "- Configure swap_size"; sleep 1
+    ui_print "  Default SWAP size is 50% of RAM"
+    ui_print "  $text"
+    ui_print "  Press VOL_DOWN if you're done"
+    
+    while true; do
+	timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > $TMPDIR/events &
+	sleep 0.1
+	if $(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && [ ${count} \< ${mem_in_gb} ]; then
+	    count=$((count+1))
+	    ui_print "  You add $((count))GB SWAP"
+	    swap_size=$((1024*1024*$count))
+	elif [ $swap_size -ge $totalmem ]; then
+	    swap_size=${totalmem}
+	    ui_print "  Maximum value reached. Press VOL_UP to reset SWAP size to default"; sleep 0.5
+	    ui_print "  $done_text"
+
+	    while true; do
+		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > $TMPDIR/events0 &
+		sleep 0.1
+		if (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events0); then
+		    count=0
+		    ui_print "  $text"
+		    break
+		elif (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events0); then
+		    break
+		fi
+	    done
+	    break
+	elif (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events); then
+	    break
 	fi
+    done
+    mount /data 2> /dev/null
+    ui_print "- Making a SWAP, now please wait just a moment."
+    dd if=/dev/zero of=$swap bs=1024 count=${swap_size} 2> install_error.txt > /dev/null
+    chmod 0600 $swap > /dev/null 
+    mkswap $swap > /dev/null
+    swapon $swap 2> /dev/null
 }
 
 ui_print "- Checking available storage"; sleep 2
 ui_print "  $((available / 1024))MB is available"; sleep 2
 ui_print "  $((size / 1024))MB needed";sleep 2
-if [ ${available} > ${size} ]; then
-		make_swap; lmkd_apply
-		ui_print "- Set up ZRAM size and SWAP size"; sleep 2
-		ui_print "  $((size / 1024))MB ZRAM + $((size / 1024))MB SWAP"; sleep 2
-		ui_print "- If this your first installation."
-		ui_print "  Please reboot to take effect."
-	else
-		ui_print "- Please free up your storage"
-		ui_print "! Installation failed"
-	fi
+
+if [ ${available} \> ${size} ]; then
+    if [ -f "$swap" ]; then         
+	ui_print "- Thank you so much 😊."
+	ui_print "  You've installed this module before"
+	ui_print "  You have to remove this module first"
+	ui_print "  if you mant to change SWAP size."
+    else
+	make_swap
+	ui_print "- Set up ZRAM size and SWAP size"; sleep 2
+	ui_print "  $((size / 1024))MB ZRAM + $((swap_size / 1024))MB SWAP"; sleep 2
+	ui_print "  Please reboot to take effect."
+    fi
+    lmkd_apply
+else
+    ui_print "- Please free up your storage"
+    ui_print "! Installation failed"
+fi
