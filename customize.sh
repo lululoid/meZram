@@ -4,6 +4,7 @@
 totalmem=`LC_ALL=C free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
 swap=/data/swap_file
 size=$((totalmem / 2))
+swap_size=${size}
 
 if $BOOTMODE; then
     available=`df | grep -e "^/data" | sed -n 1p | awk '{print $4}'`
@@ -40,11 +41,12 @@ make_swap() {
     swap_size=${size}
     local count=0
     local mem_in_gb=$(((totalmem/1024/1024)+1))
-    local text="Press VOL_UP to increase SWAP SIZE up to $((totalmem / 1024))MB"
+    local text="Press VOL_UP to change SWAP SIZE up to $((totalmem / 1024))MB"
     local done_text="Press VOL_DOWN if you're done"
+    local done=false
 
-    ui_print "- Configure swap_size"; sleep 1
-    ui_print "  Default SWAP size is 50% of RAM"
+    ui_print "- Configure SWAP size"; sleep 1
+    ui_print "  Default SWAP size is 50%($((size/1024))MB) of RAM"
     ui_print "  $text"
     ui_print "  Press VOL_DOWN if you're done"
     
@@ -53,9 +55,9 @@ make_swap() {
 	sleep 0.1
 	if $(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && [ ${count} \< ${mem_in_gb} ]; then
 	    count=$((count+1))
-	    ui_print "  You add $((count))GB SWAP"
+	    ui_print "  $((count))GB SWAP size"
 	    swap_size=$((1024*1024*$count))
-	elif [ $swap_size -ge $totalmem ]; then
+	elif [ $swap_size -ge $totalmem ] && [ !$done ]; then
 	    swap_size=${totalmem}
 	    ui_print "  Maximum value reached. Press VOL_UP to reset SWAP size to default"; sleep 0.5
 	    ui_print "  $done_text"
@@ -65,13 +67,15 @@ make_swap() {
 		sleep 0.1
 		if (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events0); then
 		    count=0
+		    swap_size=${size}
 		    ui_print "  $text"
+		    ui_print "  Default SWAP size restored"
 		    break
 		elif (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events0); then
+		    done=true 
 		    break
 		fi
 	    done
-	    break
 	elif (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events); then
 	    break
 	fi
@@ -84,11 +88,7 @@ make_swap() {
     swapon $swap 2> /dev/null
 }
 
-ui_print "- Checking available storage"; sleep 2
-ui_print "  $((available / 1024))MB is available"; sleep 2
-ui_print "  $((size / 1024))MB needed";sleep 2
-
-if [ ${available} \> ${size} ]; then
+if [ ${available} \> ${swap_size} ]; then
     if [ -f "$swap" ]; then         
 	ui_print "- Thank you so much 😊."
 	ui_print "  You've installed this module before"
@@ -96,12 +96,15 @@ if [ ${available} \> ${size} ]; then
 	ui_print "  if you mant to change SWAP size."
     else
 	make_swap
+	ui_print "- Checking available storage"; sleep 2
+	ui_print "  $((available / 1024))MB is available"; sleep 2
+	ui_print "  $((swap_size / 1024))MB needed";sleep 1
 	ui_print "- Set up ZRAM size and SWAP size"; sleep 2
 	ui_print "  $((size / 1024))MB ZRAM + $((swap_size / 1024))MB SWAP"; sleep 2
 	ui_print "  Please reboot to take effect."
     fi
     lmkd_apply
 else
-    ui_print "- Please free up your storage"
-    ui_print "! Installation failed"
+    ui_print "- Please free up your storage or choose lower SWAP size"
+    abort "! Installation failed"
 fi
