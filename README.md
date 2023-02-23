@@ -7,5 +7,3 @@ Add ZRAM and swap to your android. It works by change default ZRAM size and add 
     Stop force closed app caused by bad lmkd configuration
 
 ## TODO
-  - Add option for swap size
-  - Option for swap size
