@@ -53,13 +53,14 @@ make_swap() {
     while true; do
 	timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > $TMPDIR/events &
 	sleep 0.1
-	if $(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && [ ${count} \< ${mem_in_gb} ]; then
+	if (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && [ ${count} \< ${mem_in_gb} ]; then
 	    count=$((count+1))
 	    ui_print "  $((count))GB SWAP size"
 	    swap_size=$((1024*1024*$count))
 	elif [ $swap_size -ge $totalmem ] && [ !$done ]; then
 	    swap_size=${totalmem}
-	    ui_print "  Maximum value reached. Press VOL_UP to reset SWAP size to default"; sleep 0.5
+	    ui_print "  Maximum value reached."
+	    ui_print "  Press VOL_UP to reset SWAP size to default"; sleep 0.5
 	    ui_print "  $done_text"
 
 	    while true; do
@@ -68,8 +69,8 @@ make_swap() {
 		if (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events0); then
 		    count=0
 		    swap_size=${size}
+		    ui_print "- Default SWAP size restored"
 		    ui_print "  $text"
-		    ui_print "  Default SWAP size restored"
 		    break
 		elif (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events0); then
 		    done=true 
@@ -95,6 +96,7 @@ if [ ${available} \> ${swap_size} ]; then
 	ui_print "  You have to remove this module first"
 	ui_print "  if you mant to change SWAP size."
     else
+	# Swap making process
 	make_swap
 	ui_print "- Checking available storage"; sleep 2
 	ui_print "  $((available / 1024))MB is available"; sleep 2
@@ -103,7 +105,15 @@ if [ ${available} \> ${swap_size} ]; then
 	ui_print "  $((size / 1024))MB ZRAM + $((swap_size / 1024))MB SWAP"; sleep 2
 	ui_print "  Please reboot to take effect."
     fi
-    lmkd_apply
+
+    # Make sure sdk level is 29
+    sdk_level=$(grep_get_prop ro.build.version.sdk) 
+    if [ ${sdk_level} -ge 28 ]; then
+        lmkd_apply
+    else
+	ui_print "- Your android version is not supported"
+	ui_print "  Please upgrade your phone to Android 9+"
+    fi
 else
     ui_print "- Please free up your storage or choose lower SWAP size"
     abort "! Installation failed"
