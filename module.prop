@@ -1,7 +1,9 @@
 id=meZram
 name=meZram
 version=v0.5-beta
-versionCode=501
+versionCode=502
 author=lululoid
-description=Add ZRAM and swap to your android. It works by change default ZRAM size and add swap, both size to 1/2 of RAM or you could set your SWAP size yourself
+description=Add ZRAM and swap to your android. It works by change default ZRAM size and add swap, both size to 1/2 of RAM. 
+So you'll add virtual memory as much as your RAM meaning if RAM is 4 GB there will be (2GB ZRAM + 2GB SWAP).
+You could also change SWAP size on your own.
 updateJson=https://raw.githubusercontent.com/lululoid/meZram/emit_enola/meZram.json
