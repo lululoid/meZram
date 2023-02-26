@@ -26,6 +26,8 @@ lmkd_apply() {
     else
 	mv $MODPATH/system.props/high-performance-system.prop $MODPATH/system.prop
     fi
+
+    echo '1' > /dev/cpuset/memory_pressure_enabled
     
     # applying lmkd tweaks
     for prop in $(cat $MODPATH/system.prop); do
