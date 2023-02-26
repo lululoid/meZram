@@ -10,25 +10,24 @@ size=$((totalmem / 2))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
 for zram0 in /dev/block/zram0 /dev/zram0; do
-	if [ ! -z $(ls $zram0) ]; then
-		swapoff $zram0
-		echo 1 > /sys/block/zram0/reset 2> $MODDIR/error.txt
-	
-		# Set up zram size, then turn on both zram and swap
-		echo ${mem} > /sys/block/zram0/disksize 2>> $MODDIR/error.txt
-		# Set up maxium cpu streams
-		echo ${NRDEVICES} > /sys/block/zram0/max_comp_streams 2>> $MODDIR/error.txt
-		mkswap $zram0 2>> $MODDIR/error.txt
-		swapon $zram0 2>> $MODDIR/error.txt
-		echo "$zram0 succesfully activated" > $MODDIR/success.txt
-	else
-		echo "$zram0 not exist in this device" >> $MODDIR/error.txt
-	fi
+    if [ ! -z $(ls $zram0) ]; then
+	swapoff $zram0
+	echo 1 > /sys/block/zram0/reset 2> $MODDIR/error.txt
+    
+	# Set up zram size, then turn on both zram and swap
+	echo ${mem} > /sys/block/zram0/disksize 2>> $MODDIR/error.txt
+	# Set up maxium cpu streams
+	echo ${NRDEVICES} > /sys/block/zram0/max_comp_streams 2>> $MODDIR/error.txt
+	mkswap $zram0 2>> $MODDIR/error.txt
+	swapon $zram0 2>> $MODDIR/error.txt
+	echo "$zram0 succesfully activated" > $MODDIR/success.txt
+    else
+	echo "$zram0 not exist in this device" >> $MODDIR/error.txt
+    fi
 done
 
-if [ -f "$swap" ]; then
-	swapon $swap 2>> $MODDIR/error.txt
-fi
+swapon $swap 2>> $MODDIR/error.txt
 
+echo '1' > /dev/cpuset/memory_pressure_enabled
 lmkd --reinit
 logcat --pid ${lmkd_pid} -t 1000 -f $MODDIR/lmkd.log
