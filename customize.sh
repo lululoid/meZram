@@ -2,9 +2,6 @@
 
 # Calculate size to use for swap (1/2 of ram)
 totalmem=`LC_ALL=C free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
-swap=/data/swap_file
-size=$((totalmem / 2))
-swap_size=${size}
 
 ui_print ""
 ui_print "  Made with pain from "; sleep 2
@@ -12,22 +9,6 @@ ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀�
 ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
 ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
 ui_print " ==================:)====================="; sleep 2
-
-check_storage_availability() {
-    local num_array=()
-    for num in $(seq $(df | wc -l)); do
-	local available=`df | sed -n ${num}p | awk '{print $4}'`
-	num_array+=${available}
-    done
-    
-    local max=0
-    for num in $num_array; do
-	if [ $num \> $max ]; then
-	    max=$num
-	fi
-    done
-    available=$max
-}
 
 lmkd_apply() {
     # determine if device is lowram?
@@ -49,84 +30,72 @@ lmkd_apply() {
     ui_print "  useful than left unused"
 }
 
-make_swap() {
-    swap_size=${size}
+count_ZRAM() {
+    local one_gb=$((1024*1024))
+    local totalmem_gb=$(((totalmem/1024/1024)+1))
+    local zram_size=$(((totalmem - one_gb) * 1024))
     local count=0
-    local mem_in_gb=$(((totalmem/1024/1024)+1))
-    local text="Press VOL_UP to change SWAP SIZE up to $((totalmem / 1024))MB"
-    local done_text="Press VOL_DOWN if you're done"
+    local zram_in_gb=0
     local done=false
 
-    ui_print "- Configure SWAP size"; sleep 1
-    ui_print "  Default SWAP size is 50%($((size/1024))MB) of RAM"
-    ui_print "  $text"
-    ui_print "  Press VOL_DOWN if you're done"
+    ui_print "- SELECT ZRAM SIZE"
+    ui_print "  Press VOL_DOWN to add ZRAM"
+    ui_print "  Press VOL_UP to finish"
     
     while true; do
 	timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > $TMPDIR/events &
 	sleep 0.1
-	if (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && [ ${count} \< ${mem_in_gb} ]; then
-	    count=$((count+1))
-	    ui_print "  $((count))GB SWAP size"
-	    swap_size=$((1024*1024*$count))
-	elif [ $swap_size -ge $totalmem ] && [ !$done ]; then
-	    swap_size=${totalmem}
-	    ui_print "  Maximum value reached."
-	    ui_print "  Press VOL_UP to reset SWAP size to default"; sleep 0.5
-	    ui_print "  $done_text"
-
+	if (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && [ $zram_in_gb -lt ${totalmem_gb} ]; then
+	    if [ ${count} -eq 0 ]; then
+		count=$((count + 1))
+		ui_print "  $count. Left 1GB for RAM (Default), rest is ZRAM. Finished?"
+	    elif [ ${count} -eq 1 ]; then
+		count=$((count + 1))
+		zram_size=$((totalmem * 50/100 * 1024))
+		ui_print "  $count. 50% of RAM $((zram_size/1024/1024))MB ZRAM"
+	    elif [ $zram_in_gb -lt ${totalmem_gb} ]; then
+		count=$((count + 1))
+		zram_in_gb=$((zram_in_gb+1))
+		ui_print "  $count. ${zram_in_gb}GB of ZRAM"
+		zram_size=$((zram_in_gb * one_gb * 1024))
+	    fi
+	elif [ $zram_in_gb -eq $totalmem_gb ] && [ !$done ]; then
+	    ui_print "  Maximum value reached."; sleep 0.5
+	    ui_print "  Press VOL_DOWN to RESET"
+	    zram_size=$((totalmem * 1024))
 	    while true; do
 		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > $TMPDIR/events0 &
 		sleep 0.1
-		if (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events0); then
+		if (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events0); then
 		    count=0
-		    swap_size=${size}
-		    ui_print "- Default SWAP size restored"
-		    ui_print "  $text"
+		    zram_size=$(((totalmem - $one_gb) * 1024))
+		    zram_in_gb=0
+		    ui_print "- Default size restored"
 		    break
-		elif (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events0); then
-		    done=true 
-		    break
+		elif (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events0); then
+		    done=true
+		    echo $zram_size > $MODPATH/ZRAM-size.txt
+		    break 2
 		fi
 	    done
-	elif (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events); then
+	elif (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events); then
+	    echo $zram_size > $MODPATH/ZRAM-size.txt
 	    break
 	fi
     done
-    mount /data 2> /dev/null
-    ui_print "- Making a SWAP, now please wait just a moment."
-    dd if=/dev/zero of=$swap bs=1024 count=${swap_size} 2> install_error.txt > /dev/null
-    chmod 0600 $swap > /dev/null 
-    mkswap $swap > /dev/null
-    swapon $swap 2> /dev/null
 }
 
-if [ ${available} \> ${swap_size} ]; then
-    if [ -f "$swap" ]; then         
-	ui_print "- Thank you so much 😊."
-	ui_print "  You've installed this module before"
-	ui_print "  You have to remove this module first"
-	ui_print "  if you mant to change SWAP size."
-    else
-	# Swap making process
-	make_swap
-	ui_print "- Checking available storage"; sleep 2
-	ui_print "  $((available / 1024))MB is available"; sleep 2
-	ui_print "  $((swap_size / 1024))MB needed";sleep 1
-	ui_print "- Set up ZRAM size and SWAP size"; sleep 2
-	ui_print "  $((size / 1024))MB ZRAM + $((swap_size / 1024))MB SWAP"; sleep 2
-	ui_print "  Please reboot to take effect."
-    fi
-
-    # Make sure sdk level is 29
-    sdk_level=$(grep_get_prop ro.build.version.sdk) 
-    if [ ${sdk_level} -ge 28 ]; then
-        lmkd_apply
-    else
-	ui_print "- Your android version is not supported"
-	ui_print "  Please upgrade your phone to Android 9+"
-    fi
-else
-    ui_print "- Please free up your storage or choose lower SWAP size"
-    abort "! Installation failed"
+if [ -d "/data/adb/modules/meZram" ]; then
+    ui_print "- Thank you so much 😊."
+    ui_print "  You've installed this module before"
+    # remove old SWAP
+    if [ -f /data/swap_file ]; then
+	ui_print "- Removing SWAP. Lmkd doesn't support SWAP. Shit 😔"
+	unzip -o $MODPATH/meZram-cleaner.zip -d $MODPATH/../meZram-cleaner  > /dev/null 
+    fi 
+elif [ ${sdk_level} -lt 28 ]; then
+    ui_print "- Your android version is not supported"
+    abort "  Please upgrade your phone to Android 9+"
 fi
+
+count_ZRAM; lmkd_apply

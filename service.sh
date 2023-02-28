@@ -1,12 +1,12 @@
-#!/system/bin/sh
+#!/system/bin/sh:
 MODDIR=${0%/*}
 
-# Calculate memory to use for zram (1/2 of ram)
+# Calculate memory to use for zram
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
 totalmem=`LC_ALL=C free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
-mem=$((totalmem * 50 / 100 * 1024))
-swap=/data/swap_file
-size=$((totalmem / 2))
+# use maximum 75% of RAM as ZRAM
+one_gb=$((1024*1024))
+read zram_size < $MODDIR/ZRAM-size.txt
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
 for zram0 in /dev/block/zram0 /dev/zram0; do
@@ -15,7 +15,7 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 	echo 1 > /sys/block/zram0/reset 2> $MODDIR/error.txt
     
 	# Set up zram size, then turn on both zram and swap
-	echo ${mem} > /sys/block/zram0/disksize 2>> $MODDIR/error.txt
+	echo ${zram_size} > /sys/block/zram0/disksize 2>> $MODDIR/error.txt
 	# Set up maxium cpu streams
 	echo ${NRDEVICES} > /sys/block/zram0/max_comp_streams 2>> $MODDIR/error.txt
 	mkswap $zram0 2>> $MODDIR/error.txt
@@ -26,17 +26,13 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
     fi
 done
 
-swapon $swap 2>> $MODDIR/error.txt
-
 echo '1' > /dev/cpuset/memory_pressure_enabled
 lmkd --reinit
-logcat --pid ${lmkd_pid} -t 1000 -f $MODDIR/lmkd.log
+logcan -G 5M
+logcat --pid ${lmkd_pid} -f $MODDIR/lmkd.log &
 
 while true; do
-	lmkd_native=$(getprop persist.device_config.lmkd_native.thrashing_limit_critical)
-	if [ $lmkd_native \> 100 ]; then
-		resetprop persist.device_config.lmkd_native.thrashing_limit_critical 100
-		lmkd --reinit
-	fi
-	sleep 381
+    tlc=$(resetprop persist.device_config.lmkd_native.thrashing_limit_critical)
+    [ $tlc ] && resetprop --delete persist.device_config.lmkd_native.thrashing_limit_critical && lmkd --reinit
+    sleep 381
 done
