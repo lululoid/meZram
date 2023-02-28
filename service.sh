@@ -31,3 +31,12 @@ swapon $swap 2>> $MODDIR/error.txt
 echo '1' > /dev/cpuset/memory_pressure_enabled
 lmkd --reinit
 logcat --pid ${lmkd_pid} -t 1000 -f $MODDIR/lmkd.log
+
+while true; do
+	lmkd_native=$(getprop persist.device_config.lmkd_native.thrashing_limit_critical)
+	if [ $lmkd_native \> 100 ]; then
+		resetprop persist.device_config.lmkd_native.thrashing_limit_critical 100
+		lmkd --reinit
+	fi
+	sleep 381
+done

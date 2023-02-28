@@ -6,19 +6,29 @@ swap=/data/swap_file
 size=$((totalmem / 2))
 swap_size=${size}
 
-if $BOOTMODE; then
-    available=`df | grep -e "^/data" | sed -n 1p | awk '{print $4}'`
-else
-    available=`df | grep /data | sed -n 1p | awk '{print $4}'`
-fi
-
 ui_print ""
 ui_print "  Made with pain from "; sleep 2
 ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
 ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
 ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
 ui_print " ==================:)====================="; sleep 2
+
+check_storage_availability() {
+    local num_array=()
+    for num in $(seq $(df | wc -l)); do
+	local available=`df | sed -n ${num}p | awk '{print $4}'`
+	num_array+=${available}
+    done
     
+    local max=0
+    for num in $num_array; do
+	if [ $num \> $max ]; then
+	    max=$num
+	fi
+    done
+    available=$max
+}
+
 lmkd_apply() {
     # determine if device is lowram?
     if [ ${totalmem} < 2097152 ]; then
