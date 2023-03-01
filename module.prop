@@ -1,7 +1,7 @@
 id=meZram
 name=meZram
 version=v0.7-beta
-versionCode=750
+versionCode=754
 author=lululoid
 description=Change ZRAM size, applying lmkd psi. Change ZRAM size up to RAM size. By Default only lef 1GB for RAM. If there is 4 GB RAM, 3GB will be used as ZRAM.
 updateJson=https://raw.githubusercontent.com/lululoid/meZram/emit_enola/meZram.json

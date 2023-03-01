@@ -26,13 +26,13 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
     fi
 done
 
-echo '1' > /dev/cpuset/memory_pressure_enabled
-lmkd --reinit
+echo '1' > /sys/kernel/tracing/events/psi/enable 2>> $MODDIR/error.txt 
+resetprop lmkd.reinit 1
 logcan -G 5M
 logcat --pid ${lmkd_pid} -f $MODDIR/lmkd.log &
 
 while true; do
     tlc=$(resetprop persist.device_config.lmkd_native.thrashing_limit_critical)
-    [ $tlc ] && resetprop --delete persist.device_config.lmkd_native.thrashing_limit_critical && lmkd --reinit
+    [ $tlc ] && resetprop --delete persist.device_config.lmkd_native.thrashing_limit_critical && resetprop lmkd.reinit 1
     sleep 381
 done

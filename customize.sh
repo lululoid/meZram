@@ -85,6 +85,9 @@ count_ZRAM() {
     done
 }
 
+# Check Android SDK
+sdk_level=$(resetprop ro.build.version.sdk)
+
 if [ -d "/data/adb/modules/meZram" ]; then
     ui_print "- Thank you so much 😊."
     ui_print "  You've installed this module before"
