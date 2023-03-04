@@ -1,7 +1,5 @@
-#!/sbin/sh
-
 # Calculate size to use for swap (1/2 of ram)
-totalmem=`LC_ALL=C free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
+totalmem=`free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
 
 ui_print ""
 ui_print "  Made with pain from "; sleep 0.5
@@ -41,7 +39,7 @@ count_SWAP() {
     ui_print "- SELECT ZRAM SIZE"
     ui_print "  Press VOL_DOWN to continue"
     ui_print "  Press VOL_UP to skip and select Default"
-    ui_print "  Default is $((totalmem/1024))MB of SWAP"
+    ui_print "  Default is $((totalmem/1024/2))MB of SWAP"
     
     while true; do
 	timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > $TMPDIR/events &
@@ -91,31 +89,32 @@ mount /data > /dev/null
 
 # Check Android SDK
 sdk_level=$(resetprop ro.build.version.sdk)
-swap_filename=$MODPATH/swap_file 
-free_space=`df /data/ | sed -n 2p | awk '{print $4}'`
+swap_filename=/data/swap_file 
+free_space=`df /data | sed -n 2p | awk '{print $4}'`
 count_SWAP 
 
 if [ -d "/data/adb/modules/meZram" ]; then
     ui_print "- Thank you so much 😊."
     ui_print "  You've installed this module before"
-fi
+fi 
 
-swapoff /data/swap_file > /dev/null 
-rm -rf /data/swap_file  > /dev/null 
-
-if [ ${free_space} -ge ${swap_size} ] && [ ! -f /data/adb/modules/meZram/swap_file ]; then
-    ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
-    ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
-    dd if=/dev/zero of=$swap_filename bs=1024 count=${swap_size} 2> install_error.txt > /dev/null
-    chmod 0600 $swap_filename > /dev/null
-    mkswap $swap_filename > /dev/null
-    swapon $swap_filename > /dev/null
-    ui_print "  SWAP turned on"
+if [ ! -f $swap_filename ]; then
+    if [ ${free_space} -ge ${swap_size} ]; then
+        ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
+	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
+        dd if=/dev/zero of=$swap_filename bs=1024 count=${swap_size} 2> install_error.txt 1> /dev/null 
+	chmod 0600 $swap_filename > /dev/null
+        mkswap $swap_filename > /dev/null
+        swapon $swap_filename > /dev/null
+        ui_print "  SWAP turned on"
+    else
+	ui_print "- Storage full. Please free up your storage"
+    fi 
 fi
 
 if [ ${sdk_level} -lt 28 ]; then
-    ui_print "- Your android version is not supported"
-    abort "  Please upgrade your phone to Android 9+"
+    ui_print "- Your android version is not supported. Performance tweaks won't applied."
+    ui_print "  Please upgrade your phone to Android 9+"
 else
     lmkd_apply
     tlc='persist.device_config.lmkd_native.thrashing_limit_critical'

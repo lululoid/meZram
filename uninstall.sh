@@ -1,5 +1,3 @@
-#! /sbin/sh
-
 MODDIR=${0%/*}
 MODSDIR=$(dirname "$MODDIR")
 MODULEDIR=$MODSDIR/meZram-cleaner
