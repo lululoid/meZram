@@ -1,5 +1,6 @@
+#!/system/bin/sh
 # Calculate size to use for swap (1/2 of ram)
-totalmem=`free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'`
+totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
 ui_print ""
 ui_print "  Made with pain from "; sleep 0.5
@@ -10,15 +11,15 @@ ui_print " ==================:)====================="; sleep 0.5
 
 lmkd_apply() {
     # determine if device is lowram?
-    if [ ${totalmem} < 2097152 ]; then
-	mv $MODPATH/system.props/low-ram-system.prop $MODPATH/system.prop
+    if [ "$totalmem" -lt 2097152 ]; then
+	mv "$MODPATH"/system.props/low-ram-system.prop "$MODPATH"/system.prop
     else
-	mv $MODPATH/system.props/high-performance-system.prop $MODPATH/system.prop
+	mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
     fi
     
     # applying lmkd tweaks
-    for prop in $(cat $MODPATH/system.prop); do
-        resetprop $(echo $prop | sed s/=/' '/)
+    grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do 
+	resetprop "$(echo "$prop" | sed s/=/' '/)"
     done
     resetprop lmkd.reinit 1
 
@@ -34,7 +35,6 @@ count_SWAP() {
     swap_size=$((totalmem / 2))
     local count=0
     local swap_in_gb=0
-    local done=false
 
     ui_print "- SELECT ZRAM SIZE"
     ui_print "  Press VOL_DOWN to continue"
@@ -42,46 +42,45 @@ count_SWAP() {
     ui_print "  Default is $((totalmem/1024/2))MB of SWAP"
     
     while true; do
-	timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > $TMPDIR/events &
+	timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > "$TMPDIR"/events &
 	sleep 0.1
-	if (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && [ $swap_in_gb -lt ${totalmem_gb} ]; then
-	    if [ ${count} -eq 0 ]; then
+	if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events) && [ $swap_in_gb -lt $totalmem_gb ]; then
+	    if [ $count -eq 0 ]; then
 		count=$((count + 1))
 		swap_size=$((totalmem / 2))
 		ui_print "  $count. 50% of RAM $((swap_size/1024))MB SWAP"
-	    elif [ $swap_in_gb -lt ${totalmem_gb} ]; then
+	    elif [ $swap_in_gb -lt $totalmem_gb ]; then
 		count=$((count + 1))
 		swap_in_gb=$((swap_in_gb + 1))
 		ui_print "  $count. ${swap_in_gb}GB of SWAP"
 		swap_size=$((swap_in_gb * one_gb))
 	    fi
-	elif [ $swap_in_gb -eq $totalmem_gb ] && [ !$done ]; then
+	elif [ $swap_in_gb -eq $totalmem_gb ]; then
 	    ui_print "  Maximum value reached."; sleep 0.5
 	    ui_print "  Press VOL_DOWN to RESET"
 	    swap_size=$totalmem
 	    while true; do
-		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > $TMPDIR/events0 &
+		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > "$TMPDIR"/events0 &
 		sleep 0.1
-		if (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events0); then
+		if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events0); then
 		    count=0
 		    swap_size=$((totalmem / 2))
 		    swap_in_gb=0
 		    ui_print "- Default size restored"
 		    break
-		elif (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events0); then
-		    done=true
+		elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events0); then
 		    break 2
 		fi
 	    done
-	elif (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events); then
+	elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
 	    break
 	fi
     done
 }
 
 rm_prop_reinit(){
-    for prop in in $@; do
-	[ $(resetprop $prop) ] && resetprop --delete $prop && lmkd --reinit
+    for prop in in "$@"; do
+	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && lmkd --reinit
     done                                            
 }
 
@@ -90,7 +89,7 @@ mount /data > /dev/null
 # Check Android SDK
 sdk_level=$(resetprop ro.build.version.sdk)
 swap_filename=/data/swap_file 
-free_space=`df /data | sed -n 2p | awk '{print $4}'`
+free_space=$(df /data | sed -n 2p | awk '{print $4}')
 
 if [ -d "/data/adb/modules/meZram" ]; then
     ui_print "- Thank you so much 😊."
@@ -99,10 +98,10 @@ fi
 
 if [ ! -f $swap_filename ]; then
     count_SWAP 
-    if [ ${free_space} -ge ${swap_size} ]; then
+    if [ "${free_space}" -ge "${swap_size}" ]; then
         ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
 	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
-        dd if=/dev/zero of=$swap_filename bs=1024 count=${swap_size} 2> install_error.txt 1> /dev/null 
+        dd if=/dev/zero of=$swap_filename bs=1024 count="$swap_size" 2> install_error.txt 1> /dev/null 
 	chmod 0600 $swap_filename > /dev/null
         mkswap $swap_filename > /dev/null
         swapon $swap_filename > /dev/null
@@ -112,7 +111,7 @@ if [ ! -f $swap_filename ]; then
     fi 
 fi
 
-if [ ${sdk_level} -lt 28 ]; then
+if [ "$sdk_level" -lt 28 ]; then
     ui_print "- Your android version is not supported. Performance tweaks won't applied."
     ui_print "  Please upgrade your phone to Android 9+"
 else
