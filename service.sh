@@ -28,7 +28,7 @@ swapon /data/swap_file 2>> $MODDIR/errors.txt
 echo '1' > /sys/kernel/tracing/events/psi/enable 2>> $MODDIR/errors.txt 
 resetprop lmkd.reinit 1
 logcat -G 5M
-logcat --pid ${lmkd_pid} -f $MODDIR/lmkd.log &
+logcat --pid ${lmkd_pid} >> lmkd.log &
 
 rm_prop_reinit(){
     for prop in in $@; do

@@ -91,7 +91,6 @@ mount /data > /dev/null
 sdk_level=$(resetprop ro.build.version.sdk)
 swap_filename=/data/swap_file 
 free_space=`df /data | sed -n 2p | awk '{print $4}'`
-count_SWAP 
 
 if [ -d "/data/adb/modules/meZram" ]; then
     ui_print "- Thank you so much 😊."
@@ -99,6 +98,7 @@ if [ -d "/data/adb/modules/meZram" ]; then
 fi 
 
 if [ ! -f $swap_filename ]; then
+    count_SWAP 
     if [ ${free_space} -ge ${swap_size} ]; then
         ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
 	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
