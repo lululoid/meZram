@@ -9,16 +9,24 @@ ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀�
 ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
 ui_print " ==================:)====================="; sleep 0.5
 
+logger(){
+    local on=false
+    $on && ui_print "  DEBUG: $*"
+}
+
 lmkd_apply() {
     # determine if device is lowram?
+    logger "totalmem = $totalmem"
     if [ "$totalmem" -lt 2097152 ]; then
+	ui_print "- Device is low ram. Applying low raw tweaks"
 	mv "$MODPATH"/system.props/low-ram-system.prop "$MODPATH"/system.prop
     else
 	mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
     fi
     
     # applying lmkd tweaks
-    grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do 
+    grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
+	logger "$prop" 
 	resetprop "$(echo "$prop" | sed s/=/' '/)"
     done
     resetprop lmkd.reinit 1
@@ -89,7 +97,7 @@ mount /data > /dev/null
 # Check Android SDK
 sdk_level=$(resetprop ro.build.version.sdk)
 swap_filename=/data/swap_file 
-free_space=$(df /data | sed -n 2p | awk '{print $4}')
+free_space=$(df /data | sed -n '2{s/^[^ ]* *[^ ]* *[^ ]* *\([^ ]*\).*/\1/p}')
 
 if [ -d "/data/adb/modules/meZram" ]; then
     ui_print "- Thank you so much 😊."
@@ -97,8 +105,11 @@ if [ -d "/data/adb/modules/meZram" ]; then
 fi 
 
 if [ ! -f $swap_filename ]; then
-    count_SWAP 
-    if [ "${free_space}" -ge "${swap_size}" ]; then
+    count_SWAP
+    logger "free space = $free_space"
+    logger "swap size = $swap_size"
+    logger "sdk_level = $sdk_level"
+    if [ "$free_space" -ge "$swap_size" ]; then
         ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
 	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
         dd if=/dev/zero of=$swap_filename bs=1024 count="$swap_size" 2> install_error.txt 1> /dev/null 
@@ -106,6 +117,12 @@ if [ ! -f $swap_filename ]; then
         mkswap $swap_filename > /dev/null
         swapon $swap_filename > /dev/null
         ui_print "  SWAP turned on"
+    elif [ -z $free_space ]; then
+	ui_print "- Make sure you had $((swap_size / 1024))available because system can't check your free storage"
+	dd if=/dev/zero of=$swap_filename bs=1024 count="$swap_size" 2> install_error.txt 1> /dev/null
+	mkswap $swap_filename > /dev/null
+	swapon $swap_filename > /dev/null
+	ui_print "  SWAP turned on"
     else
 	ui_print "- Storage full. Please free up your storage"
     fi 
