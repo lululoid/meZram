@@ -7,8 +7,11 @@ Details in here https://source.android.com/docs/core/perf/lmkd
 
 ## Features
   - lmkd tweaks for smoother experience. Based on https://source.android.com/docs/core/perf/lmkd.
+  - open more apps, while also maintaining performance
+  - you could tweak the props on you own just edit /data/adb/modules/meZram/system.prop. Be careful because this modify low level system function. Could break you system although it isn't permanent.
   - change the size of your ZRAM
   - change the size of your SWAP
   - adjusting SWAP size on your own. Up to the size of your RAM. Although i don't recommmend it for general user becaus it' more likely has no performance benefit. The default 50% is enough
+  - miui and stock rom with some "bad custom ROM" usually not support lmkd tweaks. You as well just give it a try. Maybe some tweaks will get applied.
 
 ## TODO
