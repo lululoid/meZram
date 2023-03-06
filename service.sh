@@ -1,4 +1,4 @@
-!/system/bin/sh
+#!/system/bin/sh
 MODDIR=${0%/*}
 
 # Calculate memory to use for zram
@@ -9,7 +9,7 @@ lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
 logger(){
     local on=true
-    $on && "$*" >> "$MODDIR"/meZram.log
+    $on && echo "$*" >> "$MODDIR"/meZram.log
 }
 
 logger "zram_size = $zram_size"
