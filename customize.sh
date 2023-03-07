@@ -10,7 +10,7 @@ ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀�
 ui_print " ==================:)====================="; sleep 0.5
 
 logger(){
-    local on=false
+    local on=true
     $on && ui_print "  DEBUG: $*"
 }
 
@@ -29,8 +29,10 @@ lmkd_apply() {
 	logger "$prop" 
 	resetprop "$(echo "$prop" | sed s/=/' '/)"
     done
+
     resetprop lmkd.reinit 1
 
+    ui_print "- lmkd reinitialized"
     ui_print "- lmkd multitasking tweak applied."
     ui_print "  Give the better of your RAM."
     ui_print "  RAM better being filled with something"
@@ -88,7 +90,7 @@ count_SWAP() {
 
 rm_prop_reinit(){
     for prop in in "$@"; do
-	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && lmkd --reinit
+	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1
     done                                            
 }
 
@@ -117,8 +119,11 @@ if [ ! -f $swap_filename ]; then
         mkswap $swap_filename > /dev/null
         swapon $swap_filename > /dev/null
         ui_print "  SWAP turned on"
-    elif [ -z $free_space ]; then
-	ui_print "- Make sure you had $((swap_size / 1024))available because system can't check your free storage"
+    elif [ -z "$free_space" ]; then
+	ui_print "- Make sure you had $((swap_size / 1024))MB available"
+	ui_print "  because system can't check your free storage"
+	ui_print "- Starting making SWAP. Please wait a mom
+ent"; sleep 0.5
 	dd if=/dev/zero of=$swap_filename bs=1024 count="$swap_size" 2> install_error.txt 1> /dev/null
 	mkswap $swap_filename > /dev/null
 	swapon $swap_filename > /dev/null

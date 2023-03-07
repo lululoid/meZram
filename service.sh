@@ -37,8 +37,13 @@ swapon /data/swap_file 2>> "$MODDIR"/meZram.log
 
 echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log 
 resetprop lmkd.reinit 1
-logcat -G 5M
-logcat --pid "$lmkd_pid" >> lmkd.log &
+
+# peaceful logger
+while true; do
+    logcat -G 5M
+    logcat --pid "$lmkd_pid" > lmkd.log &
+    sleep 30m
+done &
 
 rm_prop_reinit(){
     for prop in in "$@"; do
