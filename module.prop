@@ -1,7 +1,7 @@
 id=meZram
 name=meZram
-version=v9.0-beta
-versionCode=976
+version=v0.9-beta
+versionCode=977
 author=lululoid
 description=Change ZRAM size, applying lmkd psi. Change ZRAM size up to RAM size. By Default is (50%)MB ZRAM and (50%)MB SWAP.
 updateJson=https://raw.githubusercontent.com/lululoid/meZram/emit_enola/meZram.json
