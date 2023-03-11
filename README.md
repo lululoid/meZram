@@ -6,12 +6,14 @@ The Android low memory killer daemon (lmkd) process monitors the memory state of
 Details in here https://source.android.com/docs/core/perf/lmkd 
 
 ## Features
-  - lmkd tweaks for smoother experience. Based on https://source.android.com/docs/core/perf/lmkd.
+  - lmkd tweaks for smoother experience.
   - open more apps, while also maintaining performance
-  - you could tweak the props on you own just edit /data/adb/modules/meZram/system.prop. Be careful because this modify low level system function. Could break you system although it isn't permanent.
-  - change the size of your ZRAM
+  - may increase gaming performance by reducing pressure aspects, especially memory pressure
+  - you could tweak the props on you own just edit /data/adb/modules/meZram/system.prop then restart. Be careful because this modify low level system function. Could break you system although it isn't permanent, just reinstall or remove this module if its happened.
+  - change the size of your ZRAM to 50% of RAM.
   - change the size of your SWAP
-  - adjusting SWAP size on your own. Up to the size of your RAM. Although i don't recommmend it for general user becaus it' more likely has no performance benefit. The default 50% is enough
+  - adjusting SWAP size on your own. Up to the size of your RAM. Although i don't recommmend it for general user because it's more likely has no performance benefits. The default 50% is enough.
   - miui and stock rom with some "bad custom ROM" usually not support lmkd tweaks. You as well just give it a try. Maybe some tweaks will get applied.
 
 ## TODO
+- Add AI? lol 😹. Seriously its's never better. While demands changing based on user, the tweaks itself become less efficient. Add AI that could adapt to user seems to be interesting idea. But I still so much to learn, anxiety and depression is the biggest obstacle of mine.
