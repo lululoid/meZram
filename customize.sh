@@ -27,12 +27,10 @@ lmkd_apply() {
     # applying lmkd tweaks
     grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
 	logger "$prop" 
-	resetprop "$(echo "$prop" | sed s/=/' '/)"
+	resetprop $(echo "$prop" | sed s/=/' '/)
     done
 
-    resetprop lmkd.reinit 1
-
-    ui_print "- lmkd reinitialized"
+    resetprop lmkd.reinit 1 && ui_print "- lmkd reinitialized"
     ui_print "- lmkd multitasking tweak applied."
     ui_print "  Give the better of your RAM."
     ui_print "  RAM better being filled with something"
@@ -90,8 +88,8 @@ count_SWAP() {
 
 rm_prop_reinit(){
     for prop in in "$@"; do
-	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1
-    done                                            
+	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1 && ui_print "- lmkd reinitialized"
+    done
 }
 
 mount /data > /dev/null

@@ -40,8 +40,8 @@ resetprop lmkd.reinit 1
 
 # peaceful logger
 while true; do
-    logcat -G 5M
-    logcat --pid "$lmkd_pid" > lmkd.log &
+    logcat -G 10M
+    logcat --pid "$lmkd_pid" -t 100 -f lmkd.log &
     sleep 30m
 done &
 
