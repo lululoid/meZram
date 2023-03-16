@@ -87,7 +87,7 @@ count_SWAP() {
 }
 
 rm_prop_reinit(){
-    for prop in in "$@"; do
+    for prop in "$@"; do
 	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1 && ui_print "- lmkd reinitialized"
     done
 }
@@ -135,9 +135,7 @@ if [ "$sdk_level" -lt 28 ]; then
     ui_print "- Your android version is not supported. Performance tweaks won't applied."
     ui_print "  Please upgrade your phone to Android 9+"
 else
-    lmkd_apply
-    tlc='persist.device_config.lmkd_native.thrashing_limit_critical'
-    minfree_l='sys.lmk.minfree_levels'
+    lmkd_apply; tlc='persist.device_config.lmkd_native.thrashing_limit_critical'
 
-    rm_prop_reinit $tlc $minfree_l
+    rm_prop_reinit $tlc
 fi

@@ -41,19 +41,18 @@ resetprop lmkd.reinit 1
 # peaceful logger
 while true; do
     logcat -G 10M
-    logcat --pid "$lmkd_pid" -t 100 -f lmkd.log &
+    logcat --pid "$lmkd_pid" -t 100 -f "$MODDIR"/lmkd.log &
     sleep 30m
 done &
 
 rm_prop_reinit(){
-    for prop in in "$@"; do
+    for prop in "$@"; do
         [ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && lmkd --reinit
     done
 }
 
 while true; do
     tlc="persist.device_config.lmkd_native.thrashing_limit_critical"
-    minfree_l="sys.lmk.minfree_levels"
     err="persist.device_config.lmkd_native.thrashing_limit_"
-    rm_prop_reinit $tlc $minfree_l $err 2>> "$MODDIR"/meZram.log 
+    rm_prop_reinit $tlc $err 2>> "$MODDIR"/meZram.log 
 done
