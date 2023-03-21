@@ -1,8 +1,8 @@
 LICENSE
 META-INF
-system.props
 customize.sh
 meZram-cleaner.zip
 module.prop
 service.sh
 uninstall.sh
+system.props

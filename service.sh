@@ -47,12 +47,13 @@ done &
 
 rm_prop_reinit(){
     for prop in "$@"; do
-        [ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && lmkd --reinit
+        [ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1
     done
 }
 
 while true; do
     tlc="persist.device_config.lmkd_native.thrashing_limit_critical"
     err="persist.device_config.lmkd_native.thrashing_limit_"
+    minfree="sys.lmk.minfree_levels"
     rm_prop_reinit $tlc $err 2>> "$MODDIR"/meZram.log 
 done
