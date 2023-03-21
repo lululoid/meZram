@@ -23,6 +23,9 @@ lmkd_apply() {
     else
 	mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
     fi
+
+    local ml=$(resetprop sys.lmk.minfree_levels)
+    echo "sys.lmk.minfree_levels=$ml" >> "$MODPATH"/system.prop
     
     # applying lmkd tweaks
     grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
