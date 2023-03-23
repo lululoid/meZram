@@ -25,7 +25,7 @@ lmkd_apply() {
     fi
 
     local ml=$(resetprop sys.lmk.minfree_levels)
-    echo "sys.lmk.minfree_levels=$ml" >> "$MODPATH"/system.prop
+    # echo "sys.lmk.minfree_levels=$ml" >> "$MODPATH"/system.prop
     
     # applying lmkd tweaks
     grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
@@ -141,5 +141,5 @@ else
     lmkd_apply; tlc='persist.device_config.lmkd_native.thrashing_limit_critical'
     minfree="sys.lmk.minfree_levels"
 
-    rm_prop_reinit $tlc
+    rm_prop_reinit $tlc $minfree 
 fi
