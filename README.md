@@ -17,3 +17,7 @@ Details in here https://source.android.com/docs/core/perf/lmkd
 
 ## TODO
 - Add AI? lol 😹. Seriously its's never better. While demands changing based on user, the tweaks itself become less efficient. Add AI that could adapt to user seems to be interesting idea. But I still so much to learn, anxiety and depression is the biggest obstacle of mine.
+
+## DEBUG
+- Tested on Redmi 10C RiceDroid 10.2 Gapps
+- Realme 5 Android 10
