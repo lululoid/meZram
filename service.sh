@@ -42,7 +42,7 @@ resetprop lmkd.reinit 1
 while true; do
     logcat -G 10M
     logcat --pid "$lmkd_pid" -t 100 -f "$MODDIR"/lmkd.log &
-    sleep 30m
+    sleep 5m
 done &
 
 rm_prop_reinit(){
