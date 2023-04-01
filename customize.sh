@@ -133,6 +133,8 @@ if [ ! -f $swap_filename ]; then
 	    ui_print "- Make sure you had $((swap_size / 1024))MB available"
 	    ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
 	    swapon $swap_size $swap_filename
+	else:
+	    swapon $swap_size $swap_filename 
 	fi 
     else
 	ui_print "- Storage full. Please free up your storage"
