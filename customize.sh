@@ -63,8 +63,7 @@ count_SWAP() {
 	    elif [ $count -eq 2 ]; then
 		count=$((count + 1))
 		ui_print "  $count. No SWAP"
-		unset swap_size
-		unset free_space
+		unset swap_size 
 	    elif [ $swap_in_gb -lt $totalmem_gb ]; then
 		count=$((count + 1))
 		swap_in_gb=$((swap_in_gb + 1))
@@ -127,15 +126,13 @@ if [ ! -f $swap_filename ]; then
     if [ "$free_space" -ge "$swap_size" ]; then
         ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
 	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
-	swapon $swap_size $swap_filename
+	make_swap $swap_size $swap_filename
     elif [ -z "$free_space" ]; then
-	if [ -n "$swap_size" ]; then
-	    ui_print "- Make sure you had $((swap_size / 1024))MB available"
-	    ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
-	    swapon $swap_size $swap_filename
-	else:
-	    swapon $swap_size $swap_filename 
-	fi 
+	ui_print "- Make sure you had $((swap_size / 1024))MB available"
+	ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
+	make_swap $swap_size $swap_filename
+    elif [ $count -eq 3 ]; then
+	true
     else
 	ui_print "- Storage full. Please free up your storage"
     fi 
