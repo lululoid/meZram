@@ -60,6 +60,12 @@ count_SWAP() {
 		count=$((count + 1))
 		swap_size=$((totalmem / 2))
 		ui_print "  $count. 50% of RAM $((swap_size/1024))MB SWAP"
+	    elif [ $count -eq 2 ]; then
+		count=$((count + 1))
+		ui_print "  $count. No SWAP"
+		unset swap_size
+		unset free_space
+		break
 	    elif [ $swap_in_gb -lt $totalmem_gb ]; then
 		count=$((count + 1))
 		swap_in_gb=$((swap_in_gb + 1))
