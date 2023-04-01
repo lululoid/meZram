@@ -54,6 +54,6 @@ rm_prop_reinit(){
 while true; do
     tlc="persist.device_config.lmkd_native.thrashing_limit_critical"
     err="persist.device_config.lmkd_native.thrashing_limit_"
-    minfree="sys.lmk.minfree_levels"
+    # minfree="sys.lmk.minfree_levels"
     rm_prop_reinit $tlc $err 2>> "$MODDIR"/meZram.log 
 done

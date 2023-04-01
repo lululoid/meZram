@@ -65,7 +65,6 @@ count_SWAP() {
 		ui_print "  $count. No SWAP"
 		unset swap_size
 		unset free_space
-		break
 	    elif [ $swap_in_gb -lt $totalmem_gb ]; then
 		count=$((count + 1))
 		swap_in_gb=$((swap_in_gb + 1))
@@ -101,6 +100,13 @@ rm_prop_reinit(){
     done
 }
 
+make_swap(){
+    dd if=/dev/zero of="$2" bs=1024 count="$1" > /dev/null                   
+    mkswap "$2" > /dev/null
+    swapon "$2" > /dev/null
+    ui_print "  SWAP turned on"
+}
+
 mount /data > /dev/null
 
 # Check Android SDK
@@ -121,20 +127,13 @@ if [ ! -f $swap_filename ]; then
     if [ "$free_space" -ge "$swap_size" ]; then
         ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
 	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
-        dd if=/dev/zero of=$swap_filename bs=1024 count="$swap_size" 2> install_error.txt 1> /dev/null 
-	chmod 0600 $swap_filename > /dev/null
-        mkswap $swap_filename > /dev/null
-        swapon $swap_filename > /dev/null
-        ui_print "  SWAP turned on"
+	swapon $swap_size $swap_filename
     elif [ -z "$free_space" ]; then
-	ui_print "- Make sure you had $((swap_size / 1024))MB available"
-	ui_print "  because system can't check your free storage"
-	ui_print "- Starting making SWAP. Please wait a mom
-ent"; sleep 0.5
-	dd if=/dev/zero of=$swap_filename bs=1024 count="$swap_size" 2> install_error.txt 1> /dev/null
-	mkswap $swap_filename > /dev/null
-	swapon $swap_filename > /dev/null
-	ui_print "  SWAP turned on"
+	if [ -n "$swap_size" ]; then
+	    ui_print "- Make sure you had $((swap_size / 1024))MB available"
+	    ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
+	    swapon $swap_size $swap_filename
+	fi 
     else
 	ui_print "- Storage full. Please free up your storage"
     fi 
@@ -147,5 +146,5 @@ else
     lmkd_apply; tlc='persist.device_config.lmkd_native.thrashing_limit_critical'
     minfree="sys.lmk.minfree_levels"
 
-    rm_prop_reinit $tlc $minfree 
+    rm_prop_reinit $tlc
 fi
