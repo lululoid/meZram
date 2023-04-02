@@ -1,7 +1,7 @@
 id=meZram
 name=meZram
-version=v0.3
-versionCode=0323
+version=v1.1-beta
+versionCode=11008
 author=lululoid
-description=Add ZRAM and swap to your android. It works by change default ZRAM size and add swap, both size to 1/2 of RAM
-updateJson=https://lsposed.github.io/releases/shamiko.json
+description=Trying to achieve better multitasking performace by changing ZRAM size and adding SWAP, applying lmkd psi. Change ZRAM size up to RAM size. By Default is (50%)MB ZRAM and (50%)MB SWAP. So if you had 4GB RAM, 2GB will be used for ZRAM, and 2GB internal for SWAP. This module also tweak lmkd props for better performance.
+updateJson=https://raw.githubusercontent.com/lululoid/meZram/emit_enola/meZram.json
