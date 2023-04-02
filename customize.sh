@@ -10,8 +10,7 @@ ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀�
 ui_print " ==================:)====================="; sleep 0.5
 
 logger(){
-    local on=true
-    $on && ui_print "  DEBUG: $*"
+    true && ui_print "  DEBUG: $*"
 }
 
 lmkd_apply() {
@@ -47,9 +46,9 @@ count_SWAP() {
     count=0
     local swap_in_gb=0
 
-    ui_print "- SELECT ZRAM SIZE"
-    ui_print "  Press VOL_DOWN to continue"
-    ui_print "  Press VOL_UP to skip and select Default"
+    ui_print "- SELECT SWAP SIZE"
+    ui_print "  Press VOL_DOWN to SELECT"
+    ui_print "  Press VOL_UP to CONTINUE"
     ui_print "  Default is $((totalmem/1024/2))MB of SWAP"
     
     while true; do
@@ -148,9 +147,3 @@ else
 
     rm_prop_reinit $tlc
 fi
-
-if [ ! -d /sdcard/meZram/ ]; then
-    mkdir /sdcard/meZram/
-fi
-
-cp "$MODDIR"/*log /sdcard/meZram/ 
