@@ -21,7 +21,7 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 	swapoff $zram0 2> "$MODDIR"/meZram.log
 	echo 1 > /sys/block/zram0/reset 2>> "$MODDIR"/meZram.log 
 	# Set up zram size, then turn on both zram and swap
-	echo $zram_size > /sys/block/zram0/disksize 2>> "$MODDIR""/meZram."log 
+	echo $zram_size > /sys/block/zram0/disksize 2>> "$MODDIR"/meZram.log 
 	# Set up maxium cpu streams
 	echo "$NRDEVICES" > /sys/block/zram0/max_comp_streams 2>> "$MODDIR"/meZram.log 
 	mkswap $zram0 2>> "$MODDIR"/meZram.log 
@@ -57,8 +57,10 @@ while true; do
     rm_prop_reinit $tlc $err 2>> "$MODDIR"/meZram.log 
 done
 
-if [ ! -d /sdcard/meZram/ ]; then
-    mkdir /sdcard/meZram/
-fi
-
-cp "$MODDIR"/*log /sdcard/meZram/
+while true; do
+    sleep 1m
+    if [ ! -d /data/adb/meZram ]; then
+        mkdir /data/adb/meZram
+    fi
+    cp "$MODDIR"/*log /data/adb/meZram
+done &
