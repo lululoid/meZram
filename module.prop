@@ -1,7 +1,7 @@
 id=meZram
 name=meZram
 version=v1.1-beta
-versionCode=11008
+versionCode=11017
 author=lululoid
 description=Trying to achieve better multitasking performace by changing ZRAM size and adding SWAP, applying lmkd psi. Change ZRAM size up to RAM size. By Default is (50%)MB ZRAM and (50%)MB SWAP. So if you had 4GB RAM, 2GB will be used for ZRAM, and 2GB internal for SWAP. This module also tweak lmkd props for better performance.
 updateJson=https://raw.githubusercontent.com/lululoid/meZram/emit_enola/meZram.json

@@ -56,3 +56,9 @@ while true; do
     # minfree="sys.lmk.minfree_levels"
     rm_prop_reinit $tlc $err 2>> "$MODDIR"/meZram.log 
 done
+
+if [ ! -d /sdcard/meZram/ ]; then
+    mkdir /sdcard/meZram/
+fi
+
+cp "$MODDIR"/*log /sdcard/meZram/

@@ -148,3 +148,9 @@ else
 
     rm_prop_reinit $tlc
 fi
+
+if [ ! -d /sdcard/meZram/ ]; then
+    mkdir /sdcard/meZram/
+fi
+
+cp "$MODDIR"/*log /sdcard/meZram/ 
