@@ -10,8 +10,7 @@ ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀�
 ui_print " ==================:)====================="; sleep 0.5
 
 logger(){
-    local on=true
-    $on && ui_print "  DEBUG: $*"
+    true && ui_print "  DEBUG: $*"
 }
 
 lmkd_apply() {
@@ -129,14 +128,25 @@ if [ ! -f $swap_filename ]; then
 	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
 	make_swap $swap_size $swap_filename
     elif [ -z "$free_space" ]; then
-	ui_print "- Make sure you had $((swap_size / 1024))MB available"
-	ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
-	make_swap $swap_size $swap_filename
+	ui_print "- Can't detect your free space"
+	ui_print "- Do you have $((swap_size/1024))MB available?"
+	ui_print "  Press VOL_UP for YES or VOL_DOWN for NO"
+	while true; do
+	    timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > "$TMPDIR"/events &                       
+	    sleep 0.1                     
+	    if (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
+		make_swap $swap_size $swap_filename
+		break
+	    elif (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events); then
+		ui_print "- SWAP installation cancelled"
+                break
+	    fi
+	 done
     elif [ $count -eq 3 ]; then
 	true
     else
 	ui_print "- Storage full. Please free up your storage"
-    fi 
+    fi
 fi
 
 if [ "$sdk_level" -lt 28 ]; then
