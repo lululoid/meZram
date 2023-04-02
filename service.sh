@@ -8,8 +8,7 @@ zram_size=$(((totalmem / 2) * 1024))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
 logger(){
-    local on=true
-    $on && echo "$*" >> "$MODDIR"/meZram.log
+    true && echo "$*" >> "$MODDIR"/meZram.log
 }
 
 logger "zram_size = $zram_size"
@@ -57,3 +56,7 @@ while true; do
     # minfree="sys.lmk.minfree_levels"
     rm_prop_reinit $tlc $err 2>> "$MODDIR"/meZram.log 
 done
+
+minfree_prop=$(echo "$MODPATH"/system.prop | grep sys.lmk.minfree_levels | sed s/=/' '/)
+sleep 10
+resetprop "$minfree_prop" && resetprop lmkd.reinit 1

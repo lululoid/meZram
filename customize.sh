@@ -44,7 +44,7 @@ count_SWAP() {
     local one_gb=$((1024*1024))
     local totalmem_gb=$(((totalmem/1024/1024)+1))
     swap_size=$((totalmem / 2))
-    local count=0
+    count=0
     local swap_in_gb=0
 
     ui_print "- SELECT ZRAM SIZE"
@@ -123,6 +123,7 @@ if [ ! -f $swap_filename ]; then
     logger "free space = $free_space"
     logger "swap size = $swap_size"
     logger "sdk_level = $sdk_level"
+    logger "count = $count"
     if [ "$free_space" -ge "$swap_size" ]; then
         ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
 	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
