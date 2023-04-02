@@ -56,7 +56,3 @@ while true; do
     # minfree="sys.lmk.minfree_levels"
     rm_prop_reinit $tlc $err 2>> "$MODDIR"/meZram.log 
 done
-
-minfree_prop=$(echo "$MODPATH"/system.prop | grep sys.lmk.minfree_levels | sed s/=/' '/)
-sleep 10
-resetprop "$minfree_prop" && resetprop lmkd.reinit 1

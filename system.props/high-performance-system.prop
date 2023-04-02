@@ -14,4 +14,3 @@ ro.lmk.swap_free_low_percentage=10
 ro.lmk.thrashing_limit=50
 ro.lmk.thrashing_limit_decay=20
 ro.lmk.swap_util_max=50
-sys.lmk.minfree_levels=9000:0,10000:100,16000:200,20000:300,75000:800,100000:900
