@@ -10,8 +10,7 @@ ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀�
 ui_print " ==================:)====================="; sleep 0.5
 
 logger(){
-    local on=true
-    $on && ui_print "  DEBUG: $*"
+    false && ui_print "  DEBUG: $*"
 }
 
 lmkd_apply() {

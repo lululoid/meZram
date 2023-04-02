@@ -8,7 +8,7 @@ zram_size=$(((totalmem / 2) * 1024))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
 logger(){
-    true && echo "$*" >> "$MODDIR"/meZram.log
+    false && echo "$*" >> "$MODDIR"/meZram.log
 }
 
 logger "zram_size = $zram_size"
