@@ -3,4 +3,5 @@ ro.lmk.use_psi=true
 ro.lmk.use_minfree_levels=false
 ro.lmk.debug=true
 ro.lmk.swap_free_low_percentage=10
+ro.lmk.thrashing_limit=30
 ro.lmk.swap_util_max=50
