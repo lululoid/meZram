@@ -35,7 +35,7 @@ done
 
 swapon /data/swap_file 2>> "$MODDIR"/meZram.log 
 
-echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log 
+# echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log 
 resetprop lmkd.reinit 1
 
 # peaceful logger

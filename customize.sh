@@ -138,6 +138,8 @@ if [ ! -f $swap_filename ]; then
     fi 
 fi
 
+ui_print "- Please REBOOT to fully take effects"
+
 if [ "$sdk_level" -lt 28 ]; then
     ui_print "- Your android version is not supported. Performance tweaks won't applied."
     ui_print "  Please upgrade your phone to Android 9+"
