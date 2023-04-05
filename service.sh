@@ -1,9 +1,6 @@
 #!/system/bin/sh
 MODDIR=${0%/*}
 
-# Sourcing customize.sh
-. "$MODDIR"/customize.sh
-
 # Calculate memory to use for zram
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
@@ -47,6 +44,12 @@ while true; do
     logcat --pid "$lmkd_pid" -t 100 -f "$MODDIR"/lmkd.log &
     sleep 5m
 done &
+
+rm_prop_reinit(){                                
+	for prop in "$@"; do
+    	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1 && echo "- $* deleted" >> "$MODDIR"/meZram.log
+	done
+}
 
 while true; do
     tlc="persist.device_config.lmkd_native.thrashing_limit_critical"
