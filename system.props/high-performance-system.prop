@@ -6,3 +6,4 @@ ro.lmk.swap_free_low_percentage=10
 ro.lmk.thrashing_limit=50
 ro.lmk.swap_util_max=50
 ro.lmk.psi_partial_stall_ms=160
+mezram_test=haha_this_function_failed

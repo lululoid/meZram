@@ -103,7 +103,7 @@ make_swap(){
     dd if=/dev/zero of="$2" bs=1024 count="$1" > /dev/null                   
     mkswap "$2" > /dev/null
     swapon "$2" > /dev/null
-    ui_print "  SWAP turned on"
+    ui_print "- SWAP is RUNNING"
 }
 
 mount /data > /dev/null
@@ -120,25 +120,23 @@ fi
 
 if [ ! -f $swap_filename ]; then
     count_SWAP
-    logger "free space = $free_space"
-    logger "swap size = $swap_size"
-    logger "sdk_level = $sdk_level"
+    	logger "free space = $free_space"
+    	logger "swap size = $swap_size"
+    	logger "sdk_level = $sdk_level"
     if [ "$free_space" -ge "$swap_size" ]; then
         ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
-	ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
-	make_swap $swap_size $swap_filename
+		ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
+		make_swap $swap_size $swap_filename
     elif [ -z "$free_space" ]; then
-	ui_print "- Make sure you had $((swap_size / 1024))MB available"
-	ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
-	make_swap $swap_size $swap_filename
+		ui_print "- Make sure you had $((swap_size / 1024))MB available"
+		ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
+		make_swap $swap_size $swap_filename
     elif [ $count -eq 3 ]; then
-	true
+		true
     else
-	ui_print "- Storage full. Please free up your storage"
+		ui_print "- Storage full. Please free up your storage"
     fi 
 fi
-
-ui_print "- Please REBOOT to fully take effects"
 
 if [ "$sdk_level" -lt 28 ]; then
     ui_print "- Your android version is not supported. Performance tweaks won't applied."
@@ -149,3 +147,5 @@ else
 
     rm_prop_reinit $tlc
 fi
+
+ui_print "- Please REBOOT to fully take effects"
