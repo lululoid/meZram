@@ -54,33 +54,33 @@ count_SWAP() {
 		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > "$TMPDIR"/events &
 		sleep 0.1
 		if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events); then
-	    	if [ $count -eq 0 ]; then
+			if [ $count -eq 0 ]; then
 				count=$((count + 1))
 				swap_size=$((totalmem / 2))
 				local swap_in_gb=0
 				ui_print "  $count. 50% of RAM ($((swap_size/1024))MB SWAP) --> RECOMMENDED"
-	    	elif [ $count -eq 2 ]; then
+			elif [ $count -eq 2 ]; then
 				count=$((count + 1))
 				ui_print "  $count. NO SWAP"
 				swap_size=0
-	    	elif [ $swap_in_gb -lt $totalmem_gb ]; then
+			elif [ $swap_in_gb -lt $totalmem_gb ]; then
 				count=$((count + 1))
 				swap_in_gb=$((swap_in_gb + 1))
 				ui_print "  $count. ${swap_in_gb}GB of SWAP"
 				swap_size=$((swap_in_gb * one_gb))
-	    	fi
+			fi
 		elif [ $swap_in_gb -eq $totalmem_gb ] && [ $count != 0 ]; then
-	    	swap_size=$totalmem
+			swap_size=$totalmem
 			count=0
 		elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
 			break
 		fi
-    done
+	done
 }
 
 rm_prop_reinit(){
-    for prop in "$@"; do
-	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1 && ui_print "- lmkd reinitialized"
+	for prop in "$@"; do
+		[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1 && ui_print "- lmkd reinitialized"
     done
 }
 
@@ -110,7 +110,7 @@ if [ ! -f $swap_filename ]; then
     logger "swap size = $swap_size"
     logger "sdk_level = $sdk_level"
     logger "count = $count"
-    if [ "$free_space" -ge "$swap_size" ]; then
+    if [ "$free_space" -ge "$swap_size" ] && [ "$swap_size" != 0 ]; then
         ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
 		ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
 		make_swap "$swap_size" $swap_filename
