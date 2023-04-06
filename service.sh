@@ -8,8 +8,7 @@ zram_size=$(((totalmem / 2) * 1024))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
 logger(){
-    local on=true
-    $on && echo "$*" >> "$MODDIR"/meZram.log
+    true && echo "$*" >> "$MODDIR"/meZram.log
 }
 
 logger "zram_size = $zram_size"
@@ -43,7 +42,7 @@ resetprop lmkd.reinit 1
 # peaceful logger
 while true; do
     logcat --pid "$lmkd_pid" -t 100000 -f "$MODDIR"/lmkd.log
-    sleep 5m
+    sleep 1m
 done &
 
 rm_prop_reinit(){                                
@@ -80,8 +79,8 @@ while true; do
 		rm_prop_reinit "$prop" 1>> "$MODDIR"/meZram.log
 	done
 
-    rm_prop_reinit $tlc $err $tl 1>> "$MODDIR"/meZram.log
-	if [ "$(resetprop ro.miui.ui.version.code)" -eq 13 ]; then
+    rm_prop_reinit $tlc $err 1>> "$MODDIR"/meZram.log
+	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
 		rm_prop_reinit $tl 1>> "$MODDIR"/meZram.log
 	fi
 done &
