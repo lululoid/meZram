@@ -36,7 +36,8 @@ lmkd_apply() {
 	"ro.lmk.kill_timeout_ms" 
 	"ro.lmk.psi_complete_stall_ms" 
 	"ro.lmk.thrashing_limit_decay" 
-	"ro.lmk.thrashing_limit" "ro.lmk.swap_util_max" 
+	"ro.lmk.thrashing_limit"
+	"ro.lmk.swap_util_max" 
 	"ro.lmk.swap_free_low_percentage" 
 	"ro.lmk.debug" 
 	"persist.device_config.lmkd_native.thrashing_limit_critical"
@@ -51,10 +52,10 @@ lmkd_apply() {
 			fi
 		done
 	done
-
-    rm_prop $tlc $err $minfree
+	
+	tl="ro.lmk.thrashing_limit"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-		rm_prop $tl 
+		rm_prop "$tl"
 	fi
     
     # applying lmkd tweaks
