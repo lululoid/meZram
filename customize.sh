@@ -28,9 +28,10 @@ lmkd_apply() {
     
     # applying lmkd tweaks
     grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
-		logger "$prop" 
-		resetprop "$(echo "$prop" | sed s/=/' '/)"
-    done
+		# logger "$prop"
+		logger "resetprop $(echo "$prop" | sed s/=/' '/)"
+		resetprop $(echo "$prop" | sed s/=/' '/)
+	done
 
     resetprop lmkd.reinit 1 && ui_print "- lmkd reinitialized"
     ui_print "- lmkd multitasking tweak applied."
@@ -149,4 +150,3 @@ else
     rm_prop_reinit $tlc $minfree
 fi
 
-ui_print "- Please REBOOT to take effect"
