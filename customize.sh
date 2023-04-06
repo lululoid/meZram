@@ -144,9 +144,9 @@ if [ "$sdk_level" -lt 28 ]; then
     ui_print "  Please upgrade your phone to Android 9+"
 else
     lmkd_apply; tlc='persist.device_config.lmkd_native.thrashing_limit_critical'
-    # minfree="sys.lmk.minfree_levels"
+    minfree="sys.lmk.minfree_levels"
 
-    rm_prop_reinit $tlc
+    rm_prop_reinit $tlc $minfree
 fi
 
 ui_print "- Please REBOOT to take effect"

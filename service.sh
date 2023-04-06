@@ -64,7 +64,7 @@ done &
 
 tlc="persist.device_config.lmkd_native.thrashing_limit_critical"
 err="persist.device_config.lmkd_native.thrashing_limit_"
-# minfree="sys.lmk.minfree_levels"
+minfree="sys.lmk.minfree_levels"
 tl="ro.lmk.thrashing_limit"
 
 while true; do
@@ -79,7 +79,7 @@ while true; do
 		rm_prop_reinit "$prop" 1>> "$MODDIR"/meZram.log
 	done
 
-    rm_prop_reinit $tlc $err 1>> "$MODDIR"/meZram.log
+    rm_prop_reinit $tlc $err $minfree 1>> "$MODDIR"/meZram.log
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
 		rm_prop_reinit $tl 1>> "$MODDIR"/meZram.log
 	fi
