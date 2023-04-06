@@ -23,16 +23,27 @@ lmkd_apply() {
 		mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
     fi
 
-    # local ml=$(resetprop sys.lmk.minfree_levels)
-	tlc="persist.device_config.lmkd_native.thrashing_limit_critical"
-	err="persist.device_config.lmkd_native.thrashing_limit_"
-	minfree="sys.lmk.minfree_levels"
-	tl="ro.lmk.thrashing_limit"
     # echo "sys.lmk.minfree_levels=$ml" >> "$MODPATH"/system.prop
 
-	rmt_prop=("ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure"   "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.thrashing_limit" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "mezram_test")
+	rmt_prop='
+	"ro.lmk.low" 
+	"ro.lmk.medium" 
+	"ro.lmk.critical" 
+	"ro.lmk.critical_upgrade" 
+	"ro.lmk.upgrade_pressure" 
+	"ro.lmk.downgrade_pressure"   
+	"ro.lmk.kill_heaviest_task" 
+	"ro.lmk.kill_timeout_ms" 
+	"ro.lmk.psi_complete_stall_ms" 
+	"ro.lmk.thrashing_limit_decay" 
+	"ro.lmk.thrashing_limit" "ro.lmk.swap_util_max" 
+	"ro.lmk.swap_free_low_percentage" 
+	"ro.lmk.debug" 
+	"persist.device_config.lmkd_native.thrashing_limit_critical"
+	"mezram_test"'
 
-	for prop in ${rmt_prop[@]}; do
+	printf '%s' "$rmt_prop" |
+		while IFS='' read -r prop; do
 		grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop0; do
 			resetprop $(echo "$prop0" | sed s/=/' '/)
 			if [ "$prop" != "$prop0" ]; then
