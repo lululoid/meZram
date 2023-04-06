@@ -24,16 +24,22 @@ lmkd_apply() {
     fi
 
     # local ml=$(resetprop sys.lmk.minfree_levels)
+	tlc="persist.device_config.lmkd_native.thrashing_limit_critical"
+	err="persist.device_config.lmkd_native.thrashing_limit_"
+	minfree="sys.lmk.minfree_levels"
+	tl="ro.lmk.thrashing_limit"
     # echo "sys.lmk.minfree_levels=$ml" >> "$MODPATH"/system.prop
 
-	while true ; do 
-		set -- "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "mezram_test"
-		break
-	done
-	
+	set -- "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "mezram_test"
+
 	for prop in "$@"; do
 		rm_prop_reinit "$prop" && logger "$prop deleted"
 	done
+
+    rm_prop_reinit $tlc $err $minfree 1>> "$MODDIR"/meZram.log
+	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
+		rm_prop_reinit $tl && logger "$prop deleted"
+	fi
     
     # applying lmkd tweaks
     grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
