@@ -25,6 +25,15 @@ lmkd_apply() {
 
     # local ml=$(resetprop sys.lmk.minfree_levels)
     # echo "sys.lmk.minfree_levels=$ml" >> "$MODPATH"/system.prop
+
+	while true ; do 
+		set -- "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "mezram_test"
+		break
+	done
+	
+	for prop in "$@"; do
+		rm_prop_reinit "$prop" && logger "$prop deleted"
+	done
     
     # applying lmkd tweaks
     grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
