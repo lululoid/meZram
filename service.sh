@@ -61,12 +61,6 @@ while true; do
 	cp "$MODDIR"/*.log /data/adb/meZram 
 done &
 
-
-tlc="persist.device_config.lmkd_native.thrashing_limit_critical"
-err="persist.device_config.lmkd_native.thrashing_limit_"
-minfree="sys.lmk.minfree_levels"
-tl="ro.lmk.thrashing_limit"
-
 while true; do
 	# prop that need to be removed
 	rmt_prop='
