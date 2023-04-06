@@ -30,15 +30,20 @@ lmkd_apply() {
 	tl="ro.lmk.thrashing_limit"
     # echo "sys.lmk.minfree_levels=$ml" >> "$MODPATH"/system.prop
 
-	set -- "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "mezram_test"
+	rmt_prop=("ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure"   "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.thrashing_limit" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "mezram_test")
 
-	for prop in "$@"; do
-		rm_prop_reinit "$prop" && logger "$prop deleted"
+	for prop in ${rmt_prop[@]}; do
+		grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop0; do
+			resetprop $(echo "$prop0" | sed s/=/' '/)
+			if [ "$prop" != "$prop0" ]; then
+				rm_prop "$prop"
+			fi
+		done
 	done
 
-    rm_prop_reinit $tlc $err $minfree 1>> "$MODDIR"/meZram.log
+    rm_prop $tlc $err $minfree
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-		rm_prop_reinit $tl && logger "$prop deleted"
+		rm_prop $tl 
 	fi
     
     # applying lmkd tweaks
@@ -94,10 +99,10 @@ count_SWAP() {
 	done
 }
 
-rm_prop_reinit(){
+rm_prop(){
 	for prop in "$@"; do
-		[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1 && ui_print "- lmkd reinitialized"
-    done
+		[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && logger "$prop deleted"
+	done
 }
 
 make_swap(){
@@ -159,9 +164,6 @@ if [ "$sdk_level" -lt 28 ]; then
     ui_print "- Your android version is not supported. Performance tweaks won't applied."
     ui_print "  Please upgrade your phone to Android 9+"
 else
-    lmkd_apply; tlc='persist.device_config.lmkd_native.thrashing_limit_critical'
-    minfree="sys.lmk.minfree_levels"
-
-    rm_prop_reinit $tlc $minfree
+    lmkd_apply
 fi
 
