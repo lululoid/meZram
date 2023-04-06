@@ -45,9 +45,9 @@ while true; do
     sleep 1m
 done &
 
-rm_prop_reinit(){                                
+rm_prop(){                                
 	for prop in "$@"; do
-    	[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && resetprop lmkd.reinit 1 && echo "- $* deleted" 1>> "$MODDIR"/meZram.log
+		[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && logger "$prop deleted" 1>> "$MODDIR"/meZram.log
 	done
 }
 
@@ -69,18 +69,37 @@ tl="ro.lmk.thrashing_limit"
 
 while true; do
 	# prop that need to be removed
-	run=true
-	while $run ; do
-		set -- "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "mezram_test"
-		run=false
+	rmt_prop='
+	"ro.lmk.low"
+	"ro.lmk.medium"
+	"ro.lmk.critical"
+	"ro.lmk.critical_upgrade"
+	"ro.lmk.upgrade_pressure"
+	"ro.lmk.downgrade_pressure"
+	"ro.lmk.kill_heaviest_task"
+	"ro.lmk.kill_timeout_ms"
+	"ro.lmk.psi_complete_stall_ms"
+	"ro.lmk.thrashing_limit_decay"
+	"ro.lmk.thrashing_limit"
+	"ro.lmk.swap_util_max"
+	"ro.lmk.swap_free_low_percentage"
+	"ro.lmk.debug"
+	"persist.device_config.lmkd_native.thrashing_limit_critical"
+	"mezram_test"'
+
+	printf '%s' "$rmt_prop" |
+		while IFS='' read -r prop; do
+		grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop0; do
+			resetprop $(echo "$prop0" | sed s/=/' '/)
+			if [ "$prop" != "$prop0" ]; then
+				rm_prop "$prop"
+			fi
+		done
 	done
 
-	for prop in "$@"; do
-		rm_prop_reinit "$prop" 1>> "$MODDIR"/meZram.log
-	done
+	tl="ro.lmk.thrashing_limit"
 
-    rm_prop_reinit $tlc $err $minfree 1>> "$MODDIR"/meZram.log
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-		rm_prop_reinit $tl 1>> "$MODDIR"/meZram.log
+		rm_prop $tl 1>> "$MODDIR"/meZram.log
 	fi
 done &
