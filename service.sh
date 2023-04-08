@@ -46,7 +46,7 @@ done &
 
 rm_prop(){                                
 	for prop in "$@"; do
-		[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && logger "$prop deleted" 1>> "$MODDIR"/meZram.log
+		[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && logger "$prop deleted" >> "$MODDIR"/meZram.log
 	done
 }
 
@@ -66,7 +66,7 @@ tl="ro.lmk.thrashing_limit"
 
 resetprop lmkd.reinit 1
 
-for i in $(seq2); do
+for i in $(seq 2); do
 	rm_prop "$@"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
 		rm_prop $tl

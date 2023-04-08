@@ -5,4 +5,3 @@ ro.lmk.debug=true
 ro.lmk.swap_free_low_percentage=10
 ro.lmk.thrashing_limit=50
 mezram_test=just_a_test_dont_worry
-ro.lmk.psi_partial_stall_ms=200
