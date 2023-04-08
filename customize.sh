@@ -26,7 +26,7 @@ lmkd_apply() {
 	# Properties to be removed
 	set --
 	set "ro.config.low_ram" "ro.lmk.use_psi ro.lmk.use_minfree_levels" "ro.lmk.debug" "ro.lmk.swap_free_low_percentage" "ro.lmk.thrashing_limit" "ro.lmk.swap_util_max" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.downgrade_pressure" "mezram_test"
-	rm_prop $@
+	rm_prop "$@"
 
 	tl="ro.lmk.thrashing_limit"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then

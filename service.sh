@@ -37,11 +37,10 @@ done
 swapon /data/swap_file >> "$MODDIR"/meZram.log 
 
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log 
-resetprop lmkd.reinit 1
 
 # peaceful logger
 while true; do
-    logcat --pid "$lmkd_pid" -t 100000 -f "$MODDIR"/lmkd.log
+    logcat --pid "$lmkd_pid" -t 1000 -f "$MODDIR"/lmkd.log
     sleep 1m
 done &
 
@@ -61,39 +60,17 @@ while true; do
 	cp "$MODDIR"/*.log /data/adb/meZram 
 done &
 
-while true; do
-	# prop that need to be removed
-	rmt_prop='
-	"ro.lmk.low"
-	"ro.lmk.medium"
-	"ro.lmk.critical"
-	"ro.lmk.critical_upgrade"
-	"ro.lmk.upgrade_pressure"
-	"ro.lmk.downgrade_pressure"
-	"ro.lmk.kill_heaviest_task"
-	"ro.lmk.kill_timeout_ms"
-	"ro.lmk.psi_complete_stall_ms"
-	"ro.lmk.thrashing_limit_decay"
-	"ro.lmk.thrashing_limit"
-	"ro.lmk.swap_util_max"
-	"ro.lmk.swap_free_low_percentage"
-	"ro.lmk.debug"
-	"persist.device_config.lmkd_native.thrashing_limit_critical"
-	"mezram_test"'
+set --
+set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.thrashing_limit" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "persist.device_config.lmkd_native.thrashing_limit_critical" "mezram_test"
+tl="ro.lmk.thrashing_limit"
 
-	printf '%s' "$rmt_prop" |
-		while IFS='' read -r prop; do
-		grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop0; do
-			resetprop $(echo "$prop0" | sed s/=/' '/)
-			if [ "$prop" != "$prop0" ]; then
-				rm_prop "$prop"
-			fi
-		done
-	done
+resetprop lmkd.reinit 1
 
-	tl="ro.lmk.thrashing_limit"
-
+for i in $(seq2); do
+	rm_prop "$@"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-		rm_prop $tl 1>> "$MODDIR"/meZram.log
+		rm_prop $tl
 	fi
+	resetprop lmkd.reinit 1
+	sleep 5m
 done &
