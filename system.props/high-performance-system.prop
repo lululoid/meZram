@@ -6,5 +6,5 @@ ro.lmk.swap_free_low_percentage=10
 ro.lmk.thrashing_limit=50
 ro.lmk.swap_util_max=50
 mezram_test=just_a_test_dont_worry
-ro.lmk.downgrade_pressure=50
+ro.lmk.downgrade_pressure=80
 ro.lmk.psi_partial_stall_ms=180
