@@ -62,7 +62,7 @@ done &
 
 set --
 
-set "ro.lmk.low" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "persist.device_config.lmkd_native.thrashing_limit_critical" "mezram_test"
+set "ro.lmk.low" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "persist.device_config.lmkd_native.thrashing_limit_critical" "mezram_test"
 
 tl="ro.lmk.thrashing_limit"
 
@@ -71,7 +71,7 @@ resetprop lmkd.reinit 1
 for i in $(seq 2); do
 	rm_prop "$@"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-		rm_prop $tl
+		# rm_prop $tl
 	fi
 	resetprop lmkd.reinit 1
 	sleep 2m
