@@ -16,9 +16,8 @@ Details in here https://source.android.com/docs/core/perf/lmkd
   - adjusting SWAP size on your own. Up to the size of your RAM. Although i don't recommmend it for general user because it's more likely has no performance benefits. The default 50% is enough.
 
 ## TODO
-- Fix killer bug. After a while device will enter a state where it couldn't clear memory until it reached its maximal capacity, as you could expect this resulting in system killing apps leaving only 2 user apps left open. I think the problem is on psi_monitor which is written in C++ 🥲.
-- Add AI? lol 😹. Seriously its's never better. While demands changing based on user, the tweaks itself become less efficient. Add AI that could adapt to user seems to be interesting idea. But I still have so much to learn, anxiety and depression is the biggest obstacle of mine.
+- Add AI? lol 😹. Seriously its's never better. While demands changing based on user, the tweaks itself become less efficient. Add AI that could adapt to user seems to be interesting idea. But I still have so much to learn.
 
 ## DEBUG
-- Tested on Redmi 10C RiceDroid 10.2
+- Tested on Redmi 10C MIUI 13
 - Realme 5 Android 10
