@@ -61,7 +61,7 @@ while true; do
 done &
 
 set --
-set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "persist.device_config.lmkd_native.thrashing_limit_critical" "mezram_test" "sys.lmk.minfree_levels"
+set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "persist.device_config.lmkd_native.thrashing_limit_critical" "mezram_test" "sys.lmk.minfree_levels"
 tl="ro.lmk.thrashing_limit"
 
 resetprop lmkd.reinit 1
