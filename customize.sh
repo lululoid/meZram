@@ -1,4 +1,4 @@
-#!/system/bin/sh
+#! /system/bin/bash
 # Calculate size to use for swap (1/2 of ram)
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
@@ -21,38 +21,13 @@ lmkd_apply() {
 		mv "$MODPATH"/system.props/low-ram-system.prop "$MODPATH"/system.prop
     else
 		mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
-    fi
+	fi
 
-    # echo "sys.lmk.minfree_levels=$ml" >> "$MODPATH"/system.prop
+	# Properties to be removed
+	set --
+	set "ro.config.low_ram" "ro.lmk.use_psi ro.lmk.use_minfree_levels" "ro.lmk.debug" "ro.lmk.swap_free_low_percentage" "ro.lmk.thrashing_limit" "ro.lmk.swap_util_max" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.downgrade_pressure" "mezram_test"
+	rm_prop $@
 
-	rmt_prop='
-	"ro.lmk.low" 
-	"ro.lmk.medium" 
-	"ro.lmk.critical" 
-	"ro.lmk.critical_upgrade" 
-	"ro.lmk.upgrade_pressure" 
-	"ro.lmk.downgrade_pressure"   
-	"ro.lmk.kill_heaviest_task" 
-	"ro.lmk.kill_timeout_ms" 
-	"ro.lmk.psi_complete_stall_ms" 
-	"ro.lmk.thrashing_limit_decay" 
-	"ro.lmk.thrashing_limit"
-	"ro.lmk.swap_util_max" 
-	"ro.lmk.swap_free_low_percentage" 
-	"ro.lmk.debug" 
-	"persist.device_config.lmkd_native.thrashing_limit_critical"
-	"mezram_test"'
-
-	printf '%s' "$rmt_prop" |
-		while IFS='' read -r prop; do
-		grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop0; do
-			resetprop $(echo "$prop0" | sed s/=/' '/)
-			if [ "$prop" != "$prop0" ]; then
-				rm_prop "$prop"
-			fi
-		done
-	done
-	
 	tl="ro.lmk.thrashing_limit"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
 		rm_prop "$tl"
