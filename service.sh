@@ -68,7 +68,7 @@ tl="ro.lmk.thrashing_limit"
 
 resetprop lmkd.reinit 1
 
-for i in $(seq 5); do
+for i in $(seq 2); do
 	rm_prop "$@"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
 		rm_prop $tl
