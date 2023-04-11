@@ -1,7 +1,7 @@
 id=meZram
 name=meZram
 version=v1.1-beta
-versionCode=11003
+versionCode=11222
 author=lululoid
 description=Trying to achieve better multitasking performace by changing ZRAM size and adding SWAP, also applying lmkd tweaks. By Default is 50% of RAM SIZE. So if you had 4GB RAM, 2GB will be used for ZRAM, and 2GB internal for SWAP. You can choose SWAP SIZE up to your RAM SIZE.
 updateJson=https://raw.githubusercontent.com/lululoid/meZram/emit_enola/meZram.json
