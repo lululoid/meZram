@@ -1,13 +1,6 @@
 {
-<<<<<<< HEAD
   "versionCode": "11005",
   "version": "v1.1",
   "zipUrl": "https://github.com/lululoid/meZram/releases/download/v1.1/meZram-v1.1_11005.zip",
   "changelog": "https://github.com/lululoid/meZram/releases/download/v1.1/meZram-v1.1_11005-changelog.md"
-=======
-  "versionCode": "11005",
-  "version": "v1.1-beta",
-  "zipUrl": "https://github.com/lululoid/meZram/releases/download/v1.1-beta/meZram-v1.1_11229-beta.zip",
-  "changelog": "https://github.com/lululoid/meZram/releases/download/v1.1-beta/meZram-v1.1_11229-beta-changelog.md"
->>>>>>> emit_enola
 }
