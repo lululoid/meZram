@@ -25,7 +25,7 @@ lmkd_apply() {
 
 	# Properties to be removed
 	set --
-	set "ro.config.low_ram" "ro.lmk.use_psi ro.lmk.use_minfree_levels" "ro.lmk.debug" "ro.lmk.swap_free_low_percentage" "ro.lmk.thrashing_limit" "ro.lmk.swap_util_max" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.downgrade_pressure" "sys.lmk.minfree_levels" "mezram_test"
+	set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
 	rm_prop "$@"
 
 	tl="ro.lmk.thrashing_limit"
