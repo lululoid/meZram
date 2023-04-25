@@ -55,16 +55,11 @@ if [ ! -d /data/adb/meZram ]; then
 	mkdir -p /data/adb/meZram 2>> "$MODDIR"/meZram.log
 fi
 
-while true; do
-	sleep 1m 
-	cp "$MODDIR"/*.log /data/adb/meZram 
-done &
-
 set --
 
 # set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
 
-set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.upgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "sys.lmk.minfree_levels" "ro.lmk.critical_upgrade" "ro.lmk.swap_free_low_percentage"
+set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "sys.lmk.minfree_levels" "ro.lmk.critical_upgrade" "ro.lmk.swap_free_low_percentage"
 
 tl="ro.lmk.thrashing_limit"
 
@@ -73,8 +68,13 @@ resetprop lmkd.reinit 1
 for i in $(seq 2); do
 	rm_prop "$@"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-		# rm_prop $tl
+		rm_prop $tl
 	fi
 	resetprop lmkd.reinit 1
 	sleep 2m
+done &
+
+while true; do
+	sleep 1m 
+	cp "$MODDIR"/*.log /data/adb/meZram 
 done &
