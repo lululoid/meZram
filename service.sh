@@ -40,8 +40,7 @@ swapon /data/swap_file >> "$MODDIR"/meZram.log
 
 # peaceful logger
 while true; do
-    logcat --pid "$lmkd_pid" -t 1000 -f "$MODDIR"/lmkd.log
-    sleep 1m
+    logcat --pid "$lmkd_pid" -f "$MODDIR"/lmkd.log
 done &
 
 rm_prop(){                                
