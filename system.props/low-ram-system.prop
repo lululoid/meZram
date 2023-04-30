@@ -2,4 +2,10 @@ ro.config.low_ram=true
 ro.lmk.use_psi=true
 ro.lmk.use_minfree_levels=false
 ro.lmk.debug=true
+<<<<<<< HEAD
 ro.lmk.swap_util_max=50
+=======
+ro.lmk.swap_free_low_percentage=10
+ro.lmk.downgrade_pressure=65
+ro.lmk.swap_util_max=35
+>>>>>>> parent of 09baaa5 (update props)
