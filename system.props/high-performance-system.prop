@@ -3,13 +3,4 @@ ro.lmk.use_psi=true
 ro.lmk.use_minfree_levels=false
 ro.lmk.debug=true
 ro.lmk.thrashing_limit=50
-<<<<<<< HEAD
 ro.lmk.swap_util_max=50
-=======
-ro.lmk.downgrade_pressure=65
-ro.lmk.swap_util_max=35
-ro.lmk.psi_partial_stall_ms=80
-ro.lmk.thrashing_limit_decay=20
-ro.lmk.critical=200
-ro.lmk.medium=700
->>>>>>> parent of 09baaa5 (update props)

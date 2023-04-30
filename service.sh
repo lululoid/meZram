@@ -38,10 +38,19 @@ swapon /data/swap_file >> "$MODDIR"/meZram.log
 
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log 
 
+if [ ! -d /data/adb/meZram ]; then
+	logger "- Trying to make folder"
+	mkdir -p /data/adb/meZram 2>> "$MODDIR"/meZram.log
+fi
+
 # peaceful logger
 while true; do
-    logcat --pid "$lmkd_pid" -t 1000 -f "$MODDIR"/lmkd.log
-    sleep 1m
+    logcat --pid "$lmkd_pid" -f "$MODDIR"/lmkd.log
+    sleep 1m 
+	cp "$MODDIR"/*.log /data/adb/meZram
+	if [ "$(du lmkd.log|awk '{printf $1}')" -gt 10240 ]; then
+		break
+	fi
 done &
 
 rm_prop(){                                
@@ -50,20 +59,10 @@ rm_prop(){
 	done
 }
 
-if [ ! -d /data/adb/meZram ]; then
-	logger "- Trying to make folder"
-	mkdir -p /data/adb/meZram 2>> "$MODDIR"/meZram.log
-fi
-
-while true; do
-	sleep 1m 
-	cp "$MODDIR"/*.log /data/adb/meZram 
-done &
-
-# set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
+# set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
 
 set --
-set "ro.lmk.low" "ro.lmk.upgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.critical_upgrade"
+set "ro.lmk.low" "ro.lmk.upgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.critical_upgrade" "ro.lmk.psi_partial_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_free_low_percentage"
 
 tl="ro.lmk.thrashing_limit"
 
@@ -72,7 +71,7 @@ resetprop lmkd.reinit 1
 for i in $(seq 2); do
 	rm_prop "$@"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-		# rm_prop $tl
+		rm_prop $tl
 	fi
 	resetprop lmkd.reinit 1
 	sleep 2m
