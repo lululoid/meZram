@@ -4,3 +4,4 @@ ro.lmk.use_minfree_levels=false
 ro.lmk.debug=true
 ro.lmk.thrashing_limit=50
 ro.lmk.swap_util_max=50
+ro.lmk.critical_upgrade=true
