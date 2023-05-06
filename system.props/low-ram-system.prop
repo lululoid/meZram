@@ -2,4 +2,3 @@ ro.config.low_ram=true
 ro.lmk.use_psi=true
 ro.lmk.use_minfree_levels=false
 ro.lmk.debug=true
-ro.lmk.swap_util_max=50
