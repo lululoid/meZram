@@ -64,42 +64,7 @@ tl="ro.lmk.thrashing_limit"
 
 resetprop lmkd.reinit 1
 
-for i in $(seq 2); do
-    rm_prop "$@"
-    if resetprop ro.miui.ui.version.code >/dev/null 2>&1; then
-        rm_prop $tl
-    fi
-    resetprop lmkd.reinit 1
-    sleep 2m
-done &
-
-# agmode service
-while read conf; do
-	case "$conf" in
-		"agmode="*)
-			agmode=$(echo "$conf" | sed 's/agmode=//'); logger "agmode=$agmode";
-	esac
-done < "$MODDIR/meZram.conf"
-
-if [[ "$agmode" = "on" ]]; then
-	while read apps; do
-		pkg_dpressure=$(grep '^#agmode PER APP CONFIGURATION' meZram.conf -A9999 | grep "$apps")
-		app_pkg=$(echo "$pkg_dpressure" | cut -d "=" -f1)
-		logger "pkg_dpressure=$pkg_dpressure"
-		logger "app_pkg=$app_pkg"
-		while true; do
-			if [ $(pidof "$app_pkg") ]; then
-				dpressure=$(echo "$pkg_dpressure" | cut -d "=" -f2)
-				logger "dpressure=$dpressure"
-				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
-				logger "😾 agmode activated for $app_pkg"
-				on=true
-			elif [ -z "$(pidof "$app_pkg")" ] && [ "$on" ]; then
-				dpressure=$(grep ro.lmk.downgrade_pressure system.prop | cut -d "=" -f2)
-				logger "dpressure=$dpressure"
-				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
-				on=false
-			fi
-		done &
-	done < "$MODDIR/meZram.conf"
-fi
+rm_prop "$@"
+sleep 10m
+rm_prop $tl
+resetprop lmkd.reinit 1
