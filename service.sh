@@ -12,11 +12,12 @@ mkdir -p "$LOGDIR"
 
 logger(){
 	td=$(date +%R:%S:%N)
-    true && echo "$td $*" >> "$LOGDIR"/meZram.log
+	log=$(echo "$*" | tr -s " ")
+	true && echo "$td $log" >> "$LOGDIR"/meZram.log
 }
 
-rm -rf "$MODDIR/*log"
-rm -rf "$LOGDIR/*log"
+rm -rf "$MODDIR"/*log
+rm -rf "$LOGDIR"/*log
 
 logger "NRDEVICES = $NRDEVICES"
 logger "totalmem = $totalmem"
@@ -62,9 +63,11 @@ set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro
 
 tl="ro.lmk.thrashing_limit"
 
-resetprop lmkd.reinit 1
-
-rm_prop "$@"
-sleep 10m
-rm_prop $tl
-resetprop lmkd.reinit 1
+while true; do
+	if [ "$(resetprop sys.boot_completed)" -eq "1" ]; then
+		rm_prop "$@"
+		rm_prop $tl
+		resetprop lmkd.reinit 1
+		break
+	fi
+done

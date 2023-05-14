@@ -10,7 +10,8 @@ ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀�
 ui_print " ==================:)====================="; sleep 0.5
 
 logger(){
-    true && ui_print "  DEBUG: $*"
+	log=$(echo "$*" | tr -s " ")
+    true && ui_print "  DEBUG: $log"
 }
 
 lmkd_apply() {
@@ -31,8 +32,8 @@ lmkd_apply() {
     # applying lmkd tweaks
     grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
 		# logger "$prop"
-		logger "resetprop $(echo "$prop" | sed s/=/' '/)"
-		resetprop $(echo "$prop" | sed s/=/' '/)
+		logger "resetprop ${prop//=/ }"
+		resetprop "${prop//=/ }"
 	done
 	
 	tl="ro.lmk.thrashing_limit"
