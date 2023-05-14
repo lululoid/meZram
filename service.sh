@@ -1,6 +1,6 @@
 #!/system/bin/sh
 MODDIR=${0%/*}
-LOGDIR=/data/adb/meZram
+LOGDIR="/data/adb/meZram"
 
 # Calculate memory to use for zram
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
@@ -8,12 +8,15 @@ totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 zram_size=$((totalmem * 1024 / 2))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
+mkdir -p "$LOGDIR"
+
 logger(){
 	td=$(date +%R:%S:%N)
-    true && echo "$td $*" >> "$MODDIR"/meZram.log
+    true && echo "$td $*" >> "$LOGDIR"/meZram.log
 }
 
-rm -rf "$MODDIR"/lmkd.log "$MODDIR"/meZram.log
+rm -rf "$MODDIR/*log"
+rm -rf "$LOGDIR/*log"
 
 logger "NRDEVICES = $NRDEVICES"
 logger "totalmem = $totalmem"
@@ -44,7 +47,7 @@ swapon /data/swap_file && logger "swap is turned on"
 
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
 
-logcat --pid "$lmkd_pid" -f "$MODDIR"/lmkd.log -r 10485760 &
+logcat --pid "$lmkd_pid" -f "$LOGDIR"/lmkd.log -r 10485760 &
 
 rm_prop(){                                
 	for prop in "$@"; do
@@ -70,9 +73,33 @@ for i in $(seq 2); do
     sleep 2m
 done &
 
-mkdir -p "$LOGDIR"
+# agmode service
+while read conf; do
+	case "$conf" in
+		"agmode="*)
+			agmode=$(echo "$conf" | sed 's/agmode=//'); logger "agmode=$agmode";
+	esac
+done < "$MODDIR/meZram.conf"
 
-while true; do
-	cp -u "$MODDIR"/*.log "$LOGDIR"
-	sleep 2m
-done &
+if [[ "$agmode" = "on" ]]; then
+	while read apps; do
+		pkg_dpressure=$(grep '^#agmode PER APP CONFIGURATION' meZram.conf -A9999 | grep "$apps")
+		app_pkg=$(echo "$pkg_dpressure" | cut -d "=" -f1)
+		logger "pkg_dpressure=$pkg_dpressure"
+		logger "app_pkg=$app_pkg"
+		while true; do
+			if [ $(pidof "$app_pkg") ]; then
+				dpressure=$(echo "$pkg_dpressure" | cut -d "=" -f2)
+				logger "dpressure=$dpressure"
+				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
+				logger "😾 agmode activated for $app_pkg"
+				on=true
+			elif [ -z "$(pidof "$app_pkg")" ] && [ "$on" ]; then
+				dpressure=$(grep ro.lmk.downgrade_pressure system.prop | cut -d "=" -f2)
+				logger "dpressure=$dpressure"
+				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
+				on=false
+			fi
+		done &
+	done < "$MODDIR/meZram.conf"
+fi
