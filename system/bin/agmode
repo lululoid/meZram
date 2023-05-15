@@ -1,0 +1,71 @@
+#!/system/bin/sh
+
+MODDIR="/data/adb/modules/meZram"
+LOGDIR="/data/adb/meZram"
+
+
+logger(){
+	local td=$(date +%R:%S:%N)                      
+	log=$(echo "$*" | tr -s " ")                    
+	true && echo "$td $log" >> "$LOGDIR"/meZram.log
+}
+
+
+agmode(){
+	# Read configuration
+	if [[ -f "$MODDIR"/meZram.conf ]]; then
+		while read conf; do
+			case "$conf" in
+	            "agmode="*)
+					agmode=$(echo "$conf" | sed 's/agmode=//');
+					logger "agmode=$agmode";
+			esac
+		done < "$MODDIR"/meZram.conf
+	fi
+	
+	if [[ "$agmode" = "on" ]]; then
+		while read app; do
+			app_pkg=$(echo "$app" | cut -d "=" -f1)
+			dpressure=$(echo "$app" | cut -d "=" -f2)
+			while true; do
+				fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
+				fg_app_=$(pgrep -x "$fg_app")
+				running_app=$(pgrep -x "$app_pkg")
+				if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
+					logger "fg_app_=$fg_app_"
+					logger "running_app=$running_app"
+					resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
+					logger "agmode activated for $app_pkg"
+					am=true
+				elif [ -z "$fg_app_" ] && [ "$am" ]; then
+					default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
+					logger "default_dpressure=$default_dpressure"
+					resetprop ro.lmk.downgrade_pressure "$default_dpressure" && resetprop lmkd.reinit 1
+					logger "default ro.lmk.downgrade_pressure restored"
+					unset am
+				fi
+				sleep 5
+			done &
+			resetprop meZram.agmode_svc.pid."$app_pkg" "$!"
+			logger "agmode_svc pid for $app_pkg is $(resetprop meZram.agmode_svc.pid."$app_pkg")"
+		done < "$MODDIR"/meZram.conf
+	fi
+}
+
+
+# Parse command-line options
+for opt in "$@"; do
+    case "$opt" in
+        -g | --get)
+			echo "ro.lmk.downgrade_pressure=$(resetprop ro.lmk.downgrade_pressure)"
+			;;
+        --enable-startup)
+			echo "Not implemented yet"
+            ;;
+        *)
+            cat "$MODDIR"/man/agmode.txt
+            exit 1
+            ;;
+    esac
+done
+~

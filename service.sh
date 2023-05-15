@@ -4,6 +4,15 @@ LOGDIR="/data/adb/meZram"
 
 mkdir -p "$LOGDIR"
 
+for file in "$LOGDIR"/*log; do
+	file_date=$(stat -c "%y" "$file" | cut -d' ' -f1)
+	today=$(date +%Y-%m-%d)
+
+	if [ "$file_date" != "$today" ]; then
+		mv --update "$LOGDIR/$file" "$LOGDIR/$today-$file"
+	fi
+done
+
 # Calculate memory to use for zram
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
@@ -14,7 +23,7 @@ lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 logger(){
 	local td=$(date +%R:%S:%N)
 	log=$(echo "$*" | tr -s " ")
-	true && echo "$td $log" >> "$LOGDIR/${td}meZram.log"
+	true && echo "$td $log" >> "$LOGDIR"/meZram.log
 }
 
 logger "NRDEVICES = $NRDEVICES"
@@ -45,7 +54,7 @@ done
 
 swapon /data/swap_file && logger "swap is turned on"
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
-logcat --pid "$lmkd_pid" -f "$LOGDIR"/lmkd.log -r 10485760 &
+logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log --rotate-kbytes=10485760 &
 
 
 rm_prop(){                                
@@ -82,28 +91,30 @@ if [[ -f "$MODDIR"/meZram.conf ]]; then
 fi
 
 if [[ "$agmode" = "on" ]]; then
-	pappcfg=$(sed -n '/#agmode PER APP CONFIGURATION/{n;p;:a;n;p;ba}' "$MODDIR"/meZram.conf)
-
-	logger "pappcfg=$pappcfg"
-	for app in $pappcfg; do
+	while read app; do
 		app_pkg=$(echo "$app" | cut -d "=" -f1)
-		logger "app_pkg=$app_pkg"
 		dpressure=$(echo "$app" | cut -d "=" -f2)
-		logger "dpressure=$dpressure"
 		while true; do
-			if [ "$(pidof "$app_pkg")" ]; then
+			fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
+			fg_app_=$(pgrep -x "$fg_app")
+			running_app=$(pgrep -x "$app_pkg")
+			if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
+				logger "fg_app_=$fg_app_"
+				logger "running_app=$running_app"
 				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
-				logger "agmode activated for $app"
+				logger "agmode activated for $app_pkg"
 				am=true
-			elif [ "$am" ] && [ -z "$(pidof "$app")" ]; then
+			elif [ -z "$fg_app_" ] && [ "$am" ]; then
 				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
+				logger "default_dpressure=$default_dpressure"
 				resetprop ro.lmk.downgrade_pressure "$default_dpressure" && resetprop lmkd.reinit 1
 				logger "default ro.lmk.downgrade_pressure restored"
-				am=false
+				unset am
 			fi
-			sleep 1
+			sleep 5
 		done &
 		resetprop meZram.agmode_svc.pid."$app_pkg" "$!"
-	done
+		logger "agmode_svc pid for $app_pkg is $(resetprop meZram.agmode_svc.pid."$app_pkg")"
+	done < "$MODDIR"/meZram.conf
 fi
 

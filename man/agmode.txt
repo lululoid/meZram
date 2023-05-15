@@ -1,0 +1,4 @@
+Usage: agmode [ -g | --get ] [ --enable-startup ]
+
+Costumize different ro.lmk.downgrade_pressure prop for different apps.
+You could change different value for games to make lmkd more aggressive to free up memory resulting in increased performance.

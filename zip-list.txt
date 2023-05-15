@@ -7,3 +7,5 @@ service.sh
 uninstall.sh
 system.props
 meZram.conf
+system
+man
