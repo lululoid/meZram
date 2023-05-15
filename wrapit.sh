@@ -4,10 +4,15 @@ zipfiles=$(cat zip-list.txt)
 version=$1
 versionCode=$2
 
-if [ -z "$version" ] || [ -z "$versionCode" ]; then
-  echo "Please provide both version and versionCode."
-  echo "wrapit.sh [version] [versionCode]"
-  exit 1
+if [ -z "$version" ] && [ -z "$versionCode" ]; then
+    version=$(grep -o 'version=v[0-9.]*' module.prop | cut -d'=' -f2 | sed 's/v//')
+    versionCode=$(grep versionCode module.prop | cut -d "=" -f2)
+    versionCode=$((versionCode + 1))
+elif [ -z "$version" ]; then
+    version=$(grep -o 'version=v[0-9.]*' module.prop | cut -d'=' -f2 | sed 's/v//')
+elif [ -z "$versionCode" ]; then
+    versionCode=$(grep versionCode module.prop | cut -d "=" -f2)
+    versionCode=$((versionCode + 1))
 fi
 
 sed -i "s/version=v[0-9.]*-beta/version=v$version-beta/g; s/versionCode=[0-9]*/versionCode=$versionCode/g" module.prop
