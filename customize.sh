@@ -33,7 +33,7 @@ lmkd_apply() {
     grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
 		# logger "$prop"
 		logger "resetprop ${prop//=/ }"
-		resetprop "${prop//=/ }"
+		resetprop ${prop//=/ }
 	done
 	
 	tl="ro.lmk.thrashing_limit"
