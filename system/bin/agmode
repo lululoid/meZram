@@ -2,28 +2,20 @@
 
 MODDIR="/data/adb/modules/meZram"
 LOGDIR="/data/adb/meZram"
+CONFIG="$LOGDIR/meZram.conf"
 
 
 logger(){
-	local td=$(date +%R:%S:%N)                      
-	log=$(echo "$*" | tr -s " ")                    
-	true && echo "$td $log" >> "$LOGDIR"/meZram.log
+    local td=$(date +%R:%S:%N)
+    log=$(echo "$*" | tr -s " ")
+    true && echo "$td $log" >> "$LOGDIR"/meZram.log
 }
 
 
 agmode(){
-	# Read configuration
-	if [[ -f "$MODDIR"/meZram.conf ]]; then
-		while read conf; do
-			case "$conf" in
-	            "agmode="*)
-					agmode=$(echo "$conf" | sed 's/agmode=//');
-					logger "agmode=$agmode";
-			esac
-		done < "$MODDIR"/meZram.conf
-	fi
-	
-	if [[ "$agmode" = "on" ]]; then
+	agmode_pid=$(resetprop meZram.agmode_svc.pid.agmode)
+
+	if [ -z "$agmode_pid" ]; then
 		while read app; do
 			app_pkg=$(echo "$app" | cut -d "=" -f1)
 			dpressure=$(echo "$app" | cut -d "=" -f2)
@@ -31,6 +23,7 @@ agmode(){
 				fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
 				fg_app_=$(pgrep -x "$fg_app")
 				running_app=$(pgrep -x "$app_pkg")
+
 				if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
 					logger "fg_app_=$fg_app_"
 					logger "running_app=$running_app"
@@ -38,7 +31,9 @@ agmode(){
 					logger "agmode activated for $app_pkg"
 					am=true
 				elif [ -z "$fg_app_" ] && [ "$am" ]; then
+
 					default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
+
 					logger "default_dpressure=$default_dpressure"
 					resetprop ro.lmk.downgrade_pressure "$default_dpressure" && resetprop lmkd.reinit 1
 					logger "default ro.lmk.downgrade_pressure restored"
@@ -46,9 +41,12 @@ agmode(){
 				fi
 				sleep 5
 			done &
-			resetprop meZram.agmode_svc.pid."$app_pkg" "$!"
+			resetprop meZram.agmode_svc.pid."$app_pkg" "$!" 2> /dev/null
 			logger "agmode_svc pid for $app_pkg is $(resetprop meZram.agmode_svc.pid."$app_pkg")"
-		done < "$MODDIR"/meZram.conf
+		done < "$CONFIG"
+		echo "😾 agmode activated"
+	else
+		echo "🎮 agmode already activated"
 	fi
 }
 
@@ -60,12 +58,65 @@ for opt in "$@"; do
 			echo "ro.lmk.downgrade_pressure=$(resetprop ro.lmk.downgrade_pressure)"
 			;;
         --enable-startup)
-			echo "Not implemented yet"
+			sed -i 's/\(agmode=\).*/\1on/' "$CONFIG" 
+			echo "agmode will automatically start next startup"
             ;;
-        *)
-            cat "$MODDIR"/man/agmode.txt
-            exit 1
-            ;;
-    esac
+		--disable-startup)
+			sed -i 's/\(agmode=\).*/\1off/' "$CONFIG" 
+			echo "agmode will be disabled next startup"
+			;;
+		--stop)
+			apps=$(getprop | grep meZram.agmode_svc.pid | sed 's/\[meZram\.agmode\_svc\.pid\.\(.*\)]:.*/\1/')
+			for app_pkg in $apps; do
+				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$MODDIR/system.prop")
+
+				kill -9 "$(resetprop meZram.agmode_svc.pid."$app_pkg")" && echo "agmode for $app_pkg killed" 2> /dev/null
+				resetprop --delete "meZram.agmode_svc.pid.$app_pkg"
+			done
+			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
+			echo "default downgrade_pressure is restored"
+			;;
+		-h | --help)
+			cat "$MODDIR"/man/agmode.txt
+			;;
+	esac
 done
-~
+
+
+case "$1" in
+	downgrade_pressure=*)
+		dpressure=$(echo "$1" | sed 's/.*downgrade_pressure=\([0-9]\+\).*/\1/')
+
+		resetprop ro.lmk.downgrade_pressure "$dpressure"
+		resetprop lmkd.reinit 1
+		echo "ro.lmk.downgrade_pressure=$dpressure"
+		sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$MODDIR"/system.prop
+		;;
+	--add=*)
+		if [ "$2" ]; then
+			app_name=$(echo "$1" | sed 's/.*--add=\(.*\).*/\1/')
+
+			is_exist=$(grep -q "^$app_name=[0-9]\{2\}$" "$CONFIG")
+			echo "$app_name=$2"
+			if [ -z "$is_exist" ]; then
+				echo "$app_name=$2" >> "$CONFIG"
+				echo "$app_name is added to agmode"
+			elif [ "$is_exist" ]; then
+				sed -i "s/\($app_name=\).*/\1$2/" "$CONFIG"
+				echo ""
+			fi
+		else
+			echo "Please enter downgrade_pressure"
+		fi
+		;;
+	--remove*)
+		if [ "$2" ]; then
+			sed -i "s/$2./d" "$CONFIG" 
+			grep -wq "$2" "$CONFIG" && echo "$2 is removed from agmode"
+		fi
+		;;
+esac
+
+if [ -z "$*" ]; then
+	agmode
+fi

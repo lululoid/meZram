@@ -4,14 +4,13 @@ LOGDIR="/data/adb/meZram"
 
 mkdir -p "$LOGDIR"
 
-for file in "$LOGDIR"/*log; do
-	file_date=$(stat -c "%y" "$file" | cut -d' ' -f1)
-	today=$(date +%Y-%m-%d)
-
-	if [ "$file_date" != "$today" ]; then
+while true; do
+	today=$(date +%a-%d-%m-%Y)
+	for file in "$LOGDIR"/*log; do
 		mv --update "$LOGDIR/$file" "$LOGDIR/$today-$file"
-	fi
-done
+	done
+	sleep 12h
+done &
 
 # Calculate memory to use for zram
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
@@ -25,6 +24,7 @@ logger(){
 	log=$(echo "$*" | tr -s " ")
 	true && echo "$td $log" >> "$LOGDIR"/meZram.log
 }
+
 
 logger "NRDEVICES = $NRDEVICES"
 logger "totalmem = $totalmem"
@@ -62,6 +62,7 @@ rm_prop(){
 		resetprop "$prop" && resetprop --delete "$prop" && logger "$prop deleted"
 	done
 }
+
 
 # set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
 
@@ -102,6 +103,7 @@ if [[ "$agmode" = "on" ]]; then
 				logger "fg_app_=$fg_app_"
 				logger "running_app=$running_app"
 				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
+				logger "dpressure=$dpressure"
 				logger "agmode activated for $app_pkg"
 				am=true
 			elif [ -z "$fg_app_" ] && [ "$am" ]; then
