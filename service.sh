@@ -1,8 +1,13 @@
 #!/system/bin/sh
 MODDIR=${0%/*}
 LOGDIR="/data/adb/meZram"
+CONFIG="$LOGDIR"/meZram.conf
 
 mkdir -p "$LOGDIR"
+
+if [ -n "$(ls "$CONFIG")" ]; then
+	cp "$MODDIR"/meZram.conf "$LOGDIR"
+fi
 
 while true; do
 	today=$(date +%a-%d-%m-%Y)
@@ -81,14 +86,14 @@ while true; do
 done
 
 # Read configuration                                  
-if [[ -f "$MODDIR"/meZram.conf ]]; then
+if [[ -f "$CONFIG" ]]; then
 	while read conf; do                             
 		case "$conf" in
             "agmode="*)                 
 				agmode=$(echo "$conf" | sed 's/agmode=//');
 				logger "agmode=$agmode";
 		esac
-	done < "$MODDIR"/meZram.conf
+	done < "$CONFIG"
 fi
 
 if [[ "$agmode" = "on" ]]; then
@@ -117,6 +122,6 @@ if [[ "$agmode" = "on" ]]; then
 		done &
 		resetprop meZram.agmode_svc.pid."$app_pkg" "$!"
 		logger "agmode_svc pid for $app_pkg is $(resetprop meZram.agmode_svc.pid."$app_pkg")"
-	done < "$MODDIR"/meZram.conf
+	done < "$CONFIG"
 fi
 
