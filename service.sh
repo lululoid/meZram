@@ -1,11 +1,11 @@
 #!/system/bin/sh
 MODDIR=${0%/*}
 LOGDIR="/data/adb/meZram"
-CONFIG="$LOGDIR"/meZram.conf
+CONFIG="$LOGDIR/meZram.conf"
 
 mkdir -p "$LOGDIR"
 
-if [ -n "$(ls "$CONFIG")" ]; then
+if [ ! -f "$CONFIG" ]; then
 	cp "$MODDIR"/meZram.conf "$LOGDIR"
 fi
 
@@ -97,31 +97,42 @@ if [[ -f "$CONFIG" ]]; then
 fi
 
 if [[ "$agmode" = "on" ]]; then
-	while read app; do
+	starting_line=$(grep -n "#agmode" "$CONFIG" | cut -d ":" -f1)
+	app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
+
+	for app in $app_pkgs; do
 		app_pkg=$(echo "$app" | cut -d "=" -f1)
 		dpressure=$(echo "$app" | cut -d "=" -f2)
+
 		while true; do
 			fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
 			fg_app_=$(pgrep -x "$fg_app")
 			running_app=$(pgrep -x "$app_pkg")
+
 			if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
+				dpressure=$(grep "^$app_pkg" "$CONFIG" | cut -d "=" -f2)
+
 				logger "fg_app_=$fg_app_"
 				logger "running_app=$running_app"
-				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
 				logger "dpressure=$dpressure"
 				logger "agmode activated for $app_pkg"
+				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
+
 				am=true
+
 			elif [ -z "$fg_app_" ] && [ "$am" ]; then
 				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
+
 				logger "default_dpressure=$default_dpressure"
 				resetprop ro.lmk.downgrade_pressure "$default_dpressure" && resetprop lmkd.reinit 1
 				logger "default ro.lmk.downgrade_pressure restored"
 				unset am
+
 			fi
 			sleep 5
 		done &
 		resetprop meZram.agmode_svc.pid."$app_pkg" "$!"
-		logger "agmode_svc pid for $app_pkg is $(resetprop meZram.agmode_svc.pid."$app_pkg")"
-	done < "$CONFIG"
+		logger "$(getprop | grep agmode)"
+	done
 fi
 

@@ -13,12 +13,18 @@ logger(){
 
 
 agmode(){
-	agmode_pid=$(resetprop meZram.agmode_svc.pid.agmode)
+	agmode_state=$(getprop | grep agmode)
+	starting_line=$(grep -n "#agmode" "$CONFIG" | cut -d ":" -f1)
+	app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
 
-	if [ -z "$agmode_pid" ]; then
-		while read app; do
+	if [ -z "$agmode_state" ]; then
+		for app in $app_pkgs; do
 			app_pkg=$(echo "$app" | cut -d "=" -f1)
 			dpressure=$(echo "$app" | cut -d "=" -f2)
+
+			logger "app_pkg=$app_pkg"
+			logger "running_app=$(pgrep -x "$app_pkg")"
+
 			while true; do
 				fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
 				fg_app_=$(pgrep -x "$fg_app")
@@ -27,23 +33,29 @@ agmode(){
 				if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
 					logger "fg_app_=$fg_app_"
 					logger "running_app=$running_app"
-					resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
-					logger "agmode activated for $app_pkg"
-					am=true
-				elif [ -z "$fg_app_" ] && [ "$am" ]; then
 
+					resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
+
+					logger "dpressure=$dpressure"
+					logger "agmode activated for $app_pkg"
+
+					am=true
+
+				elif [ -z "$fg_app_" ] && [ "$am" ]; then
 					default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
 
 					logger "default_dpressure=$default_dpressure"
 					resetprop ro.lmk.downgrade_pressure "$default_dpressure" && resetprop lmkd.reinit 1
 					logger "default ro.lmk.downgrade_pressure restored"
 					unset am
+
 				fi
 				sleep 5
 			done &
 			resetprop meZram.agmode_svc.pid."$app_pkg" "$!" 2> /dev/null
-			logger "agmode_svc pid for $app_pkg is $(resetprop meZram.agmode_svc.pid."$app_pkg")"
-		done < "$CONFIG"
+		done
+		logger "$(getprop | grep agmode)"
+		getprop | grep agmode
 		echo "😾 agmode activated"
 	else
 		echo "🎮 agmode already activated"
@@ -66,11 +78,13 @@ for opt in "$@"; do
 			echo "agmode will be disabled next startup"
 			;;
 		--stop)
-			apps=$(getprop | grep meZram.agmode_svc.pid | sed 's/\[meZram\.agmode\_svc\.pid\.\(.*\)]:.*/\1/')
-			for app_pkg in $apps; do
-				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$MODDIR/system.prop")
+			starting_line=$(grep -n "#agmode" "$CONFIG" | cut -d ":" -f1)                                               app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
 
-				kill -9 "$(resetprop meZram.agmode_svc.pid."$app_pkg")" && echo "agmode for $app_pkg killed" 2> /dev/null
+			for app in $app_pkgs; do
+				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$MODDIR/system.prop")
+				app_pkg=$(echo "$app" | cut -d "=" -f1)
+
+				kill -9 "$(resetprop meZram.agmode_svc.pid."$app_pkg")" 2> /dev/null && echo "agmode for $app_pkg killed"
 				resetprop --delete "meZram.agmode_svc.pid.$app_pkg"
 			done
 			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
@@ -96,27 +110,26 @@ case "$1" in
 		if [ "$2" ]; then
 			app_name=$(echo "$1" | sed 's/.*--add=\(.*\).*/\1/')
 
-			is_exist=$(grep -q "^$app_name=[0-9]\{2\}$" "$CONFIG")
+			is_exist=$(grep "^$app_name=[0-9]\{2\}" "$CONFIG")
 			echo "$app_name=$2"
-			if [ -z "$is_exist" ]; then
-				echo "$app_name=$2" >> "$CONFIG"
-				echo "$app_name is added to agmode"
-			elif [ "$is_exist" ]; then
+			if [ "$is_exist" ]; then
 				sed -i "s/\($app_name=\).*/\1$2/" "$CONFIG"
-				echo ""
+			else
+				sed -i "s/\(#agmode.*\)/\1\n$app_name=$2/" "$CONFIG" > /dev/null
+				echo "$app_name is added to agmode"
 			fi
 		else
 			echo "Please enter downgrade_pressure"
 		fi
 		;;
-	--remove*)
+	--delete*)
 		if [ "$2" ]; then
-			sed -i "s/$2./d" "$CONFIG" 
-			grep -wq "$2" "$CONFIG" && echo "$2 is removed from agmode"
+			line_num=$(grep -n "$2" "$CONFIG" | cut -d ":" -f1)
+			sed -i "${line_num}d" "$CONFIG"
 		fi
 		;;
 esac
 
 if [ -z "$*" ]; then
-	agmode
+	echo "agmode can only restarted by reboot for now"
 fi

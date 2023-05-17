@@ -5,9 +5,9 @@ You could change different value for games to make lmkd more aggressive to free 
 
 Automatically 
 
-	-g | --get		  |  print current ro.lmk.downgrade_pressure
-	--enable-startup  |  enable agmode when startup device
-	--disable-startup |  contrasting --enable-startup
-	--stop			  |  kill the service
+	-g | --get print current ro.lmk.downgrade_pressure
+	--enable-startup enable agmode when startup device
+	--disable-startup contrasting --enable-startup
+	--stop kill the service
 
 
