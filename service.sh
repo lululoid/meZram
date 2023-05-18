@@ -59,7 +59,16 @@ done
 
 swapon /data/swap_file && logger "swap is turned on"
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
-logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log --rotate-kbytes=10485760 &
+logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log &
+lmkd_logger_pid="$!"
+
+while true; do
+	if [ "$(du "$LOGDIR"/lmkd.log | awk 'print $1')" -eq 10485760]; then
+		kill -9 "$lmkd_pid"
+		mv "$LOGDIR"/lmkd.log "$LOGDIR/$(date +%a-%d-%m-%Y)-lmkd.log"
+	fi
+	sleep 5
+done &
 
 
 rm_prop(){                                
