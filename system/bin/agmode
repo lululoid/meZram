@@ -13,22 +13,22 @@ logger(){
 
 
 agmode(){
-	agmode_state=$(getprop | grep agmode)
-	starting_line=$(grep -n "#agmode" "$CONFIG" | cut -d ":" -f1)
-	app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
+	local agmode_state=$(getprop | grep agmode)
+	local starting_line=$(grep -n "#agmode" "$CONFIG" | cut -d ":" -f1)
+	local app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
 
 	if [ -z "$agmode_state" ]; then
 		for app in $app_pkgs; do
-			app_pkg=$(echo "$app" | cut -d "=" -f1)
-			dpressure=$(echo "$app" | cut -d "=" -f2)
+			local app_pkg=$(echo "$app" | cut -d "=" -f1)
+			local dpressure=$(echo "$app" | cut -d "=" -f2)
 
 			logger "app_pkg=$app_pkg"
 			logger "running_app=$(pgrep -x "$app_pkg")"
 
 			while true; do
-				fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
-				fg_app_=$(pgrep -x "$fg_app")
-				running_app=$(pgrep -x "$app_pkg")
+				local fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
+				local fg_app_=$(pgrep -x "$fg_app")
+				local running_app=$(pgrep -x "$app_pkg")
 
 				if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
 					logger "fg_app_=$fg_app_"
@@ -39,10 +39,10 @@ agmode(){
 					logger "dpressure=$dpressure"
 					logger "agmode activated for $app_pkg"
 
-					am=true
+					local am=true
 
 				elif [ -z "$fg_app_" ] && [ "$am" ]; then
-					default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
+					local default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
 
 					logger "default_dpressure=$default_dpressure"
 					resetprop ro.lmk.downgrade_pressure "$default_dpressure" && resetprop lmkd.reinit 1
@@ -93,6 +93,15 @@ for opt in "$@"; do
 		-h | --help)
 			cat "$MODDIR"/man/agmode.txt
 			;;
+		--log)
+			if [ "$2" ]; then 
+				watch tail -n "$2" "$LOGDIR"/meZram.log
+			else
+				watch tail "$LOGDIR"/meZram.log 
+			fi
+			;;
+		--show)
+			cat "$CONFIG"
 	esac
 done
 
