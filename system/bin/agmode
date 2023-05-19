@@ -78,15 +78,10 @@ for opt in "$@"; do
 			echo "agmode will be disabled next startup"
 			;;
 		--stop)
-			starting_line=$(grep -n "#agmode" "$CONFIG" | cut -d ":" -f1)                                               app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
+			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$MODDIR/system.prop")
 
-			for app in $app_pkgs; do
-				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$MODDIR/system.prop")
-				app_pkg=$(echo "$app" | cut -d "=" -f1)
-
-				kill -9 "$(resetprop meZram.agmode_svc.pid."$app_pkg")" 2> /dev/null && echo "agmode for $app_pkg killed"
-				resetprop --delete "meZram.agmode_svc.pid.$app_pkg"
-			done
+			kill -9 "$(resetprop meZram.agmode_svc.pid.agmode)" 2> /dev/null && echo "agmode killed"
+			resetprop --delete "meZram.agmode_svc.pid.agmode"
 			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
 			echo "default downgrade_pressure is restored"
 			;;
