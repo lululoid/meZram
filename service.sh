@@ -62,7 +62,7 @@ while true; do
 
 		lmkd_logger_pid="$!"
 	fi
-	sleep 5
+	sleep 1
 done &
 
 
@@ -134,7 +134,8 @@ if [[ "$agmode" = "on" ]]; then
 			fi
 		done
 	done &
-	logger "$(resetprop "meZram.agmode_svc.pid.agmode" "$!")"
-	sleep 5
+	resetprop "meZram.agmode_svc.pid.agmode" "$!"
+	logger "agmode pid is $(resetprop "meZram.agmode_svc.pid.agmode")"
+	sleep 1
 fi
 

@@ -2,4 +2,4 @@ ro.config.low_ram=true
 ro.lmk.use_psi=false
 ro.lmk.use_minfree_levels=true
 ro.lmk.debug=true
-ro.lmk.downgrade_pressure=50
+ro.lmk.downgrade_pressure=55
