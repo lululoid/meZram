@@ -9,14 +9,6 @@ if [ ! -f "$CONFIG" ]; then
 	cp "$MODDIR"/meZram.conf "$LOGDIR"
 fi
 
-while true; do
-	today=$(date +%a-%d-%m-%Y)
-	for file in "$LOGDIR"/*log; do
-		mv --update "$LOGDIR/$file" "$LOGDIR/$today-$file"
-	done
-	sleep 12h
-done &
-
 # Calculate memory to use for zram
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
@@ -35,7 +27,6 @@ logger "NRDEVICES = $NRDEVICES"
 logger "totalmem = $totalmem"
 logger "zram_size = $zram_size"
 logger "lmkd_pid = $lmkd_pid"
-
 
 for zram0 in /dev/block/zram0 /dev/zram0; do
     if [ -n "$(ls $zram0)" ]; then
@@ -63,9 +54,12 @@ logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log &
 lmkd_logger_pid="$!"
 
 while true; do
-	if [ "$(du "$LOGDIR"/lmkd.log | awk 'print $1')" -eq 10485760]; then
-		kill -9 "$lmkd_pid"
-		mv "$LOGDIR"/lmkd.log "$LOGDIR/$(date +%a-%d-%m-%Y)-lmkd.log"
+	if [ "$(du "$LOGDIR"/lmkd.log | awk 'print $1')" -eq 10485760 ]; then
+		kill -9 "$lmkd_logger_pid"
+		mv "$LOGDIR"/lmkd.log "$LOGDIR/$(date +%R-%a/%d/%m/%Y)"
+
+		logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log &
+		lmkd_logger_pid="$!"
 	fi
 	sleep 5
 done &
@@ -88,7 +82,9 @@ tl="ro.lmk.thrashing_limit"
 while true; do
 	if [ "$(resetprop sys.boot_completed)" -eq "1" ]; then
 		rm_prop "$@"
-		rm_prop $tl
+		if [ "$(resetprop ro.miui.ui.version.code)" ]; then
+			rm_prop "$tl"
+		fi
 		resetprop lmkd.reinit 1
 		break
 	fi
@@ -121,8 +117,6 @@ if [[ "$agmode" = "on" ]]; then
 			if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
 				dpressure=$(grep "^$app_pkg" "$CONFIG" | cut -d "=" -f2)
 
-				logger "fg_app_=$fg_app_"
-				logger "running_app=$running_app"
 				logger "dpressure=$dpressure"
 				logger "agmode activated for $app_pkg"
 				resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
