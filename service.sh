@@ -53,12 +53,13 @@ swapon /data/swap_file && logger "swap is turned on"
 logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log &
 lmkd_logger_pid="$!"
 
-while true; do
-	if [ "$(du "$LOGDIR"/lmkd.log | awk 'print $1')" -eq 10485760 ]; then
+while true; do 
+	lmkd_log_size=$(du "$LOGDIR"/lmkd.log | awk 'print $1')
+	if [ "$lmkd_log_size" -ge 10485760 ]; then
 		kill -9 "$lmkd_logger_pid"
-		mv "$LOGDIR"/lmkd.log "$LOGDIR/$(date +%R-%a/%d/%m/%Y)"
-
+		mv "$LOGDIR"/lmkd.log "$LOGDIR/$(date +%R-%a/%d/%m/%Y)-lmkd.log"
 		logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log &
+
 		lmkd_logger_pid="$!"
 	fi
 	sleep 5
@@ -75,7 +76,7 @@ rm_prop(){
 # set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
 
 set --
-set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "sys.lmk.minfree_levels" "ro.lmk.upgrade_pressure"
+set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical_upgrade" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "sys.lmk.minfree_levels" "ro.lmk.upgrade_pressure"
 
 tl="ro.lmk.thrashing_limit"
 
@@ -103,19 +104,19 @@ fi
 
 if [[ "$agmode" = "on" ]]; then
 	starting_line=$(grep -n "#agmode" "$CONFIG" | cut -d ":" -f1)
-	app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
 
-	for app in $app_pkgs; do
-		app_pkg=$(echo "$app" | cut -d "=" -f1)
-		dpressure=$(echo "$app" | cut -d "=" -f2)
+	while true; do 
+		app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
 
-		while true; do
+		for app in $app_pkgs; do
+			app_pkg=$(echo "$app" | cut -d "=" -f1)
+			dpressure=$(echo "$app" | cut -d "=" -f2)
 			fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
 			fg_app_=$(pgrep -x "$fg_app")
 			running_app=$(pgrep -x "$app_pkg")
 
 			if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
-				dpressure=$(grep "^$app_pkg" "$CONFIG" | cut -d "=" -f2)
+				dpressure=$(grep -w "^$app_pkg" "$CONFIG" | cut -d "=" -f2)
 
 				logger "dpressure=$dpressure"
 				logger "agmode activated for $app_pkg"
@@ -130,12 +131,10 @@ if [[ "$agmode" = "on" ]]; then
 				resetprop ro.lmk.downgrade_pressure "$default_dpressure" && resetprop lmkd.reinit 1
 				logger "default ro.lmk.downgrade_pressure restored"
 				unset am
-
 			fi
-			sleep 5
-		done &
-		resetprop meZram.agmode_svc.pid."$app_pkg" "$!"
-		logger "$(getprop | grep agmode)"
-	done
+		done
+	done &
+	logger "$(resetprop "meZram.agmode_svc.pid.agmode" "$!")"
+	sleep 5
 fi
 
