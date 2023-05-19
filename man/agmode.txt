@@ -1,7 +1,8 @@
 Usage: agmode [-OPTION] or OPTIONS...
 
+MANUAL FOR AGGRESSIVE MODE MEZRAM MODULE
 Costumize different ro.lmk.downgrade_pressure prop for different apps.
-You could change different value for games to make lmkd more aggressive to free up memory resulting in increased performance.
+You could change different value for games to make lmkd more aggressive to free up memory resulting in increased performance. The higher the value makes lmkd more agressive at killing unnecessary apps
 
 Automatically 
 
