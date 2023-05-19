@@ -155,3 +155,16 @@ else
     lmkd_apply
 fi
 
+# updating config
+LOGDIR="/data/adb/meZram"
+CONFIG="$LOGDIR/meZram.conf"
+
+if [ -f "$CONFIG" ]; then
+	line_start=$(grep -n "#agmode PER APP CONFIGURATION" "$CONFIG" | cut -d ":" -f1)
+
+	backup_config=$(tail -n +"$((line_start + 1))" "$CONFIG")
+
+	logger "$backup_config"
+	echo "$backup_config" >> "$MODPATH"/meZram.conf && cp "$MODPATH"/meZram.conf "$CONFIG"
+fi
+
