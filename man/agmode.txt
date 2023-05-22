@@ -1,10 +1,12 @@
 Usage: agmode [-OPTION] or OPTIONS...
 
-MANUAL FOR AGGRESSIVE MODE MEZRAM MODULE
-Costumize different ro.lmk.downgrade_pressure prop for different apps.
-You could change different value for games to make lmkd more aggressive to free up memory resulting in increased performance. The higher the value makes lmkd more agressive at killing unnecessary apps
+MANUAL FOR AGGRESSIVE MODE MEZRAM module 
 
-Automatically 
+Costumize different ro.lmk.downgrade_pressure prop for different apps.
+You could change different value for games to make lmkd more aggressive to free up memory resulting in increased performance. Value is 0-80, the higher the value makes lmkd more agressive at killing unnecessary apps.
+
+⚠️==WARNING==⚠️
+Please do not set the value too high because it could kill your launcher, and you won't be able to launch any app. If this happened please change back the value from recovery in file /data/adb/modules/meZram/system.prop
 
 	-g | --get print current ro.lmk.downgrade_pressure
 	--enable-startup enable agmode when startup device
@@ -14,5 +16,7 @@ Automatically
 	--delete [app_pkg] delete app from agmode
 	--log show log using tail
 	--show showing config
+
+	downgrade_pressure=[value] change downgrade_pressure value, and it's will still applied after restart except updating you have to reapply the value.
 
 
