@@ -8,24 +8,30 @@ Details in here https://source.android.com/docs/core/perf/lmkd
 
 ## Features
 - Aggressive Mode
-    Usage: agmode [-OPTION] or OPTIONS...
+    
+`Usage: agmode [-OPTION] or OPTIONS...`
 
-    Costumize different ro.lmk.downgrade_pressure prop for different apps.
-    You could change different value for games to make lmkd more aggressive to free up memory resulting in increased performance. Value is 0-80, the higher the value makes lmkd more agressive at killing unnecessary apps.
-    
-    ⚠️==WARNING==⚠️
-    Please do not set the value too high because it could kill your launcher, and you won't be able to launch any app. If this happened please change back the value from recovery in file /data/adb/modules/meZram/system.prop
-    
-    -g | --get print current ro.lmk.downgrade_pressure
-    --enable-startup enable agmode when startup device
-    --disable-startup contrasting --enable-startup
-    --stop kill the service
-    --add=[app_pkg] [downgrade_pressure] add app to agmode
-    --delete [app_pkg] delete app from agmode
-    --log show log using tail
-    --show showing config
-    
-    downgrade_pressure=[value] change downgrade_pressure value, and it's will still applied after restart except updating you have to reapply the value.
+MANUAL FOR AGGRESSIVE MODE MEZRAM module 
+
+You have the option to customize the "downgrade_pressure" property for different applications. By assigning different values to this property, you can make the LMKD (low memory killer daemon) more aggressive in freeing up memory, resulting in increased performance, especially for games. The recommended value range for "ro.lmk.downgrade_pressure" is from 0 to 75, with higher values indicating a more aggressive approach in killing unnecessary apps.
+
+⚠️==WARNING==⚠️
+Although the "downgrade_pressure" value can technically be set as high as 99, it is important to note that going beyond the territory of 80 is highly risky and can potentially disrupt the functioning of your device. Setting the value too high may result in the launcher being terminated, preventing any app from being launched. If you encounter such a problem, you can rectify it by reverting the value back to its original setting through the recovery process. This can be accomplished by modifying the file located at "/data/adb/modules/meZram/system.prop" or just remove and then reinstall this module will resolve the problem.
+
+You can use the following commands/options for managing this feature:
+
+	`-g | --get` print current ro.lmk.downgrade_pressure
+	`--enable-startup` enable agmode when startup device
+	`--disable-startup` contrasting --enable-startup
+	`--stop` kill the service
+	`--add=[app_pkg] [downgrade_pressure]` add app to agmode
+	`--delete [app_pkg]` delete app from agmode
+	`--log [line number]` show log using tail. Change line number to show more logs.
+	`--show` showing config
+	`--help | -h [language]` show this help.
+		`--help id` untuk menampilkan bantuan dalam bahasa Indonesia.
+
+	`downgrade_pressure=[value]` change downgrade_pressure value, and it's will still applied after restart except updating the module you have to reapply the value.
     
 - The introduction of lmkd optimizations aims to provide a smoother user experience.
 - The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
