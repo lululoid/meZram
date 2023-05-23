@@ -86,6 +86,11 @@ for opt in "$@"; do
 			echo "default downgrade_pressure is restored"
 			;;
 		-h | --help)
+			if [[ "$2" = "id" ]]; then
+				cat "$MODDIR"/man/agmode-id.txt
+				exit 1
+			fi
+
 			cat "$MODDIR"/man/agmode.txt
 			;;
 		--log)

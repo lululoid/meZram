@@ -90,7 +90,7 @@ while true; do
 
 	logrotate "$LOGDIR"/*lmkd.log
 	logrotate "$LOGDIR"/*meZram.log
-	sleep 1
+	sleep 2
 done &
 
 logger "meZram log count=$count"
@@ -169,6 +169,6 @@ if [[ "$agmode" = "on" ]]; then
 	resetprop "meZram.agmode_svc.pid.agmode" "$!"
 	# save aggressive mode pid as a prop
 	logger "aggressive mode pid is $(resetprop "meZram.agmode_svc.pid.agmode")"
-	sleep 1
+	sleep 2
 fi
 
