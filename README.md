@@ -7,7 +7,7 @@ The Android low memory killer daemon (lmkd) process monitors the memory state of
 Details in here https://source.android.com/docs/core/perf/lmkd 
 
 ## Features
-    ### Aggressive Mode
+- Aggressive Mode
     Usage: agmode [-OPTION] or OPTIONS...
 
     Costumize different ro.lmk.downgrade_pressure prop for different apps.
@@ -16,16 +16,16 @@ Details in here https://source.android.com/docs/core/perf/lmkd
     ⚠️==WARNING==⚠️
     Please do not set the value too high because it could kill your launcher, and you won't be able to launch any app. If this happened please change back the value from recovery in file /data/adb/modules/meZram/system.prop
     
-    	-g | --get print current ro.lmk.downgrade_pressure
-    	--enable-startup enable agmode when startup device
-    	--disable-startup contrasting --enable-startup
-    	--stop kill the service
-    	--add=[app_pkg] [downgrade_pressure] add app to agmode
-    	--delete [app_pkg] delete app from agmode
-    	--log show log using tail
-    	--show showing config
+    -g | --get print current ro.lmk.downgrade_pressure
+    --enable-startup enable agmode when startup device
+    --disable-startup contrasting --enable-startup
+    --stop kill the service
+    --add=[app_pkg] [downgrade_pressure] add app to agmode
+    --delete [app_pkg] delete app from agmode
+    --log show log using tail
+    --show showing config
     
-    	downgrade_pressure=[value] change downgrade_pressure value, and it's will still applied after restart except updating you have to reapply the value.
+    downgrade_pressure=[value] change downgrade_pressure value, and it's will still applied after restart except updating you have to reapply the value.
     
 - The introduction of lmkd optimizations aims to provide a smoother user experience.
 - The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
