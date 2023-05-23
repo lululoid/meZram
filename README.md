@@ -15,7 +15,7 @@ MANUAL FOR AGGRESSIVE MODE MEZRAM module
 
 You have the option to customize the "downgrade_pressure" property for different applications. By assigning different values to this property, you can make the LMKD (low memory killer daemon) more aggressive in freeing up memory, resulting in increased performance, especially for games. The recommended value range for "ro.lmk.downgrade_pressure" is from 0 to 75, with higher values indicating a more aggressive approach in killing unnecessary apps.
 
-⚠️==WARNING==⚠️
+- ⚠️==WARNING==⚠️
 Although the "downgrade_pressure" value can technically be set as high as 99, it is important to note that going beyond the territory of 80 is highly risky and can potentially disrupt the functioning of your device. Setting the value too high may result in the launcher being terminated, preventing any app from being launched. If you encounter such a problem, you can rectify it by reverting the value back to its original setting through the recovery process. This can be accomplished by modifying the file located at "/data/adb/modules/meZram/system.prop" or just remove and then reinstall this module will resolve the problem.
 
 You can use the following commands/options for managing this feature:

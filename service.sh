@@ -82,6 +82,9 @@ while true; do
 		logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log &
 
 		lmkd_logger_pid="$!"
+
+		logger "lmkd_logger_pid=$lmkd_logger_pid"
+		logger "lmkd_log_size=$(wc -c <"$LOGDIR"/lmkd.log)"
 	fi
 
 	if [ "$meZram_log_size" -ge 10485760 ]; then
