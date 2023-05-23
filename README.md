@@ -20,18 +20,20 @@ Although the "downgrade_pressure" value can technically be set as high as 99, it
 
 You can use the following commands/options for managing this feature:
 
-	`-g | --get` print current ro.lmk.downgrade_pressure
-	`--enable-startup` enable agmode when startup device
-	`--disable-startup` contrasting --enable-startup
-	`--stop` kill the service
-	`--add=[app_pkg] [downgrade_pressure]` add app to agmode
-	`--delete [app_pkg]` delete app from agmode
-	`--log [line number]` show log using tail. Change line number to show more logs.
-	`--show` showing config
-	`--help | -h [language]` show this help.
-		`--help id` untuk menampilkan bantuan dalam bahasa Indonesia.
+    ```
+	-g | --get print current ro.lmk.downgrade_pressure
+	--enable-startup enable agmode when startup device
+	--disable-startup contrasting --enable-startup
+	--stop kill the service
+	--add=[app_pkg] [downgrade_pressure] add app to agmode
+	--delete [app_pkg] delete app from agmode
+	--log [line number] show log using tail. Change line number to show more logs.
+	--show showing config
+	--help | -h [language] show this help.
+		--help id untuk menampilkan bantuan dalam bahasa Indonesia.
 
-	`downgrade_pressure=[value]` change downgrade_pressure value, and it's will still applied after restart except updating the module you have to reapply the value.
+	downgrade_pressure=[value] change downgrade_pressure value, and it's will still applied after restart except updating the module you have to reapply the value.
+    ```
     
 - The introduction of lmkd optimizations aims to provide a smoother user experience.
 - The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
