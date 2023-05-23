@@ -58,8 +58,6 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		echo "$NRDEVICES" > /sys/block/zram0/max_comp_streams
 		mkswap $zram0
 		swapon $zram0
-    else
-		logger "$zram0 not exist in this device" 
     fi
 done
 
