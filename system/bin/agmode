@@ -51,7 +51,7 @@ titler() {
 	fi
 	
 	text_length=${#text}
-	liner_length=$(( ($(tput cols) / 2) - (text_length / 2) - 1 ))
+	liner_length=$(( ($(tput cols) / 2) - (text_length / 2) ))
 
 	liner0=$(liner "-" "$liner_length" )
 
@@ -92,9 +92,9 @@ for opt in "$@"; do
 			;;
 		--log)
 			if [ "$2" ]; then 
-				watch tail -n "$2" "$LOGDIR"/meZram.log
+				watch -t tail -n "$2" "$LOGDIR"/meZram.log
 			else
-				watch tail -n "$(($(tput lines) - 7))" "$LOGDIR"/meZram.log 
+				watch -t tail -n "$(($(tput lines)))" "$LOGDIR"/meZram.log 
 			fi
 			;;
 		--show)
