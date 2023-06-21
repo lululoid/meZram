@@ -6,30 +6,27 @@ liner() {
 	done
 }
 
-
 titler() {
 	text="$*"
 
 	if [ -z "$text" ]; then
 		text="Hello World!"
 	fi
-	
-	text_length=${#text}
-	liner_length=$(( ($(tput cols) / 2) - (text_length / 2) - 1 ))
 
-	liner0=$(liner "-" "$liner_length" )
+	text_length=${#text}
+	liner_length=$((($(tput cols) / 2) - (text_length / 2) - 1))
+
+	liner0=$(liner "-" "$liner_length")
 
 	printf '%s' "$liner0" "$text" "$liner0"
 	echo ""
 }
-
 
 if [ -z "$1" ]; then
 	sec=2
 else
 	sec="$1"
 fi
-
 
 zram_usage=$(sed -n 2p /proc/swaps | awk '{print $4}' | tr -s " ")
 zram_size=$(sed -n 2p /proc/swaps | awk '{print $3}' | tr -s " ")
@@ -39,11 +36,11 @@ totalmem=$(free | sed -n 's/[^0-9 ]*//;2p' | tr -s " " | awk '{print $1}')
 mem_usage=$(free | sed -n 's/[^0-9 ]*//;2p' | tr -s " " | awk '{print $2}')
 zu_mb=$((zram_usage / 1024))
 zs_mb=$((zram_size / 1024))
-saving50=$(( zram_usage * 2 / 1024 ))
-saving80=$(( zram_usage * 5 / 1024 ))
+saving50=$(( (zram_size / 1024) - (zram_usage * 2 / 1024) ))
+saving80=$(( (zram_size / 1024) - (zram_usage * 5 / 1024) ))
 free_zram_mb=$(( (zram_size / 1024) - (zram_usage / 1024) ))
-saved=$(( mem_usage + zram_usage - totalmem))
-saved_mb=$(( saved / 1024 ))
+saved=$((mem_usage + zram_usage - totalmem))
+saved_mb=$((saved / 1024))
 
 titler "ZRAM & SWAPS STATUS"
 echo "--ZRAM"
@@ -51,8 +48,8 @@ echo "USAGE    : ${zu_mb}MB"
 echo "SIZE     : ${zs_mb}MB"
 echo "FREE     : ${free_zram_mb}MB"
 
-if [ "$saved_mb" -ge 0 ]; then 
-	echo "Added RAM: ${saved_mb}MB"
+if [ "$saved_mb" -ge 0 ]; then
+	echo "Real saved RAM: ${saved_mb}MB"
 fi
 
 echo "Saving about ${saving50}MB(50%) to ${saving80}MB(80%) of RAM"
@@ -61,11 +58,11 @@ echo "Saving about ${saving50}MB(50%) to ${saving80}MB(80%) of RAM"
 for num in $(echo "$swaps_usage" | wc -w); do
 	echo ""
 	echo "--SWAP $num"
-	for usage in $swaps_usage; do 
-		echo "USAGE    : $(( usage / 1024 ))MB"
-		for size in $swaps_sizes; do 
-			echo "SIZE     : $(( size / 1024 ))MB"
-			echo "FREE     : $(( (size / 1024) - (usage / 1024) ))MB"
-		done 
+	for usage in $swaps_usage; do
+		echo "USAGE    : $((usage / 1024))MB"
+		for size in $swaps_sizes; do
+			echo "SIZE     : $((size / 1024))MB"
+			echo "FREE     : $(((size / 1024) - (usage / 1024)))MB"
+		done
 	done
-done 
+done

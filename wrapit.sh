@@ -1,4 +1,4 @@
-#!/system/bin/bash
+#!/bin/bash
 
 zipfiles=$(cat zip-list.txt)
 version=$1

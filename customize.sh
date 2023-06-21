@@ -74,13 +74,13 @@ count_SWAP() {
 				count=$((count + 1))
 				ui_print "  $count. No SWAP"
 				swap_size=0
-			elif [ $swap_in_gb -lt $totalmem_gb ]; then
+			elif [ "$swap_in_gb" -lt "$totalmem_gb" ]; then
 				count=$((count + 1))
 				swap_in_gb=$((swap_in_gb + 1))
 				ui_print "  $count. ${swap_in_gb}GB of SWAP"
 				swap_size=$((swap_in_gb * one_gb))
 			fi
-		elif [ $swap_in_gb -eq $totalmem_gb ] && [ $count != 0 ]; then
+		elif [ "$swap_in_gb" -eq $totalmem_gb ] && [ $count != 0 ]; then
 			swap_size=$totalmem
 			count=0
 		elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
