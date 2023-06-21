@@ -12,54 +12,51 @@ logger(){
 }
 
 
-agmode(){
-	local agmode_state=$(getprop | grep agmode)
-	local starting_line=$(grep -n "#agmode" "$CONFIG" | cut -d ":" -f1)
-	local app_pkgs=$(tail -n +$((starting_line + 1)) "$CONFIG")
-
-	if [ -z "$agmode_state" ]; then
-		for app in $app_pkgs; do
-			local app_pkg=$(echo "$app" | cut -d "=" -f1)
-			local dpressure=$(echo "$app" | cut -d "=" -f2)
-
-			logger "app_pkg=$app_pkg"
-			logger "running_app=$(pgrep -x "$app_pkg")"
-
-			while true; do
-				local fg_app=$(dumpsys activity recents | grep 'Recent #0' | sed 's/.*:\([^ ]*\).*$/\1/')
-				local fg_app_=$(pgrep -x "$fg_app")
-				local running_app=$(pgrep -x "$app_pkg")
-
-				if [ "$running_app" ] && [[ "$fg_app_" = "$running_app" ]] && [ -z "$am" ]; then
-					logger "fg_app_=$fg_app_"
-					logger "running_app=$running_app"
-
-					resetprop ro.lmk.downgrade_pressure "$dpressure" && resetprop lmkd.reinit 1
-
-					logger "dpressure=$dpressure"
-					logger "agmode activated for $app_pkg"
-
-					local am=true
-
-				elif [ -z "$fg_app_" ] && [ "$am" ]; then
-					local default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
-
-					logger "default_dpressure=$default_dpressure"
-					resetprop ro.lmk.downgrade_pressure "$default_dpressure" && resetprop lmkd.reinit 1
-					logger "default ro.lmk.downgrade_pressure restored"
-					unset am
-
-				fi
-				sleep 5
-			done &
-			resetprop meZram.agmode_svc.pid."$app_pkg" "$!" 2> /dev/null
+custom_props_apply() {
+	# applying custom prop
+	starting_line=$(grep -nw "# custom props" "$CONFIG" | cut -d ":" -f1)
+	end_line=$(grep -n "#" "$CONFIG" | grep -v "# custom props" | head -n 1 | cut -d ":" -f1)
+	props=$(tail -n "+$((starting_line + 1))" "$CONFIG" | head -n "$((end_line - starting_line - 2))")
+	
+	if [[ "$props" ]]; then
+		for prop in $props; do
+			prop=$(echo "$prop" | sed 's/=/ /g')
+	
+			resetprop $prop
 		done
-		logger "$(getprop | grep agmode)"
-		getprop | grep agmode
-		echo "😾 agmode activated"
-	else
-		echo "🎮 agmode already activated"
+		resetprop lmkd.reinit 1
 	fi
+}
+
+
+rm_prop() {
+	for prop in $*; do
+		resetprop "$prop" > /dev/null && resetprop --delete "$prop" && echo "$prop deleted"
+	done
+}
+
+
+liner() {
+	for i in $(seq "$2"); do
+		printf '%s' "$1"
+	done
+}
+
+
+titler() {
+	text="$*"
+
+	if [ -z "$text" ]; then
+		text="Hello World!"
+	fi
+	
+	text_length=${#text}
+	liner_length=$(( ($(tput cols) / 2) - (text_length / 2) - 1 ))
+
+	liner0=$(liner "-" "$liner_length" )
+
+	printf '%s' "$liner0" "$text" "$liner0"
+	echo ""
 }
 
 
@@ -67,23 +64,23 @@ agmode(){
 for opt in "$@"; do
     case "$opt" in
         -g | --get)
-			echo "ro.lmk.downgrade_pressure=$(resetprop ro.lmk.downgrade_pressure)"
+			lmkd_props=$(getprop | grep "ro.lmk" | sed 's/\[//g;s/\]//g;s/: /=/g')
+
+			titler "LMKD PROPS"
+			echo "$lmkd_props"
 			;;
         --enable-startup)
 			sed -i 's/\(agmode=\).*/\1on/' "$CONFIG" 
-			echo "agmode will automatically start next startup"
+			echo "Agmode will automatically start next startup"
             ;;
 		--disable-startup)
 			sed -i 's/\(agmode=\).*/\1off/' "$CONFIG" 
-			echo "agmode will be disabled next startup"
+			echo "Agmode will be disabled next startup"
 			;;
 		--stop)
-			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$MODDIR/system.prop")
-
-			kill -9 "$(resetprop meZram.agmode_svc.pid.agmode)" 2> /dev/null && echo "agmode killed"
+			kill -9 "$(resetprop meZram.agmode_svc.pid.agmode)" 2> /dev/null && echo "Aggressive mode killed"
 			resetprop --delete "meZram.agmode_svc.pid.agmode"
-			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
-			echo "default downgrade_pressure is restored"
+			resetprop "lmkd.reinit" 1
 			;;
 		-h | --help)
 			if [[ "$2" = "id" ]]; then
@@ -97,11 +94,18 @@ for opt in "$@"; do
 			if [ "$2" ]; then 
 				watch tail -n "$2" "$LOGDIR"/meZram.log
 			else
-				watch tail "$LOGDIR"/meZram.log 
+				watch tail -n "$(($(tput lines) - 7))" "$LOGDIR"/meZram.log 
 			fi
 			;;
 		--show)
+			titler "MEZRAM CONFIG"
 			cat "$CONFIG"
+			;;
+		--reload)
+			set --
+			set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical_upgrade" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "sys.lmk.minfree_levels" "ro.lmk.upgrade_pressure"
+			rm_prop "$@"
+			custom_props_apply && echo "Custom props applied"
 	esac
 done
 
@@ -114,28 +118,7 @@ case "$1" in
 		resetprop lmkd.reinit 1
 		echo "ro.lmk.downgrade_pressure=$dpressure"
 		sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$MODDIR"/system.prop
-		;;
-	--add=*)
-		if [ "$2" ]; then
-			app_name=$(echo "$1" | sed 's/.*--add=\(.*\).*/\1/')
-
-			is_exist=$(grep "^$app_name=[0-9]\{2\}" "$CONFIG")
-			echo "$app_name=$2"
-			if [ "$is_exist" ]; then
-				sed -i "s/\($app_name=\).*/\1$2/" "$CONFIG"
-			else
-				sed -i "s/\(#agmode.*\)/\1\n$app_name=$2/" "$CONFIG" > /dev/null
-				echo "$app_name is added to agmode"
-			fi
-		else
-			echo "Please enter downgrade_pressure"
-		fi
-		;;
-	--delete*)
-		if [ "$2" ]; then
-			line_num=$(grep -n "$2" "$CONFIG" | cut -d ":" -f1)
-			sed -i "${line_num}d" "$CONFIG"
-		fi
+		sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$LOGDIR"/meZram.conf 
 		;;
 esac
 

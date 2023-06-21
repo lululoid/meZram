@@ -21,4 +21,4 @@ sed -i "s#\"zipUrl\": \"https://github.com/lululoid/meZram/releases/download/v[0
 changelog_file=$(ls | grep -o 'meZram-v[0-9]\+\.[0-9]\+_[0-9]\+-beta-psi-changelog\.md')
 mv "$changelog_file" "meZram-v${version}_$versionCode-beta-psi-changelog.md"
 
-7za a "meZram-v${version}_$versionCode-beta-psi.zip" $zipfiles
+7za a "packages/meZram-v${version}_$versionCode-beta-psi.zip" $zipfiles

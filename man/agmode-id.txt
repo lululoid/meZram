@@ -1,22 +1,23 @@
 
 Penggunaan: agmode [-OPTION] atau OPTIONS...
 
-MANUAL UNTUK MODE AGRESIF MODE MEZRAM
+MANUAL UNTUK MODE AGRESIF MODULE MEZRAM
 
-Kamu bisa menyesuaikan properti "ro.lmk.downgrade_pressure" untuk berbagai aplikasi.  Dengan menetapkan nilai yang berbeda untuk properti ini, Anda dapat membuat LMKD (daemon pembunuh memori rendah) lebih agresif dalam mengosongkan memori, sehingga meningkatkan performa, terutama untuk game.  Rentang nilai yang disarankan untuk "ro.lmk.downgrade_pressure" adalah dari 0 hingga 75, dengan nilai yang lebih tinggi menunjukkan pendekatan yang lebih agresif dalam menutup aplikasi yang tidak perlu.
+	Kamu bisa menyesuaikan properti "downgrade_pressure" untuk berbagai aplikasi.  Dengan menetapkan nilai yang berbeda pada properti ini, kamu dapat membuat LMKD (low memory killer daemon) lebih agresif dalam membebaskan memori, sehingga meningkatkan performa, terutama untuk game.  Rentang nilai yang disarankan untuk "ro.lmk.downgrade_pressure" adalah dari 0 hingga 100, dengan nilai yang lebih tinggi menghasilkan perilaku lebih agresif dalam menutup aplikasi yang tidak perlu.
 
 ⚠️==PERINGATAN==⚠️
-Meskipun nilai "downgrade_pressure" secara teknis dapat ditetapkan setinggi 99, penting untuk diperhatikan bahwa melampaui wilayah 80 sangat berisiko dan berpotensi mengganggu fungsi perangkat Anda.  Menyetel nilai terlalu tinggi dapat menyebabkan launcher tidak dapat berjalan, sehingga aplikasi apa pun tidak dapat dibuka.  Jika Anda mengalami masalah seperti itu, Anda dapat memperbaikinya dengan mengembalikan nilai ke pengaturan awal melalui recovery seperti TWRP.  Ini dapat dilakukan dengan memodifikasi file yang terletak di "/data/adb/modules/meZram/system.prop" atau cukup hapus lalu instal ulang modul ini akan menyelesaikan masalah.
+	Meskipun nilai "downgrade_pressure" secara teknis dapat ditetapkan setinggi 100, penting untuk diperhatikan bahwa melampaui wilayah 80 sangat berisiko dan berpotensi mengakibatkan ketidakstabilan performa.
 
- Anda dapat menggunakan perintah/opsi berikut untuk mengelola fitur ini:
+	Anda dapat menggunakan perintah/opsi berikut untuk mengelola fitur ini:
 
-	-g |  --get cetak nilai downgrade_pressure saat ini
+	-g |  --get cetak ro.lmk.downgrade_pressure saat ini
 	--enable-startup aktifkan agmode saat memulai perangkat
-	--disable-startup menonaktifkan layanan startup
-	--stop matikan layanan aggressive mode
-	--add=[paket aplikasi] [downgrade_pressure] tambahkan aplikasi ke agmode
-	--delete [paket aplikasi] hapus aplikasi dari agmode
-	--log [nomor baris] menampilkan log. Ubah nomor baris untuk mengubah banyak log yang ditampilkan.
-	--show menampilkan konfig
+	--disable-startup menonaktifkan agmode saat memulai perangkat
+	--stop matikan layanan
+	--log [nomor baris] tampilkan log.
+	--show menampilkan konfigurasi
+	--reload memuat ulang custom props
+	--help | -h [bahasa] tampilkan bantuan ini.
+		--help id untuk menampilkan bantuan dalam bahasa Indonesia.
 
-	downgrade_pressure=[nomor] ubah nilai downgrade_pressure, dan itu akan tetap diterapkan setelah restart kecuali memperbarui modul Anda harus menerapkan kembali nilainya.
+	downgrade_pressure=[nilai] ubah nilai downgrade_pressure.

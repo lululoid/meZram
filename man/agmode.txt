@@ -2,22 +2,21 @@ Usage: agmode [-OPTION] or OPTIONS...
 
 MANUAL FOR AGGRESSIVE MODE MEZRAM module 
 
-You have the option to customize the "downgrade_pressure" property for different applications. By assigning different values to this property, you can make the LMKD (low memory killer daemon) more aggressive in freeing up memory, resulting in increased performance, especially for games. The recommended value range for "ro.lmk.downgrade_pressure" is from 0 to 75, with higher values indicating a more aggressive approach in killing unnecessary apps.
+	You have the option to customize the "downgrade_pressure" property for different applications. By assigning different values to this property, you can make the LMKD (low memory killer daemon) more aggressive in freeing up memory, resulting in increased performance, especially for games. The recommended value range for "ro.lmk.downgrade_pressure" is from 0 to 100, with higher values indicating a more aggressive approach in killing unnecessary apps.
 
 ⚠️==WARNING==⚠️
-Although the "downgrade_pressure" value can technically be set as high as 99, it is important to note that going beyond the territory of 80 is highly risky and can potentially disrupt the functioning of your device. Setting the value too high may result in the launcher being terminated, preventing any app from being launched. If you encounter such a problem, you can rectify it by reverting the value back to its original setting through the recovery process. This can be accomplished by modifying the file located at "/data/adb/modules/meZram/system.prop" or just remove and then reinstall this module will resolve the problem.
+	Although the "downgrade_pressure" value can technically be set as high as 100, it is important to note that going beyond the territory of 80 is highly risky and can potentially resulting in performance instability.
 
-You can use the following commands/options for managing this feature:
+	You can use the following commands/options for managing this feature:
 
-	-g | --get print current ro.lmk.downgrade_pressure
+	-g | --get print LMKD properties
 	--enable-startup enable agmode when startup device
 	--disable-startup contrasting --enable-startup
 	--stop kill the service
-	--add=[app_pkg] [downgrade_pressure] add app to agmode
-	--delete [app_pkg] delete app from agmode
-	--log [line number] show log using tail. Change line number to show more logs.
+	--log [line number] show log.
 	--show showing config
+	--reload reload custom props then reapply
 	--help | -h [language] show this help.
 		--help id untuk menampilkan bantuan dalam bahasa Indonesia.
 
-	downgrade_pressure=[value] change downgrade_pressure value, and it's will still applied after restart except updating the module you have to reapply the value.
+	downgrade_pressure=[value] change downgrade_pressure value.

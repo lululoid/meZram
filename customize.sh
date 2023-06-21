@@ -3,24 +3,26 @@
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
 ui_print ""
-ui_print "  Made with pain from "; sleep 0.5
+ui_print "  Made with pain from "
+sleep 0.5
 ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
 ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
 ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
-ui_print " ==================:)====================="; sleep 0.5
+ui_print " ==================:)====================="
+sleep 0.5
 
-logger(){
+logger() {
 	log=$(echo "$*" | tr -s " ")
-    true && ui_print "  DEBUG: $log"
+	true && ui_print "  DEBUG: $log"
 }
 
 lmkd_apply() {
-    # determine if device is lowram?
-    logger "totalmem = $totalmem"
-    if [ "$totalmem" -lt 2097152 ]; then
+	# determine if device is lowram?
+	logger "totalmem = $totalmem"
+	if [ "$totalmem" -lt 2097152 ]; then
 		ui_print "⚠️ Device is low ram. Applying low raw tweaks"
 		mv "$MODPATH"/system.props/low-ram-system.prop "$MODPATH"/system.prop
-    else
+	else
 		mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
 	fi
 
@@ -28,46 +30,46 @@ lmkd_apply() {
 	set --
 	set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
 	rm_prop "$@"
-    
-    # applying lmkd tweaks
-    grep -v '^ *#' < "$MODPATH"/system.prop | while IFS= read -r prop; do
+
+	# applying lmkd tweaks
+	grep -v '^ *#' <"$MODPATH"/system.prop | while IFS= read -r prop; do
 		# logger "$prop"
 		logger "resetprop ${prop//=/ }"
 		resetprop ${prop//=/ }
 	done
-	
+
 	tl="ro.lmk.thrashing_limit"
 	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
 		rm_prop "$tl"
 	fi
 
-    resetprop lmkd.reinit 1 && ui_print "> lmkd reinitialized"
-    ui_print "> lmkd multitasking tweak applied."
-    ui_print "  Give the better of your RAM."
-    ui_print "  RAM better being filled with something"
-    ui_print "  useful than left unused"
+	resetprop lmkd.reinit 1 && ui_print "> lmkd reinitialized"
+	ui_print "> lmkd multitasking tweak applied."
+	ui_print "  Give the better of your RAM."
+	ui_print "  RAM better being filled with something"
+	ui_print "  useful than left unused"
 }
 
 count_SWAP() {
-    local one_gb=$((1024*1024))
-    local totalmem_gb=$(((totalmem/1024/1024)+1))
-    swap_size=$((totalmem / 2))
-    count=0
+	local one_gb=$((1024 * 1024))
+	local totalmem_gb=$(((totalmem / 1024 / 1024) + 1))
+	swap_size=$((totalmem / 2))
+	count=0
 
-    ui_print "> Please select SWAP size"
+	ui_print "> Please select SWAP size"
 	ui_print "  Press VOLUME - to SELECT"
 	ui_print "  Press VOLUME + to DEFAULT"
-    ui_print "  DEFAULT is $((totalmem/1024/2))MB of SWAP"
-    
-    while true; do
-		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > "$TMPDIR"/events &
+	ui_print "  DEFAULT is $((totalmem / 1024 / 2))MB of SWAP"
+
+	while true; do
+		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 >"$TMPDIR"/events &
 		sleep 0.1
 		if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events); then
 			if [ $count -eq 0 ]; then
 				count=$((count + 1))
 				swap_size=$((totalmem / 2))
 				local swap_in_gb=0
-				ui_print "  $count. 50% of RAM ($((swap_size/1024))MB SWAP) --> RECOMMENDED"
+				ui_print "  $count. 50% of RAM ($((swap_size / 1024))MB SWAP) --> RECOMMENDED"
 			elif [ $count -eq 2 ]; then
 				count=$((count + 1))
 				ui_print "  $count. No SWAP"
@@ -87,84 +89,130 @@ count_SWAP() {
 	done
 }
 
-rm_prop(){
+rm_prop() {
 	for prop in "$@"; do
 		[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && logger "$prop deleted"
 	done
 }
 
-make_swap(){
-    dd if=/dev/zero of="$2" bs=1024 count="$1" > /dev/null                   
-    mkswap "$2" > /dev/null
-    swapon "$2" > /dev/null
-    ui_print "- SWAP is running"
+make_swap() {
+	dd if=/dev/zero of="$2" bs=1024 count="$1" >/dev/null
+	mkswap "$2" >/dev/null
+	swapon "$2" >/dev/null
+	ui_print "- SWAP is running"
 }
 
-mount /data > /dev/null
+mount /data >/dev/null
 
 # Check Android SDK
 sdk_level=$(resetprop ro.build.version.sdk)
-swap_filename=/data/swap_file 
+swap_filename=/data/swap_file
 free_space=$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' | sed ':a;N;$!ba;s/\n/ /g' | awk '{print $3}')
 logger "$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' | sed ':a;N;$!ba;s/\n/ /g')"
 
 if [ -d "/data/adb/modules/meZram" ]; then
-    ui_print "> Thank you so much 😊."
-    ui_print "  You've installed this module before"
-fi 
+	ui_print "> Thank you so much 😊."
+	ui_print "  You've installed this module before"
+fi
 
 if [ ! -f $swap_filename ]; then
-    count_SWAP
-    logger "free space = $free_space"
-    logger "swap size = $swap_size"
-    logger "sdk_level = $sdk_level"
-    logger "count = $count"
-    if [ "$free_space" -ge "$swap_size" ] && [ "$swap_size" != 0 ]; then
-        ui_print "- Starting making SWAP. Please wait a moment"; sleep 0.5
-		ui_print "  $((free_space/1024))MB available. $((swap_size/1024))MB needed"
+	count_SWAP
+	logger "free space = $free_space"
+	logger "swap size = $swap_size"
+	logger "sdk_level = $sdk_level"
+	logger "count = $count"
+	if [ "$free_space" -ge "$swap_size" ] && [ "$swap_size" != 0 ]; then
+		ui_print "- Starting making SWAP. Please wait a moment"
+		sleep 0.5
+		ui_print "  $((free_space / 1024))MB available. $((swap_size / 1024))MB needed"
 		make_swap "$swap_size" $swap_filename
-    elif [ -z "$free_space" ]; then
+	elif [ -z "$free_space" ]; then
 		ui_print "> Make sure you have $((swap_size / 1024))MB space available data partition"
 		ui_print "  Make SWAP?"
 		ui_print "  Press VOLUME - (YES) or VOLUME + (NO)"
 
 		while true; do
-        	timeout 0.5 /system/bin/getevent -lqc 1 2>&1 > "$TMPDIR"/events &
-        	sleep 0.1
+			timeout 0.5 /system/bin/getevent -lqc 1 2>&1 >"$TMPDIR"/events &
+			sleep 0.1
 			if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events); then
-				ui_print "> Starting making SWAP. Please wait a moment"; sleep 0.5
+				ui_print "> Starting making SWAP. Please wait a moment"
+				sleep 0.5
 				make_swap "$swap_size" $swap_filename
 				break
 			elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
 				cancelled=$(ui_print "> Not making SWAP")
 				$cancelled && logger "$cancelled"
-            	break
+				break
 			fi
 		done
-    elif [ $count -eq 3 ]; then
+	elif [ $count -eq 3 ]; then
 		true
-    else
+	else
 		ui_print "> Storage full. Please free up your storage"
-    fi 
+	fi
 fi
 
 if [ "$sdk_level" -lt 28 ]; then
-    ui_print "> Your android version is not supported. Performance tweaks won't applied."
-    ui_print "  Please upgrade your phone to Android 9+"
+	ui_print "> Your android version is not supported. Performance tweaks won't applied."
+	ui_print "  Please upgrade your phone to Android 9+"
 else
-    lmkd_apply
+	lmkd_apply
 fi
 
 # updating config
 LOGDIR="/data/adb/meZram"
 CONFIG="$LOGDIR/meZram.conf"
 
+restore_cfg() {
+	local line_start=$(grep -nw "$1" "$CONFIG" | cut -d ":" -f1)
+	local line_end=$(grep -n "#" "$CONFIG" | grep -v "$1" | cut -d ":" -f1)
+	local backup=
+
+	logger "line_start=$line_start"
+	logger "line_end=$line_end"
+
+	if [ "$line_start" -lt "$line_end" ]; then
+		backup=$(tail -n "+$((line_start + 1))" "$CONFIG" | head -n "$((line_end - line_start - 2))")
+	else
+		backup=$(tail -n "+$((line_start + 1))" "$CONFIG")
+	fi
+
+	logger "$backup"
+
+	if [ "$backup" ]; then
+		awk -v pattern="$1" -v backup="$backup" '{if ($0 ~ pattern) {print $0 ORS backup} else {print}}' "$MODPATH/meZram.conf" >>"$MODPATH/tmp_file.txt"
+		mv "$MODPATH"/tmp_file.txt "$MODPATH/meZram.conf"
+	fi
+}
+
+custom_props_apply() {
+	# applying custom prop
+	starting_line=$(grep -nw "# custom props" "$CONFIG" | cut -d ":" -f1)
+	end_line=$(grep -n "#" "$CONFIG" | grep -v "# custom props" | head -n 1 | cut -d ":" -f1)
+	props=$(tail -n "+$((starting_line + 1))" "$CONFIG" | head -n "$((end_line - starting_line - 2))")
+
+	if [[ "$props" ]]; then
+		for prop in $props; do
+			prop=$(echo "$prop" | sed 's/=/ /g')
+
+			resetprop $prop
+		done
+		resetprop lmkd.reinit 1
+	fi
+}
+
 if [ -f "$CONFIG" ]; then
-	line_start=$(grep -n "#agmode PER APP CONFIGURATION" "$CONFIG" | cut -d ":" -f1)
+	# restoring custom props
+	restore_cfg "# custom props"
+	restore_cfg "#agmode PER APP CONFIGURATION"
 
-	backup_config=$(tail -n +"$((line_start + 1))" "$CONFIG")
+	# updating CONFIGURATION
+	config_state=$(grep -- "- pac" "$CONFIG")
 
-	logger "$backup_config"
-	echo "$backup_config" >> "$MODPATH"/meZram.conf && cp "$MODPATH"/meZram.conf "$CONFIG"
+	if [ -z "$config_state" ]; then
+		mv "$CONFIG" "$CONFIG.old"
+		cp "$MODPATH/man/meZram.conf" "$CONFIG"
+	fi
+
+	custom_props_apply && logger "custom props applied"
 fi
-
