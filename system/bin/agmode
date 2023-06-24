@@ -4,44 +4,12 @@ MODDIR="/data/adb/modules/meZram"
 LOGDIR="/data/adb/meZram"
 CONFIG="$LOGDIR/meZram.conf"
 
-
-logger(){
-    local td=$(date +%R:%S:%N)
-    log=$(echo "$*" | tr -s " ")
-    true && echo "$td $log" >> "$LOGDIR"/meZram.log
-}
-
-
-custom_props_apply() {
-	# applying custom prop
-	starting_line=$(grep -nw "# custom props" "$CONFIG" | cut -d ":" -f1)
-	end_line=$(grep -n "#" "$CONFIG" | grep -v "# custom props" | head -n 1 | cut -d ":" -f1)
-	props=$(tail -n "+$((starting_line + 1))" "$CONFIG" | head -n "$((end_line - starting_line - 2))")
-	
-	if [[ "$props" ]]; then
-		for prop in $props; do
-			prop=$(echo "$prop" | sed 's/=/ /g')
-	
-			resetprop $prop
-		done
-		resetprop lmkd.reinit 1
-	fi
-}
-
-
-rm_prop() {
-	for prop in $*; do
-		resetprop "$prop" > /dev/null && resetprop --delete "$prop" && echo "$prop deleted"
-	done
-}
-
+# Loading modules
+. $MODDIR/modules/lmk.sh
 
 liner() {
-	for i in $(seq "$2"); do
-		printf '%s' "$1"
-	done
+	printf '%*s' "$2" | tr ' ' "$1"
 }
-
 
 titler() {
 	text="$*"
@@ -49,79 +17,140 @@ titler() {
 	if [ -z "$text" ]; then
 		text="Hello World!"
 	fi
-	
-	text_length=${#text}
-	liner_length=$(( ($(tput cols) / 2) - (text_length / 2) ))
 
-	liner0=$(liner "-" "$liner_length" )
+	text_length=${#text}
+	liner_length=$((($(tput cols) / 2) - (text_length / 2)))
+
+	liner0=$(liner "-" "$liner_length")
 
 	printf '%s' "$liner0" "$text" "$liner0"
 	echo ""
 }
 
+toggle_prop() {
+	local prop_name="$1"
+	local prop_value="$2"
+
+	sed -i "s/^$prop_name=.*$/$prop_name=$prop_value/" "$CONFIG"
+}
+
+toggle_psi() {
+	psi_value=$(sed -n 's/^ro.lmk.use_psi=\(.*\)$/\1/p' "$CONFIG")
+
+	case "$psi_value" in
+	true)
+		toggle_prop "ro.lmk.use_psi" "false"
+		;;
+	false)
+		toggle_prop "ro.lmk.use_psi" "true"
+		;;
+	esac
+}
+
+add_custom_mode() {
+	local current_psi=$(sed -n 's/^ro.lmk.use_psi=\(.*\)$/\1/p' /data/adb/meZram/meZram.conf)
+	local current_ml=$(sed -n 's/^ro.lmk.use_minfree_levels=\(.*\)$/\1/p' /data/adb/meZram/meZram.conf)
+
+	if [ -z "$current_psi" ] && [ -z "$current_ml" ]; then
+		sed -i 's/^\(# custom props\)/\1\nro.lmk.use_psi=false\nro.lmk.use_minfree_levels=true/' "$CONFIG"
+	fi
+}
+
+toggle_minfree_levels() {
+	ml_value=$(sed -n 's/^ro.lmk.use_minfree_levels=\(.*\)$/\1/p' "$CONFIG")
+	local dp_value=$(sed -n 's/^ro.lmk.downgrade_pressure=\(.*\)$/\1/p' "$CONFIG")
+
+	case "$ml_value" in
+	true)
+		toggle_prop "ro.lmk.use_minfree_levels" "false"
+		;;
+	false)
+		toggle_prop "ro.lmk.use_minfree_levels" "true"
+		
+		if [ -z "$dp_value" ]; then
+			sed -i 's/^\(# custom props\)/\1\nro.lmk.downgrade_pressure=50/' "$CONFIG"
+		fi
+		;;
+	esac
+}
 
 # Parse command-line options
 for opt in "$@"; do
-    case "$opt" in
-        -g | --get)
-			lmkd_props=$(getprop | grep "ro.lmk" | sed 's/\[//g;s/\]//g;s/: /=/g')
+	case "$opt" in
+	-g | --get)
+		lmkd_props=$(getprop | grep "ro.lmk" | sed 's/\[//g;s/\]//g;s/: /=/g')
 
-			titler "LMKD PROPS"
-			echo "$lmkd_props"
-			;;
-        --enable-startup)
-			sed -i 's/\(agmode=\).*/\1on/' "$CONFIG" 
-			echo "Agmode will automatically start next startup"
-            ;;
-		--disable-startup)
-			sed -i 's/\(agmode=\).*/\1off/' "$CONFIG" 
-			echo "Agmode will be disabled next startup"
-			;;
-		--stop)
-			kill -9 "$(resetprop meZram.agmode_svc.pid.agmode)" 2> /dev/null && echo "Aggressive mode killed"
-			resetprop --delete "meZram.agmode_svc.pid.agmode"
-			resetprop "lmkd.reinit" 1
-			;;
-		-h | --help)
-			if [[ "$2" = "id" ]]; then
-				cat "$MODDIR"/man/agmode-id.txt
-				exit 1
-			fi
+		titler "LMKD PROPS"
+		echo "$lmkd_props"
+		;;
+	--enable-startup)
+		sed -i 's/\(agmode=\).*/\1on/' "$CONFIG"
+		echo "> Aggressive mode will automatically start next startup"
+		;;
+	--disable-startup)
+		sed -i 's/\(agmode=\).*/\1off/' "$CONFIG"
+		echo "> Aggressive mode will be disabled next startup"
+		;;
+	--stop)
+		kill -9 "$(resetprop meZram.agmode_svc.pid.agmode)" 2>/dev/null && echo "> Aggressive mode killed"
+		resetprop --delete "meZram.agmode_svc.pid.agmode"
+		resetprop "lmkd.reinit" 1
+		;;
+	-h | --help)
+		if [ "$2" = "id" ]; then
+			cat "$MODDIR"/man/agmode-id.txt
+			exit 1
+		fi
 
-			cat "$MODDIR"/man/agmode.txt
-			;;
-		--log)
-			if [ "$2" ]; then 
-				watch -t tail -n "$2" "$LOGDIR"/meZram.log
-			else
-				watch -t tail -n "$(($(tput lines)))" "$LOGDIR"/meZram.log 
-			fi
-			;;
-		--show)
-			titler "MEZRAM CONFIG"
-			cat "$CONFIG"
-			;;
-		--reload)
-			set --
-			set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical_upgrade" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "sys.lmk.minfree_levels" "ro.lmk.upgrade_pressure"
-			rm_prop "$@"
-			custom_props_apply && echo "Custom props applied"
+		cat "$MODDIR"/man/agmode.txt
+		;;
+	--log)
+		if [ "$2" ]; then
+			watch -t tail -n "$2" "$LOGDIR"/meZram.log
+		else
+			watch -t tail -n "$(($(tput lines) - 10))" "$LOGDIR"/meZram.log
+		fi
+		;;
+	--show)
+		titler "MEZRAM CONFIG"
+		cat "$CONFIG"
+		;;
+	--reload)
+		custom_props_apply && echo "> Custom props applied"
+		;;
+	--rmswap)
+		echo "> Turning off SWAP"
+		swapoff /data/swap_file >/dev/null
+		rm -vf /data/swap_file
+		;;
+	--switch)
+		echo "> Switching LMKD mode"
+		toggle_psi
+		toggle_minfree_levels
+		add_custom_mode
+		custom_props_apply
+
+		if [ "$ml_value" = "false" ]; then 
+			echo "> LMKD mode switched to minfree_levels"
+		else
+			echo "> LMKD mode switched to psi"
+		fi
+		;;
 	esac
 done
 
-
 case "$1" in
-	downgrade_pressure=*)
-		dpressure=$(echo "$1" | sed 's/.*downgrade_pressure=\([0-9]\+\).*/\1/')
+downgrade_pressure=*)
+	dpressure=$(echo "$1" | sed 's/.*downgrade_pressure=\([0-9]\+\).*/\1/')
 
-		resetprop ro.lmk.downgrade_pressure "$dpressure"
-		resetprop lmkd.reinit 1
-		echo "ro.lmk.downgrade_pressure=$dpressure"
-		sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$MODDIR"/system.prop
-		sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$LOGDIR"/meZram.conf 
-		;;
+	resetprop ro.lmk.downgrade_pressure "$dpressure"
+	resetprop lmkd.reinit 1
+	echo "> ro.lmk.downgrade_pressure=$dpressure"
+	sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$MODDIR"/system.prop
+	sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$LOGDIR"/meZram.conf
+	;;
 esac
 
 if [ -z "$*" ]; then
-	echo "agmode can only restarted by reboot for now"
+	echo "> Aggressive mode can only restarted by reboot for now"
 fi

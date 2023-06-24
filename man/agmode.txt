@@ -2,21 +2,21 @@ Usage: agmode [-OPTION] or OPTIONS...
 
 MANUAL FOR AGGRESSIVE MODE MEZRAM module 
 
-	You have the option to customize the "downgrade_pressure" property for different applications. By assigning different values to this property, you can make the LMKD (low memory killer daemon) more aggressive in freeing up memory, resulting in increased performance, especially for games. The recommended value range for "ro.lmk.downgrade_pressure" is from 0 to 100, with higher values indicating a more aggressive approach in killing unnecessary apps.
-
 ⚠️==WARNING==⚠️
-	Although the "downgrade_pressure" value can technically be set as high as 100, it is important to note that going beyond the territory of 80 is highly risky and can potentially resulting in performance instability.
+While it is technically possible to set the "downgrade_pressure" value as high as 100, it's important to understand that going beyond the territory of 80 can be risky and may lead to performance instability.
 
-	You can use the following commands/options for managing this feature:
+You can utilize the following commands/options to manage this feature:
 
-	-g | --get print LMKD properties
-	--enable-startup enable agmode when startup device
-	--disable-startup contrasting --enable-startup
-	--stop kill the service
-	--log [line number] show log.
-	--show showing config
-	--reload reload custom props then reapply
-	--help | -h [language] show this help.
-		--help id untuk menampilkan bantuan dalam bahasa Indonesia.
+	-g | --get Print LMKD properties
+	--enable-startup Enable agmode when startup device
+	--disable-startup Contrasting --enable-startup
+	--stop Kill the service
+	--log [line number] Show log.
+	--show Showing config
+	--reload Reload custom props then reapply
+	--help | -h [language] Show this help.
+		--help id Untuk menampilkan bantuan dalam bahasa Indonesia.
+	--rmswap Remove SWAP from this module
+	--switch Switch LMKD mode. There's two mode, psi and the other one is minfree_levels which is older and less advanced mode.
 
-	downgrade_pressure=[value] change downgrade_pressure value.
+	downgrade_pressure=[value] change ro.lmk.downgrade_pressure prop value.

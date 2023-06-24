@@ -1,4 +1,7 @@
 #! /system/bin/bash
+
+. "$MODPATH"/modules/lmk.sh
+
 # Calculate size to use for swap (1/2 of ram)
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
@@ -11,14 +14,14 @@ ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀�
 ui_print " ==================:)====================="
 sleep 0.5
 
-logger() {
+log_it() {
 	log=$(echo "$*" | tr -s " ")
 	true && ui_print "  DEBUG: $log"
 }
 
 lmkd_apply() {
 	# determine if device is lowram?
-	logger "totalmem = $totalmem"
+	log_it "totalmem = $totalmem"
 	if [ "$totalmem" -lt 2097152 ]; then
 		ui_print "⚠️ Device is low ram. Applying low raw tweaks"
 		mv "$MODPATH"/system.props/low-ram-system.prop "$MODPATH"/system.prop
@@ -33,8 +36,8 @@ lmkd_apply() {
 
 	# applying lmkd tweaks
 	grep -v '^ *#' <"$MODPATH"/system.prop | while IFS= read -r prop; do
-		# logger "$prop"
-		logger "resetprop ${prop//=/ }"
+		# log_it "$prop"
+		log_it "resetprop ${prop//=/ }"
 		resetprop ${prop//=/ }
 	done
 
@@ -48,6 +51,7 @@ lmkd_apply() {
 	ui_print "  Give the better of your RAM."
 	ui_print "  RAM better being filled with something"
 	ui_print "  useful than left unused"
+	rm -rf "$MODPATH/system.props" "$MODPATH/meZram.conf"
 }
 
 count_SWAP() {
@@ -89,12 +93,6 @@ count_SWAP() {
 	done
 }
 
-rm_prop() {
-	for prop in "$@"; do
-		[ "$(resetprop "$prop")" ] && resetprop --delete "$prop" && logger "$prop deleted"
-	done
-}
-
 make_swap() {
 	dd if=/dev/zero of="$2" bs=1024 count="$1" >/dev/null
 	mkswap "$2" >/dev/null
@@ -108,7 +106,7 @@ mount /data >/dev/null
 sdk_level=$(resetprop ro.build.version.sdk)
 swap_filename=/data/swap_file
 free_space=$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' | sed ':a;N;$!ba;s/\n/ /g' | awk '{print $3}')
-logger "$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' | sed ':a;N;$!ba;s/\n/ /g')"
+log_it "$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' | sed ':a;N;$!ba;s/\n/ /g')"
 
 if [ -d "/data/adb/modules/meZram" ]; then
 	ui_print "> Thank you so much 😊."
@@ -117,10 +115,10 @@ fi
 
 if [ ! -f $swap_filename ]; then
 	count_SWAP
-	logger "free space = $free_space"
-	logger "swap size = $swap_size"
-	logger "sdk_level = $sdk_level"
-	logger "count = $count"
+	log_it "free space = $free_space"
+	log_it "swap size = $swap_size"
+	log_it "sdk_level = $sdk_level"
+	log_it "count = $count"
 	if [ "$free_space" -ge "$swap_size" ] && [ "$swap_size" != 0 ]; then
 		ui_print "- Starting making SWAP. Please wait a moment"
 		sleep 0.5
@@ -141,7 +139,7 @@ if [ ! -f $swap_filename ]; then
 				break
 			elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
 				cancelled=$(ui_print "> Not making SWAP")
-				$cancelled && logger "$cancelled"
+				$cancelled && log_it "$cancelled"
 				break
 			fi
 		done
@@ -168,8 +166,8 @@ restore_cfg() {
 	local line_end=$(grep -n "#" "$CONFIG" | grep -v "$1" | cut -d ":" -f1)
 	local backup=
 
-	logger "line_start=$line_start"
-	logger "line_end=$line_end"
+	log_it "line_start=$line_start"
+	log_it "line_end=$line_end"
 
 	if [ "$line_start" -lt "$line_end" ]; then
 		backup=$(tail -n "+$((line_start + 1))" "$CONFIG" | head -n "$((line_end - line_start - 2))")
@@ -177,27 +175,11 @@ restore_cfg() {
 		backup=$(tail -n "+$((line_start + 1))" "$CONFIG")
 	fi
 
-	logger "$backup"
+	log_it "$backup"
 
 	if [ "$backup" ]; then
 		awk -v pattern="$1" -v backup="$backup" '{if ($0 ~ pattern) {print $0 ORS backup} else {print}}' "$MODPATH/meZram.conf" >>"$MODPATH/tmp_file.txt"
 		mv "$MODPATH"/tmp_file.txt "$MODPATH/meZram.conf"
-	fi
-}
-
-custom_props_apply() {
-	# applying custom prop
-	starting_line=$(grep -nw "# custom props" "$CONFIG" | cut -d ":" -f1)
-	end_line=$(grep -n "#" "$CONFIG" | grep -v "# custom props" | head -n 1 | cut -d ":" -f1)
-	props=$(tail -n "+$((starting_line + 1))" "$CONFIG" | head -n "$((end_line - starting_line - 2))")
-
-	if [[ "$props" ]]; then
-		for prop in $props; do
-			prop=$(echo "$prop" | sed 's/=/ /g')
-
-			resetprop $prop
-		done
-		resetprop lmkd.reinit 1
 	fi
 }
 
@@ -214,5 +196,5 @@ if [ -f "$CONFIG" ]; then
 		cp "$MODPATH/man/meZram.conf" "$CONFIG"
 	fi
 
-	custom_props_apply && logger "custom props applied"
+	custom_props_apply && log_it "custom props applied"
 fi

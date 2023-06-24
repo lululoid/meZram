@@ -15,10 +15,12 @@ totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 zram_size=$((totalmem * 1024 / 2))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
-logger() {
+# Loading modules
+. "$MODDIR"/modules/lmk.sh
+
+log_it(){
 	local td=$(date +%R:%S:%N_%d-%m-%Y)
-	log=$(echo "$*" | tr -s " ")
-	true && echo "$td $log" >>"$LOGDIR"/meZram.log
+	logger "$td" "$1"
 }
 
 logrotate() {
@@ -34,45 +36,30 @@ logrotate() {
 	done
 }
 
-custom_props_apply() {
-	# applying custom prop
-	starting_line=$(grep -nw "# custom props" "$CONFIG" | cut -d ":" -f1)
-	end_line=$(grep -n "#" "$CONFIG" | grep -v "# custom props" | head -n 1 | cut -d ":" -f1)
-	props=$(tail -n "+$((starting_line + 1))" "$CONFIG" | head -n "$((end_line - starting_line - 2))")
-
-	if [[ "$props" ]]; then
-		for prop in $props; do
-			prop=${prop//=/ }
-
-			resetprop $prop
-		done
-	fi
-}
-
-logger "NRDEVICES = $NRDEVICES"
-logger "totalmem = $totalmem"
-logger "zram_size = $zram_size"
-logger "lmkd_pid = $lmkd_pid"
+log_it "NRDEVICES = $NRDEVICES"
+log_it "totalmem = $totalmem"
+log_it "zram_size = $zram_size"
+log_it "lmkd_pid = $lmkd_pid"
 
 for zram0 in /dev/block/zram0 /dev/zram0; do
 	if [ "$(ls $zram0)" ]; then
-		swapoff $zram0 && logger "$zram0 turned off"
+		swapoff $zram0 && log_it "$zram0 turned off"
 		echo 1 >/sys/block/zram0/reset
-		logger "$zram0 RESET"
+		log_it "$zram0 RESET"
 
 		# Set up zram size, then turn on both zram and swap
 		echo "$zram_size" >/sys/block/zram0/disksize
-		logger "set $zram0 disksize to $zram_size"
+		log_it "set $zram0 disksize to $zram_size"
 
 		# Set up maxium cpu streams
-		logger "making $zram0 and set max_comp_streams=$NRDEVICES"
+		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
-		mkswap $zram0 && logger "$zram0 turned on"
-		swapon $zram0 && logger "swap turned on"
+		mkswap "$zram0" && log_it "$zram0 turned on"
+		swapon "$zram0" && log_it "swap turned on"
 	fi
 done
 
-swapon /data/swap_file && logger "swap is turned on"
+swapon /data/swap_file && log_it "swap is turned on"
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
 
 # rotate lmkd logs
@@ -107,31 +94,15 @@ while true; do
 done &
 
 resetprop "meZram.log_rotator.pid" "$!"
-
-rm_prop() {
-	for prop in "$@"; do
-		resetprop "$prop" && resetprop --delete "$prop" && logger "$prop deleted"
-	done
-}
-
-lmkd_props_clean() {
-	set --
-	set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical_upgrade" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "sys.lmk.minfree_levels" "ro.lmk.upgrade_pressure"
-	rm_prop "$@"
-}
-
 # List of lmkd props
 # set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
-
-set --
-set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical_upgrade" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "sys.lmk.minfree_levels" "ro.lmk.upgrade_pressure"
 
 tl="ro.lmk.thrashing_limit"
 
 # wait until boot completed to remove thrashing_limit in MIUI because it has no effect in MIUI
 while true; do
 	if [ "$(resetprop sys.boot_completed)" -eq "1" ]; then
-		rm_prop "$@"
+		lmkd_props_clean
 		if [ "$(resetprop ro.miui.ui.version.code)" ]; then
 			rm_prop "$tl"
 		fi
@@ -140,15 +111,15 @@ while true; do
 	fi
 done
 
-custom_props_apply && resetprop "lmkd.reinit" 1 && logger "custom props applied"
+custom_props_apply && resetprop "lmkd.reinit" 1 && log_it "custom props applied"
 
 # Read configuration for aggressive mode
 if [[ -f "$CONFIG" ]]; then
 	while read conf; do
 		case "$conf" in
 		"agmode="*)
-			agmode=$(echo "$conf" | sed 's/agmode=//')
-			logger "agmode=$agmode"
+			agmode=${conf//agmode=/}
+			log_it "agmode=$agmode"
 			;;
 		esac
 	done <"$CONFIG"
@@ -178,7 +149,6 @@ if [[ "$agmode" = "on" ]]; then
 			for prop in $paprops; do
 				prop=$(echo "$prop" | sed 's/^\t//;s/=/ /')
 
-				logger "$fg_app: resetprop $prop"
 				resetprop $prop
 			done
 			resetprop "lmkd.reinit" 1
@@ -192,15 +162,24 @@ if [[ "$agmode" = "on" ]]; then
 				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
 			fi
 
-			logger "papp=$papp ~ fg_app=$fg_app"
-			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
 			lmkd_props_clean
-			custom_props_apply && logger "custom props applied"
+			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
+			custom_props_apply && log_it "custom props applied"
 			resetprop lmkd.reinit 1
 			unset am
 		fi
-		sleep 2
+		sleep 5
 	done &
 	# save aggressive mode pid as a prop
-	resetprop "meZram.agmode_svc.pid.agmode" "$!"
+	resetprop "meZram.agmode_svc.pid" "$!"
 fi
+
+while true; do 
+	current_psi=$(getprop ro.lmk.use_psi)
+
+	if [ "$current_psi" = "true" ]; then 
+		sed -i '/^# custom props/,/^ro.lmk.downgrade_pressure/ { /^ro.lmk.downgrade_pressure/d }' "$CONFIG"
+	fi
+	sleep 1
+done &
+resetprop "meZram.switch_watcher.agmodee.pid" "$!"

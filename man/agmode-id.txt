@@ -3,21 +3,20 @@ Penggunaan: agmode [-OPTION] atau OPTIONS...
 
 MANUAL UNTUK MODE AGRESIF MODULE MEZRAM
 
-	Kamu bisa menyesuaikan properti "downgrade_pressure" untuk berbagai aplikasi.  Dengan menetapkan nilai yang berbeda pada properti ini, kamu dapat membuat LMKD (low memory killer daemon) lebih agresif dalam membebaskan memori, sehingga meningkatkan performa, terutama untuk game.  Rentang nilai yang disarankan untuk "ro.lmk.downgrade_pressure" adalah dari 0 hingga 100, dengan nilai yang lebih tinggi menghasilkan perilaku lebih agresif dalam menutup aplikasi yang tidak perlu.
-
 ⚠️==PERINGATAN==⚠️
-	Meskipun nilai "downgrade_pressure" secara teknis dapat ditetapkan setinggi 100, penting untuk diperhatikan bahwa melampaui wilayah 80 sangat berisiko dan berpotensi mengakibatkan ketidakstabilan performa.
+Meskipun secara teknis nilai "downgrade_pressure" dapat ditetapkan hingga 100, penting untuk diingat bahwa melebihi nilai 80 memiliki risiko yang tinggi dan dapat menyebabkan ketidakstabilan performa.
 
-	Anda dapat menggunakan perintah/opsi berikut untuk mengelola fitur ini:
+Kamu dapat menggunakan perintah/opsi berikut untuk mengelola fitur ini:
 
-	-g |  --get cetak ro.lmk.downgrade_pressure saat ini
-	--enable-startup aktifkan agmode saat memulai perangkat
-	--disable-startup menonaktifkan agmode saat memulai perangkat
-	--stop matikan layanan
-	--log [nomor baris] tampilkan log.
-	--show menampilkan konfigurasi
-	--reload memuat ulang custom props
-	--help | -h [bahasa] tampilkan bantuan ini.
-		--help id untuk menampilkan bantuan dalam bahasa Indonesia.
+	-g |  --get Cetak ro.lmk.downgrade_pressure saat ini
+	--enable-startup Aktifkan agmode saat memulai perangkat
+	--disable-startup Menonaktifkan agmode saat memulai perangkat
+	--stop Matikan layanan
+	--log [nomor baris] Tampilkan log.
+	--show Menampilkan konfigurasi
+	--reload Memuat ulang custom props
+	--help id Untuk menampilkan bantuan dalam bahasa Indonesia.
+	--rmswap Menghapus file SWAP dari module ini
+	--switch Mengganti mode LMKD. Ada dua mode, psi dan satu lagi minfree_levels yang lebih lama dan kurang advanced.
 
-	downgrade_pressure=[nilai] ubah nilai downgrade_pressure.
+	downgrade_pressure=[nilai] ubah nilai prop ro.lmk.downgrade_pressure.
