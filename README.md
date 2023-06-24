@@ -9,7 +9,7 @@ Details in here https://source.android.com/docs/core/perf/lmkd
 ## Features
 - Aggressive Mode
     
-`Usage: agmode [-OPTION] or OPTIONS...`
+<pre>Usage: agmode [-OPTION] or OPTIONS...</pre>
 
 MANUAL FOR AGGRESSIVE MODE MEZRAM module 
 
@@ -19,23 +19,20 @@ You have the option to customize the "downgrade_pressure" property for different
 Although the "downgrade_pressure" value can technically be set as high as 99, it is important to note that going beyond the territory of 80 is highly risky and can potentially disrupt the functioning of your device. Setting the value too high may result in the launcher being terminated, preventing any app from being launched. If you encounter such a problem, you can rectify it by reverting the value back to its original setting through the recovery process. This can be accomplished by modifying the file located at "/data/adb/modules/meZram/system.prop" or just remove and then reinstall this module will resolve the problem.
 
 You can use the following commands/options for managing this feature:
+<pre>-g | --get print current ro.lmk.downgrade_pressure
+--enable-startup enable agmode when startup device
+--disable-startup contrasting --enable-startup
+--stop kill the service
+--add=[app_pkg] [downgrade_pressure] add app to agmode
+--delete [app_pkg] delete app from agmode
+--log [line number] show log using tail. Change line number to show more logs.
+--show showing config
+--help | -h [language] show this help.
+	--help id untuk menampilkan bantuan dalam bahasa Indonesia.
 
-    ```
-	-g | --get print current ro.lmk.downgrade_pressure
-	--enable-startup enable agmode when startup device
-	--disable-startup contrasting --enable-startup
-	--stop kill the service
-	--add=[app_pkg] [downgrade_pressure] add app to agmode
-	--delete [app_pkg] delete app from agmode
-	--log [line number] show log using tail. Change line number to show more logs.
-	--show showing config
-	--help | -h [language] show this help.
-		--help id untuk menampilkan bantuan dalam bahasa Indonesia.
-
-	downgrade_pressure=[value] change downgrade_pressure value, and it's will still applied after restart except updating the module you have to reapply the value.
-    ```
-    
-- The introduction of lmkd optimizations aims to provide a smoother user experience.
+downgrade_pressure=[value] change downgrade_pressure value, and it&apos;s will still applied after restart except updating the module you have to reapply the value.
+</pre>
+- Use LMKD PSI aims to provide a smoother user experience.
 - The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
 - By reducing memory pressure, particularly in gaming scenarios, there is a potential improvement in gaming performance.
 - Advanced users can manually tweak system properties by modifying the /data/adb/modules/meZram/system.prop file and then restarting the system. It is important to exercise caution as these modifications affect low-level system components. In case of any issues, the module can be reinstalled or removed to restore system functionality.
