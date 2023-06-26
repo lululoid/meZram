@@ -2,9 +2,10 @@
 
 MODDIR="/data/adb/modules/meZram"
 LOGDIR="/data/adb/meZram"
-CONFIG="$LOGDIR/meZram.conf"
+CONFIG="$LOGDIR/meZram-config.json"
 
 # Loading modules
+export PATH="$MODDIR/modules/bin:$PATH"
 . $MODDIR/modules/lmk.sh
 
 liner() {
@@ -30,35 +31,33 @@ titler() {
 toggle_prop() {
 	local prop_name="$1"
 	local prop_value="$2"
+	local props=$( \
+		jq --argjson prop_name "$prop_name" \
+		--argjson prop_value "$prop_value" \
+		'.custom_prop | .[$prop_name] = $prop_value' "$CONFIG" \
+	)
 
-	sed -i "s/^$prop_name=.*$/$prop_name=$prop_value/" "$CONFIG"
+	jq --arg prop_name "$prop_name" \
+		--arg prop_value "$prop_value" \
+		'.custom_props.[$prop_name]= true' "$CONFIG" \
+		| awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 }
 
 toggle_psi() {
-	psi_value=$(sed -n 's/^ro.lmk.use_psi=\(.*\)$/\1/p' "$CONFIG")
+	local psi_value=$(jq '.custom_props."ro.lmk.use_psi"' "$CONFIG")
 
 	case "$psi_value" in
 	true)
-		toggle_prop "ro.lmk.use_psi" "false"
+		toggle_prop "ro.lmk.use_psi" false
 		;;
 	false)
-		toggle_prop "ro.lmk.use_psi" "true"
+		toggle_prop "ro.lmk.use_psi" true
 		;;
 	esac
 }
 
-add_custom_mode() {
-	local current_psi=$(sed -n 's/^ro.lmk.use_psi=\(.*\)$/\1/p' /data/adb/meZram/meZram.conf)
-	local current_ml=$(sed -n 's/^ro.lmk.use_minfree_levels=\(.*\)$/\1/p' /data/adb/meZram/meZram.conf)
-
-	if [ -z "$current_psi" ] && [ -z "$current_ml" ]; then
-		sed -i 's/^\(# custom props\)/\1\nro.lmk.use_psi=false\nro.lmk.use_minfree_levels=true/' "$CONFIG"
-	fi
-}
-
 toggle_minfree_levels() {
-	ml_value=$(sed -n 's/^ro.lmk.use_minfree_levels=\(.*\)$/\1/p' "$CONFIG")
-	local dp_value=$(sed -n 's/^ro.lmk.downgrade_pressure=\(.*\)$/\1/p' "$CONFIG")
+	local ml_value=$(jq '.custom_props."ro.lmk.use_minfree_levels"' "$CONFIG")
 
 	case "$ml_value" in
 	true)
@@ -66,10 +65,6 @@ toggle_minfree_levels() {
 		;;
 	false)
 		toggle_prop "ro.lmk.use_minfree_levels" "true"
-		
-		if [ -z "$dp_value" ]; then
-			sed -i 's/^\(# custom props\)/\1\nro.lmk.downgrade_pressure=50/' "$CONFIG"
-		fi
 		;;
 	esac
 }
@@ -130,7 +125,7 @@ for opt in "$@"; do
 		add_custom_mode
 		custom_props_apply
 
-		if [ "$ml_value" = "false" ]; then 
+		if [ "$ml_value" = "false" ]; then
 			echo "> LMKD mode switched to minfree_levels"
 		else
 			echo "> LMKD mode switched to psi"

@@ -38,4 +38,12 @@ sed -i "s#\"zipUrl\": \"https://github.com/lululoid/meZram/releases/download/v[0
 changelog_file=$(find . -type f -iname '*changelog.md')
 mv "$changelog_file" "meZram-v${version}_$versionCode-beta-psi-changelog.md"
 
-7za a "packages/meZram-v${version}_$versionCode-beta-psi.zip" . -x!meZram.json -x!meZram*changelog.md -x!wrapit.sh -x!README.md -x!packages -x!.git
+7za a "packages/meZram-v${version}_$versionCode-beta-psi.zip" . \
+    -x!meZram.json \
+    -x!meZram*changelog.md \
+    -x!wrapit.sh \
+    -x!README.md \
+    -x!packages \
+    -x!.git \
+    -x!pic \
+    -x!tmp

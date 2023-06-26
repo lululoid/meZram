@@ -1,12 +1,12 @@
-#!/system/bin/bash
+#!/data/adb/modules/meZram/modules/bin/bash
 MODDIR=${0%/*}
 LOGDIR="/data/adb/meZram"
-CONFIG="$LOGDIR/meZram.conf"
+CONFIG="$LOGDIR/meZram-config.json"
 
 mkdir -p "$LOGDIR"
 
 if [ ! -f "$CONFIG" ]; then
-	cp "$MODDIR"/meZram.conf "$LOGDIR"
+	cp "$MODDIR"/man/meZram-config.json "$LOGDIR"
 fi
 
 # Calculate memory to use for zram
@@ -111,52 +111,44 @@ while true; do
 	fi
 done
 
-custom_props_apply && resetprop "lmkd.reinit" 1 && log_it "custom props applied"
+custom_props_apply && resetprop "lmkd.reinit" 1 && \
+log_it "custom props applied"
 
 # Read configuration for aggressive mode
-if [[ -f "$CONFIG" ]]; then
-	while read conf; do
-		case "$conf" in
-		"agmode="*)
-			agmode=${conf//agmode=/}
-			log_it "agmode=$agmode"
-			;;
-		esac
-	done <"$CONFIG"
-fi
+agmode=$(/data/adb/modules/meZram/modules/bin/jq '.agmode' "$CONFIG")
+log_it "agmode = $agmode"
 
 # start aggressive mode service
-if [[ "$agmode" = "on" ]]; then
+if [[ "$agmode" = "\"on\"" ]]; then
 	while true; do
 		# Determine foreground_app pkg name
 		# Not use + because of POSIX limitation
-		fg_app=$(dumpsys activity | grep -w ResumedActivity | sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/\1/p')
-		papp=$(sed -n "s/^- pac:\($fg_app\).*/\1/p" "$CONFIG")
+		fg_app=$(dumpsys activity | grep -w ResumedActivity | \
+				sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/\1/p')
+		papp_keys=$(/data/adb/modules/meZram/modules/bin/jq \
+			--arg fg_app "$fg_app" \
+            '.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | keys[]' \
+			"$CONFIG")
 
-		if [ "$fg_app" ] && [[ "$fg_app" = "$papp" ]] && [ -z "$am" ]; then
-			starting_line=$(grep -n "$fg_app" "$CONFIG" | cut -d ":" -f1)
-			end_app=$(tail -n +"$((starting_line + 1))" "$CONFIG" | grep '\- pac' | head -n 1)
-			end_line=$(grep -n -- "$end_app" "$CONFIG" | cut -d ":" -f1)
+		if [ -n "$papp_keys" ] && [ -z "$am" ]; then
+			for key in $(echo "$papp_keys"); do 
+				value=$(/data/adb/modules/meZram/modules/bin/jq \
+				--arg fg_app "$fg_app" \
+				--arg key "${key//\"/}" \
+           		'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | .[$key]' \
+            	"$CONFIG")
 
-			if [ "$end_app" ]; then
-				paprops=$(tail -n +"$((starting_line + 1))" "$CONFIG" | head -n $((end_line - starting_line - 1)))
-			else
-				paprops=$(tail -n +"$((starting_line + 1))" "$CONFIG")
-			fi
-
-			lmkd_props_clean
-
-			for prop in $paprops; do
-				prop=$(echo "$prop" | sed 's/^\t//;s/=/ /')
-
-				resetprop $prop
+				log_it "applying $key $value"
+				resetprop "${key//\"/}" "$value"
 			done
+
 			resetprop "lmkd.reinit" 1
+			log_it "agmode activated for $fg_app"
 
 			am=true
 
-		elif [ -z "$papp" ] && [ "$am" ]; then
-			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${LOGDIR}/meZram.conf")
+		elif [ -z "$papp_keys" ] && [ "$am" ]; then
+			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
 
 			if [ -z "$default_dpressure" ]; then
 				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
@@ -164,8 +156,9 @@ if [[ "$agmode" = "on" ]]; then
 
 			lmkd_props_clean
 			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
-			custom_props_apply && log_it "custom props applied"
+			custom_props_apply && log_it "props restored"
 			resetprop lmkd.reinit 1
+			log_it "agmode deactivated"
 			unset am
 		fi
 		sleep 5
@@ -173,13 +166,3 @@ if [[ "$agmode" = "on" ]]; then
 	# save aggressive mode pid as a prop
 	resetprop "meZram.agmode_svc.pid" "$!"
 fi
-
-while true; do 
-	current_psi=$(getprop ro.lmk.use_psi)
-
-	if [ "$current_psi" = "true" ]; then 
-		sed -i '/^# custom props/,/^ro.lmk.downgrade_pressure/ { /^ro.lmk.downgrade_pressure/d }' "$CONFIG"
-	fi
-	sleep 1
-done &
-resetprop "meZram.switch_watcher.agmodee.pid" "$!"

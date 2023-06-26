@@ -1,12 +1,14 @@
-#! /system/bin/bash
+#!/data/adb/modules_update/meZram/modules/bin/bash
 
+# Setup modules
+set_perm_recursive "$MODPATH"/modules/bin 0 2000 0755 0755
 . "$MODPATH"/modules/lmk.sh
 
 # Calculate size to use for swap (1/2 of ram)
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
 ui_print ""
-ui_print "  Made with pain from "
+ui_print "  Made with pain by "
 sleep 0.5
 ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
 ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
@@ -17,6 +19,13 @@ sleep 0.5
 log_it() {
 	log=$(echo "$*" | tr -s " ")
 	true && ui_print "  DEBUG: $log"
+}
+
+rm_prop() {
+	for prop in "$@"; do
+		resetprop "$prop" >/dev/null && resetprop --delete "$prop" && \
+			log_it "$prop deleted"
+	done
 }
 
 lmkd_apply() {
@@ -31,7 +40,22 @@ lmkd_apply() {
 
 	# Properties to be removed
 	set --
-	set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
+	set "ro.config.low_ram" \
+		"ro.lmk.use_psi" \
+		"ro.lmk.use_minfree_levels" \
+		"ro.lmk.low" "ro.lmk.medium" \
+		"ro.lmk.critical" "ro.lmk.critical_upgrade" \
+		"ro.lmk.upgrade_pressure" \
+		"ro.lmk.downgrade_pressure" \
+		"ro.lmk.kill_heaviest_task" \
+		"ro.lmk.kill_timeout_ms" \
+		"ro.lmk.psi_partial_stall_ms" \
+		"ro.lmk.psi_complete_stall_ms" \
+		"ro.lmk.thrashing_limit" \
+		"ro.lmk.thrashing_limit_decay" \
+		"ro.lmk.swap_util_max" \
+		"ro.lmk.swap_free_low_percentage" \
+		"ro.lmk.debug" "sys.lmk.minfree_levels"
 	rm_prop "$@"
 
 	# applying lmkd tweaks
@@ -51,7 +75,7 @@ lmkd_apply() {
 	ui_print "  Give the better of your RAM."
 	ui_print "  RAM better being filled with something"
 	ui_print "  useful than left unused"
-	rm -rf "$MODPATH/system.props" "$MODPATH/meZram.conf"
+	rm -rf "$MODPATH/system.props"
 }
 
 count_SWAP() {
@@ -73,7 +97,8 @@ count_SWAP() {
 				count=$((count + 1))
 				swap_size=$((totalmem / 2))
 				local swap_in_gb=0
-				ui_print "  $count. 50% of RAM ($((swap_size / 1024))MB SWAP) --> RECOMMENDED"
+				ui_print "  $count. 50% of RAM ($((swap_size / 1024))MB SWAP)\
+				 --> RECOMMENDED"
 			elif [ $count -eq 2 ]; then
 				count=$((count + 1))
 				ui_print "  $count. No SWAP"
@@ -105,8 +130,10 @@ mount /data >/dev/null
 # Check Android SDK
 sdk_level=$(resetprop ro.build.version.sdk)
 swap_filename=/data/swap_file
-free_space=$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' | sed ':a;N;$!ba;s/\n/ /g' | awk '{print $3}')
-log_it "$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' | sed ':a;N;$!ba;s/\n/ /g')"
+free_space=$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' |
+	sed ':a;N;$!ba;s/\n/ /g' | awk '{print $3}')
+log_it "$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' |
+	sed ':a;N;$!ba;s/\n/ /g')"
 
 if [ -d "/data/adb/modules/meZram" ]; then
 	ui_print "> Thank you so much 😊."
@@ -159,42 +186,41 @@ fi
 
 # updating config
 LOGDIR="/data/adb/meZram"
-CONFIG="$LOGDIR/meZram.conf"
+CONFIG="$LOGDIR/meZram-config.json"
+CONFIG_OLD="$LOGDIR/meZram.conf"
 
-restore_cfg() {
-	local line_start=$(grep -nw "$1" "$CONFIG" | cut -d ":" -f1)
-	local line_end=$(grep -n "#" "$CONFIG" | grep -v "$1" | cut -d ":" -f1)
-	local backup=
+# Updating CONFIGURATION
+log_it "jq version = $(/data/adb/modules_update/meZram/modules/bin/jq --version)"
+version=$(/data/adb/modules_update/meZram/modules/bin/jq '.config_version' "$MODPATH/meZram-config.json")
+version_prev=$(/data/adb/modules_update/meZram/modules/bin/jq '.config_version' "$CONFIG")
 
-	log_it "line_start=$line_start"
-	log_it "line_end=$line_end"
+log_it "version = $version"
+log_it "version_prev = $version_prev"
 
-	if [ "$line_start" -lt "$line_end" ]; then
-		backup=$(tail -n "+$((line_start + 1))" "$CONFIG" | head -n "$((line_end - line_start - 2))")
-	else
-		backup=$(tail -n "+$((line_start + 1))" "$CONFIG")
-	fi
+is_update=$(awk -v version="${version}" \
+	-v version_prev="${version_prev}" \
+	'BEGIN {
+		if (version > version_prev) {
+			print "true"
+		} else {
+			print "false"
+		}
+		}')
 
-	log_it "$backup"
+log_it "is_update = $is_update"
+ui_print "> Trying to update configuration"
 
-	if [ "$backup" ]; then
-		awk -v pattern="$1" -v backup="$backup" '{if ($0 ~ pattern) {print $0 ORS backup} else {print}}' "$MODPATH/meZram.conf" >>"$MODPATH/tmp_file.txt"
-		mv "$MODPATH"/tmp_file.txt "$MODPATH/meZram.conf"
-	fi
-}
-
-if [ -f "$CONFIG" ]; then
-	# restoring custom props
-	restore_cfg "# custom props"
-	restore_cfg "#agmode PER APP CONFIGURATION"
-
-	# updating CONFIGURATION
-	config_state=$(grep -- "- pac" "$CONFIG")
-
-	if [ -z "$config_state" ]; then
-		mv "$CONFIG" "$CONFIG.old"
-		cp "$MODPATH/man/meZram.conf" "$CONFIG"
-	fi
-
-	custom_props_apply && log_it "custom props applied"
+if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
+	/data/adb/modules_update/meZram/modules/bin/jq -s \
+		'.[0] * .[1]' "$MODPATH/meZram-config.json" \
+		"$CONFIG" >"$MODPATH/merged.json"
+	mv "$MODPATH/merged.json" "$CONFIG"
+elif [ ! -f "$CONFIG" ]; then
+	mv "$MODPATH/meZram-config.json" "$LOGDIR"
 fi
+
+if [ -f "$CONFIG_OLD" ]; then
+	mv "$CONFIG_OLD" "$CONFIG_OLD.old"
+fi
+
+custom_props_apply && log_it "custom props applied"

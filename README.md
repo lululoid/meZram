@@ -13,10 +13,8 @@ Details in here https://source.android.com/docs/core/perf/lmkd
 
 MANUAL FOR AGGRESSIVE MODE MEZRAM module 
 
-You have the option to customize the "downgrade_pressure" property for different applications. By assigning different values to this property, you can make the LMKD (low memory killer daemon) more aggressive in freeing up memory, resulting in increased performance, especially for games. The recommended value range for "ro.lmk.downgrade_pressure" is from 0 to 75, with higher values indicating a more aggressive approach in killing unnecessary apps.
-
 - ⚠️==WARNING==⚠️
-Although the "downgrade_pressure" value can technically be set as high as 99, it is important to note that going beyond the territory of 80 is highly risky and can potentially disrupt the functioning of your device. Setting the value too high may result in the launcher being terminated, preventing any app from being launched. If you encounter such a problem, you can rectify it by reverting the value back to its original setting through the recovery process. This can be accomplished by modifying the file located at "/data/adb/modules/meZram/system.prop" or just remove and then reinstall this module will resolve the problem.
+While it is technically possible to set the "downgrade_pressure" value as high as 100, it's important to understand that going beyond the territory of 80 can be risky and may lead to performance instability.
 
 You can use the following commands/options for managing this feature:
 <pre>-g | --get print current ro.lmk.downgrade_pressure
@@ -39,6 +37,8 @@ downgrade_pressure=[value] change downgrade_pressure value, and it&apos;s will s
 - The ZRAM size can be modified to allocate a different portion of the RAM for compressed memory storage.
 - The SWAP size is customizable, enabling adjustment according to specific requirements.
 - It is possible to fine-tune the SWAP size up to the total RAM capacity, but this is generally not recommended for general users as it may not provide significant performance benefits. The default 50% allocation is typically sufficient.
+- wmemswap command for monitoring
+  ![wmemswap](pic/wmemswap.jpg)
 
 ## TODO
 - How about adding some AI magic? LOL! 😹 Seriously though, things are getting wild! As user demands keep changing, the traditional tweaks just can't keep up. But hey, why not introduce some AI into the mix? Imagine an AI that can adapt to each user's unique needs. Now that's an intriguing idea! But hey, don't mind me, I'm just an rookie myself, and there's still so much for me to learn! 📚
