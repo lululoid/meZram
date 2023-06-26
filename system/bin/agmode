@@ -31,16 +31,13 @@ titler() {
 toggle_prop() {
 	local prop_name="$1"
 	local prop_value="$2"
-	local props=$( \
-		jq --argjson prop_name "$prop_name" \
-		--argjson prop_value "$prop_value" \
-		'.custom_prop | .[$prop_name] = $prop_value' "$CONFIG" \
-	)
+	local props=$(jq --argjson prop_value "$prop_value" \
+	--arg prop_name "$prop_name" '.custom_props | .[$prop_name] = $prop_value' \
+	$CONFIG)
 
-	jq --arg prop_name "$prop_name" \
-		--arg prop_value "$prop_value" \
-		'.custom_props.[$prop_name]= true' "$CONFIG" \
-		| awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+	jq --argjson props "$props" '.custom_props = $props' \
+	$CONFIG | awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' \
+	$CONFIG
 }
 
 toggle_psi() {
@@ -57,14 +54,14 @@ toggle_psi() {
 }
 
 toggle_minfree_levels() {
-	local ml_value=$(jq '.custom_props."ro.lmk.use_minfree_levels"' "$CONFIG")
+	ml_value=$(jq '.custom_props."ro.lmk.use_minfree_levels"' $CONFIG)
 
 	case "$ml_value" in
 	true)
-		toggle_prop "ro.lmk.use_minfree_levels" "false"
+		toggle_prop "ro.lmk.use_minfree_levels" false
 		;;
 	false)
-		toggle_prop "ro.lmk.use_minfree_levels" "true"
+		toggle_prop "ro.lmk.use_minfree_levels" true
 		;;
 	esac
 }
@@ -79,12 +76,10 @@ for opt in "$@"; do
 		echo "$lmkd_props"
 		;;
 	--enable-startup)
-		sed -i 's/\(agmode=\).*/\1on/' "$CONFIG"
-		echo "> Aggressive mode will automatically start next startup"
+		echo "> In development"
 		;;
 	--disable-startup)
-		sed -i 's/\(agmode=\).*/\1off/' "$CONFIG"
-		echo "> Aggressive mode will be disabled next startup"
+		echo "> In development"
 		;;
 	--stop)
 		kill -9 "$(resetprop meZram.agmode_svc.pid.agmode)" 2>/dev/null && echo "> Aggressive mode killed"
@@ -122,10 +117,9 @@ for opt in "$@"; do
 		echo "> Switching LMKD mode"
 		toggle_psi
 		toggle_minfree_levels
-		add_custom_mode
-		custom_props_apply
+		custom_props_apply 2> /dev/null
 
-		if [ "$ml_value" = "false" ]; then
+		if [ "$ml_value" = false ]; then
 			echo "> LMKD mode switched to minfree_levels"
 		else
 			echo "> LMKD mode switched to psi"
@@ -136,16 +130,10 @@ done
 
 case "$1" in
 downgrade_pressure=*)
-	dpressure=$(echo "$1" | sed 's/.*downgrade_pressure=\([0-9]\+\).*/\1/')
-
-	resetprop ro.lmk.downgrade_pressure "$dpressure"
-	resetprop lmkd.reinit 1
-	echo "> ro.lmk.downgrade_pressure=$dpressure"
-	sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$MODDIR"/system.prop
-	sed -i "s/\(downgrade_pressure=\).*/\1$dpressure/" "$LOGDIR"/meZram.conf
+	echo "> In development"
 	;;
 esac
 
 if [ -z "$*" ]; then
-	echo "> Aggressive mode can only restarted by reboot for now"
+	agmode --help
 fi
