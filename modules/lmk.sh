@@ -1,5 +1,43 @@
 #!/system/bin/sh
 
+MAGENTA='\033[0;35m'
+TURQUOISE='\033[1;36m'
+LIGHT_BLUE='\033[1;34m'
+GREEN='\033[1;32m'
+YELLOW='\033[33m'
+RESET='\033[0m'
+
+is_number() {
+    case $1 in
+        ''|*[!0-9]*)
+            return 1
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+}
+
+liner() {
+	printf '%*s' "$2" | tr ' ' "$1"
+}
+
+titler() {
+	text="$*"
+
+	if [ -z "$text" ]; then
+		text="Hello World!"
+	fi
+
+	text_length=${#text}
+	liner_length=$(( ($(tput cols) / 2) - (text_length / 2) - 1 ))
+
+	liner0=$(liner "-" "$liner_length")
+
+	printf "%s" "$liner0" "$text" "$liner0"
+	echo ""
+}
+
 # $1 is for the format of the log
 # Example -> date +%R:%S:%N_%d-%m-%Y
 logger() {

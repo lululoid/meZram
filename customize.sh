@@ -1,5 +1,4 @@
 #!/data/adb/modules_update/meZram/modules/bin/bash
-
 # Setup modules
 set_perm_recursive "$MODPATH"/modules/bin 0 2000 0755 0755
 . "$MODPATH"/modules/lmk.sh
@@ -186,13 +185,13 @@ fi
 
 # updating config
 LOGDIR="/data/adb/meZram"
-CONFIG="$LOGDIR/meZram-config.json"
-CONFIG_OLD="$LOGDIR/meZram.conf"
+CONFIG="$LOGDIR"/meZram-config.json
+CONFIG_OLD="$LOGDIR"/meZram.conf
 
 # Updating CONFIGURATION
-log_it "jq version = $(/data/adb/modules_update/meZram/modules/bin/jq --version)"
-version=$(/data/adb/modules_update/meZram/modules/bin/jq '.config_version' "$MODPATH/meZram-config.json")
-version_prev=$(/data/adb/modules_update/meZram/modules/bin/jq '.config_version' "$CONFIG")
+log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
+version=$("$MODPATH"/modules/bin/jq '.config_version' "$MODPATH/meZram-config.json")
+version_prev=$("$MODPATH"/modules/bin/jq '.config_version' "$CONFIG")
 
 log_it "version = $version"
 log_it "version_prev = $version_prev"
@@ -208,19 +207,25 @@ is_update=$(awk -v version="${version}" \
 		}')
 
 log_it "is_update = $is_update"
-ui_print "> Trying to update configuration"
+ui_print "> Updating configuration"
 
 if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
-	/data/adb/modules_update/meZram/modules/bin/jq -s \
-		'.[0] * .[1]' "$MODPATH/meZram-config.json" \
-		"$CONFIG" >"$MODPATH/merged.json"
-	mv "$MODPATH/merged.json" "$CONFIG"
+	# Update config version
+	"$MODPATH"/modules/bin/jq \
+	'del(.config_version)' "$CONFIG" >"$MODPATH/update.json"
+	mv "$MODPATH/update.json" "$CONFIG"
+
+	# Slurp entire config
+	"$MODPATH"/modules/bin/jq \
+	-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG >"$MODPATH/update.json"
+	mv "$MODPATH"/update.json $CONFIG
+	ui_print "> Configuration updated"
 elif [ ! -f "$CONFIG" ]; then
-	mv "$MODPATH/meZram-config.json" "$LOGDIR"
+	mv "$MODPATH"/meZram-config.json "$LOGDIR"
 fi
 
 if [ -f "$CONFIG_OLD" ]; then
 	mv "$CONFIG_OLD" "$CONFIG_OLD.old"
 fi
 
-custom_props_apply && log_it "custom props applied"
+custom_props_apply && log_it "Custom props applied"

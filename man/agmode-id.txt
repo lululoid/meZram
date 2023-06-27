@@ -8,15 +8,16 @@ Meskipun secara teknis nilai "downgrade_pressure" dapat ditetapkan hingga 100, p
 
 Kamu dapat menggunakan perintah/opsi berikut untuk mengelola fitur ini:
 
-	-g |  --get Cetak ro.lmk.downgrade_pressure saat ini
-	--enable-startup Aktifkan agmode saat memulai perangkat
-	--disable-startup Menonaktifkan agmode saat memulai perangkat
-	--stop Matikan layanan
-	--log [nomor baris] Tampilkan log.
-	--show Menampilkan konfigurasi
-	--reload Memuat ulang custom props
-	--help id Untuk menampilkan bantuan dalam bahasa Indonesia.
-	--rmswap Menghapus file SWAP dari module ini
-	--switch Mengganti mode LMKD. Ada dua mode, psi dan satu lagi minfree_levels yang lebih lama dan kurang advanced.
+-g |  --get Cetak ro.lmk.downgrade_pressure saat ini
+--enable Aktifkan agmode
+--disable Menonaktifkan agmode
+--log [nomor baris] Tampilkan log.
+--show Menampilkan konfigurasi
+--reload Memuat ulang custom props
+--help id Untuk menampilkan bantuan dalam bahasa Indonesia.
+--rmswap Menghapus file SWAP dari module ini. Install ulang module untuk membuat SWAP baru
+--switch Mengganti mode LMKD. Ada dua mode, psi dan satu lagi minfree_levels yang lebih lama dan kurang advanced.
+--wait-time [nomor] Waktu tunggu sebelum agmode dimatikan setelah tidak menggunakan aplikasi. Hal ini untuk menghindari lag dan aplikasi tertutup. Ubah nomor ke 1m untuk 1 menit, bisa juga 30 untuk 30 detik.
 
 	downgrade_pressure=[nilai] ubah nilai prop ro.lmk.downgrade_pressure.
+	"⚠️!!! Peringatan jangan set lebih dari 80 di minfree_levels mode. It will break you device !""⚠️!!! Beware not to set to 100 in minfree_levels mode. It will break you device !""⚠️!!! Beware not to set to 100 in minfree_levels mode. It will break you device !""⚠️!!! Beware not to set to 100 in minfree_levels mode. Perangkatmu akan kacau!!!"

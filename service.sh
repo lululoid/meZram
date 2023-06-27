@@ -18,8 +18,9 @@ lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 # Loading modules
 . "$MODDIR"/modules/lmk.sh
 
-log_it(){
-	local td=$(date +%R:%S:%N_%d-%m-%Y)
+log_it() {
+	local ms=$(date +%N | cut -c1-3)
+	local td=$(date +%R:%S:"${ms}")
 	logger "$td" "$1"
 }
 
@@ -90,7 +91,7 @@ while true; do
 
 	logrotate "$LOGDIR"/*lmkd.log
 	logrotate "$LOGDIR"/*meZram.log
-	sleep 2
+	sleep 1.5
 done &
 
 resetprop "meZram.log_rotator.pid" "$!"
@@ -111,58 +112,64 @@ while true; do
 	fi
 done
 
-custom_props_apply && resetprop "lmkd.reinit" 1 && \
-log_it "custom props applied"
+custom_props_apply && resetprop "lmkd.reinit" 1 &&
+	log_it "custom props applied"
 
-# Read configuration for aggressive mode
-agmode=$(/data/adb/modules/meZram/modules/bin/jq '.agmode' "$CONFIG")
-log_it "agmode = $agmode"
+# Start aggressive mode service
+while true; do
+	# Read configuration for aggressive mode
+	agmode=$(sed -n 's#"agmode": "\(.*\)".*#\1#p' "$CONFIG" | sed 's/ //g')
 
-# start aggressive mode service
-if [[ "$agmode" = "\"on\"" ]]; then
-	while true; do
+	if [[ "$agmode" = "on" ]]; then
 		# Determine foreground_app pkg name
 		# Not use + because of POSIX limitation
-		fg_app=$(dumpsys activity | grep -w ResumedActivity | \
-				sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/\1/p')
-		papp_keys=$(/data/adb/modules/meZram/modules/bin/jq \
-			--arg fg_app "$fg_app" \
-            '.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | keys[]' \
-			"$CONFIG")
+		fg_app=$(dumpsys activity | grep -w ResumedActivity |
+			sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/\1/p')
+		ag_app=$(grep -wo "$fg_app" $CONFIG)
 
-		if [ -n "$papp_keys" ] && [ -z "$am" ]; then
-			for key in $(echo "$papp_keys"); do 
-				value=$(/data/adb/modules/meZram/modules/bin/jq \
+		if [ -n "$ag_app" ] && [ -z "$am" ]; then
+			papp_keys=$(/data/adb/modules/meZram/modules/bin/jq \
 				--arg fg_app "$fg_app" \
-				--arg key "${key//\"/}" \
-           		'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | .[$key]' \
-            	"$CONFIG")
+				'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | keys[]' \
+				"$CONFIG")
+
+			for key in $(echo "$papp_keys"); do
+				value=$(/data/adb/modules/meZram/modules/bin/jq \
+					--arg fg_app "$fg_app" \
+					--arg key "${key//\"/}" \
+					'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | .[$key]' \
+					"$CONFIG")
 
 				log_it "applying $key $value"
 				resetprop "${key//\"/}" "$value"
 			done
 
 			resetprop "lmkd.reinit" 1
-			log_it "agmode activated for $fg_app"
+			log_it "aggressive mode activated for $fg_app"
 
 			am=true
 
-		elif [ -z "$papp_keys" ] && [ "$am" ]; then
+		elif [ -z "$ag_app" ] && [ "$am" ]; then
 			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
 
 			if [ -z "$default_dpressure" ]; then
 				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
 			fi
 
+			# Wait before quit agmode to avoid lag
+			wait_time=$(/data/adb/modules/meZram/modules/bin/jq \
+				'.wait_time' $CONFIG)
+
+			log_it "wait $wait_time before exiting aggressive mode"
+			sleep "${wait_time//\"/}"
 			lmkd_props_clean
 			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
 			custom_props_apply && log_it "props restored"
 			resetprop lmkd.reinit 1
-			log_it "agmode deactivated"
+			log_it "aggressive mode deactivated"
 			unset am
 		fi
-		sleep 5
-	done &
-	# save aggressive mode pid as a prop
-	resetprop "meZram.agmode_svc.pid" "$!"
-fi
+	fi
+	sleep 1
+done &
+resetprop "meZram.agmode.pid" "$!"

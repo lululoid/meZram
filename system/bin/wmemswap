@@ -1,26 +1,8 @@
 #!/system/bin/sh
+MODDIR="/data/adb/modules/meZram"
 
-liner() {
-	for i in $(seq "$2"); do
-		printf '%s' "$1"
-	done
-}
-
-titler() {
-	text="$*"
-
-	if [ -z "$text" ]; then
-		text="Hello World!"
-	fi
-
-	text_length=${#text}
-	liner_length=$((($(tput cols) / 2) - (text_length / 2)))
-
-	liner0=$(liner "-" "$liner_length")
-
-	printf '%s' "$liner0" "$text" "$liner0"
-	echo ""
-}
+# Loading modules
+. $MODDIR/modules/lmk.sh
 
 if [ -z "$1" ]; then
 	sec=2
