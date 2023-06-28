@@ -45,11 +45,13 @@ for num in $(echo "$swaps_usage" | wc -w); do
 
 	# Real memory saved because of ZRAM and SWAP
 	saved_mb=$(( (saved + usage)/1024 ))
-	if [ "$saved_mb" -ge 0 ]; then
+	if [ "$saved_mb" -gt 0 ]; then
 		echo ""
 		echo "--DIAGNOSIS"
 		echo "Real saved RAM : ${saved_mb}MB"
-		echo "Saved by ZRAM  : $((saved / 1024))MB"
+		if [ "$saved" -ge 0 ]; then
+			echo "Saved by ZRAM  : $((saved / 1024))MB"
+		fi
 		echo "Saved by SWAP  : $((usage / 1024))MB"
 	fi
 done

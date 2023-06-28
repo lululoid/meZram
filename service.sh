@@ -91,7 +91,7 @@ while true; do
 
 	logrotate "$LOGDIR"/*lmkd.log
 	logrotate "$LOGDIR"/*meZram.log
-	sleep 1.5
+	sleep 2
 done &
 
 resetprop "meZram.log_rotator.pid" "$!"
@@ -123,8 +123,7 @@ while true; do
 	if [[ "$agmode" = "on" ]]; then
 		# Determine foreground_app pkg name
 		# Not use + because of POSIX limitation
-		fg_app=$(dumpsys activity | grep -w ResumedActivity |
-			sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/\1/p')
+		fg_app=$(dumpsys activity | grep -w ResumedActivity | sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' | tail -n 1 | sed 's/ //g')
 		ag_app=$(grep -wo "$fg_app" $CONFIG)
 
 		if [ -n "$ag_app" ] && [ -z "$am" ]; then
@@ -170,6 +169,6 @@ while true; do
 			unset am
 		fi
 	fi
-	sleep 1
+	sleep 3
 done &
 resetprop "meZram.agmode.pid" "$!"
