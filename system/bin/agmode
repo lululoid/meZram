@@ -120,9 +120,15 @@ done
 
 case "$1" in
 downgrade_pressure=*)
-	toggle_prop "ro.lmk.downgrade_pressure" "$1"
-	printme "Prop \"ro.lmk.downgrade_pressure\" set to $1"
-	echo "⚠️!!! Beware not to set >= 100 in minfree_levels mode. It will break you device !"
+	value=$(echo "$1" | sed 's/[^0-9]//g')
+
+	if [ -n "$value" ]; then
+		toggle_prop "ro.lmk.downgrade_pressure" "$value"
+		printme "Prop \"ro.lmk.downgrade_pressure\" set to $1"
+		echo "⚠️!!! Beware not to set >= 100 in minfree_levels mode. It will break you device !"
+	else
+		printme "Invalid value"
+	fi
 	;;
 esac
 

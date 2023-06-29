@@ -1,7 +1,8 @@
-#!/data/adb/modules_update/meZram/modules/bin/bash
 # Setup modules
 set_perm_recursive "$MODPATH"/modules/bin 0 2000 0755 0755
 . "$MODPATH"/modules/lmk.sh
+
+mkdir -p "$NVBASE/meZram"
 
 # Calculate size to use for swap (1/2 of ram)
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
@@ -218,7 +219,7 @@ if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
 	# Slurp entire config
 	"$MODPATH"/modules/bin/jq \
 	-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG >"$MODPATH/update.json"
-	mv "$MODPATH"/update.json $CONFIG
+	mv "$MODPATH/update.json" $CONFIG
 	ui_print "> Configuration updated"
 elif [ ! -f "$CONFIG" ]; then
 	mv "$MODPATH"/meZram-config.json "$LOGDIR"

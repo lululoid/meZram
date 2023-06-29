@@ -3,8 +3,6 @@ MODDIR=${0%/*}
 LOGDIR="/data/adb/meZram"
 CONFIG="$LOGDIR/meZram-config.json"
 
-mkdir -p "$LOGDIR"
-
 if [ ! -f "$CONFIG" ]; then
 	cp "$MODDIR"/man/meZram-config.json "$LOGDIR"
 fi
