@@ -46,7 +46,7 @@ downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is
 - The SWAP size is customizable, enabling adjustment according to specific requirements.
 - It is possible to fine-tune the SWAP size up to the total RAM capacity, but this is generally not recommended for general users as it may not provide significant performance benefits. The default 50% allocation is typically sufficient.
 - wmemswap command for monitoring
-  ![wmemswap](pic/wmemswap.jpg | width=360)
+<img src="https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg"/>
 
 ## TODO
 
