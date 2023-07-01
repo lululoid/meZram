@@ -1,7 +1,7 @@
 #!/data/adb/modules/meZram/modules/bin/bash
 MODDIR=${0%/*}
 LOGDIR="/data/adb/meZram"
-CONFIG="$LOGDIR/meZram-config.json"
+CONFIG=/sdcard/meZram-config.json
 
 if [ ! -f "$CONFIG" ]; then
 	cp "$MODDIR"/man/meZram-config.json "$LOGDIR"
@@ -145,7 +145,7 @@ while true; do
 			log_it "aggressive mode activated for $fg_app"
 
 			am=true
-
+			wait_time=true
 		elif [ -z "$ag_app" ] && [ "$am" ]; then
 			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
 
@@ -153,12 +153,6 @@ while true; do
 				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
 			fi
 
-			# Wait before quit agmode to avoid lag
-			wait_time=$(/data/adb/modules/meZram/modules/bin/jq \
-				'.wait_time' $CONFIG)
-
-			log_it "wait $wait_time before exiting aggressive mode"
-			sleep "${wait_time//\"/}"
 			lmkd_props_clean
 			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
 			custom_props_apply && log_it "props restored"
@@ -166,6 +160,16 @@ while true; do
 			log_it "aggressive mode deactivated"
 			unset am
 		fi
+	fi
+
+	if [ $wait_time ]; then
+		# Wait before quit agmode to avoid lag
+		wait_time=$(/data/adb/modules/meZram/modules/bin/jq \
+			'.wait_time' $CONFIG)
+
+		log_it "wait $wait_time before exiting aggressive mode"
+		sleep "${wait_time//\"/}"
+		unset wait_time
 	fi
 	sleep 3
 done &
