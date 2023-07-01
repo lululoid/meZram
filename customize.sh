@@ -140,17 +140,21 @@ if [ -d "/data/adb/modules/meZram" ]; then
 	ui_print "  You've installed this module before"
 fi
 
+# Making SWAP
 if [ ! -f $swap_filename ]; then
+	# Ask user how much SWAP they want
 	count_SWAP
 	log_it "free space = $free_space"
 	log_it "swap size = $swap_size"
 	log_it "sdk_level = $sdk_level"
 	log_it "count = $count"
+	# Making SWAP only if enough free space available
 	if [ "$free_space" -ge "$swap_size" ] && [ "$swap_size" != 0 ]; then
 		ui_print "- Starting making SWAP. Please wait a moment"
 		sleep 0.5
 		ui_print "  $((free_space / 1024))MB available. $((swap_size / 1024))MB needed"
 		make_swap "$swap_size" $swap_filename
+	# Handling bug on some devices
 	elif [ -z "$free_space" ]; then
 		ui_print "> Make sure you have $((swap_size / 1024))MB space available data partition"
 		ui_print "  Make SWAP?"
@@ -170,6 +174,7 @@ if [ ! -f $swap_filename ]; then
 				break
 			fi
 		done
+	# No SWAP option, only pass
 	elif [ $count -eq 3 ]; then
 		true
 	else
@@ -200,9 +205,11 @@ if [ ! -f $CONFIG ]; then
 		ui_print "> meZram-config is $CONFIG"
 fi
 
+# Make the config easier to edit by mobing it to internal
 if [ -f $CONFIG_OLD_0 ]; then
 	cp -f $CONFIG_OLD_0 $CONFIG &&
-		ui_print "> Old config moved to internal"
+		ui_print "> Old config copied to internal"
+	rm $CONFIG_OLD_0
 fi
 
 # Updating CONFIGURATION
@@ -213,6 +220,7 @@ version_prev=$("$MODPATH"/modules/bin/jq '.config_version' "$CONFIG")
 log_it "version = $version"
 log_it "version_prev = $version_prev"
 
+# Update if version is higher than previous version
 if [ -n "$version_prev" ]; then
 	is_update=$(awk -v version="${version}" \
 		-v version_prev="${version_prev}" \
@@ -245,4 +253,6 @@ if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
 	ui_print "> Configuration updated"
 fi
 
+# Tweaks already able to be used without restarting, 
+# that's still not enough if you ask me
 custom_props_apply && log_it "Custom props applied"

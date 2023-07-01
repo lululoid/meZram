@@ -13,7 +13,7 @@ Details in here https://source.android.com/docs/core/perf/lmkd
 
 - 😾 Aggressive Mode
 
-<pre>Usage: agmode [-OPTION] or OPTIONS...</pre>
+<pre style="max-width: 100%; overflow-x: scroll;">Usage: agmode [-OPTION] or OPTIONS...</pre>
 
 MANUAL FOR AGGRESSIVE MODE MEZRAM module
 
@@ -22,21 +22,22 @@ MANUAL FOR AGGRESSIVE MODE MEZRAM module
 
 You can use the following commands/options for managing this feature:
 
-<pre>-g | --get 			 Print LMKD properties
---enable 			 Enabling aggressive mode 
---disable 			 Disabling aggressive mode 
---log [line number]  Show log.
---show 				 Showing config
---reload 			 Reload custom props then reapply
+<pre style="max-width: 100%; overflow-x: scroll;">-g | --get        Print LMKD properties
+--enable               Enabling aggressive mode 
+--disable              Disabling aggressive mode 
+--log [line number]    Show log.
+--show                 Showing config
+--reload               Reload custom props then reapply
 --help | -h [language] Show this help.
-	--help id 		 Untuk menampilkan bantuan dalam bahasa Indonesia.
---rmswap 			 Remove SWAP from this module. Reinstall module to make new SWAP.
---switch 			 Switch LMKD mode. There's two mode, psi and the other one is minfree_levels which is older and less advanced mode.
---wait-time [number] Wait time before exiting agmode after application closed. The reason is to prevent lag and apps being killed. Fill the number with 1m for 1 minute, it could also be 30 for 30 seconds. 
+	--help id            Untuk menampilkan bantuan dalam bahasa Indonesia.
+--rmswap               Remove SWAP from this module. Reinstall module to make new SWAP.
+--switch               Switch LMKD mode. There's two mode, psi and the other one is minfree_levels which is older and less advanced mode.
+--wait-time [number]   Wait time before exiting agmode after application closed. The reason is to prevent lag and apps being killed. Fill the number with 1m for 1 minute, it could also be 30 for 30 seconds. 
 
 downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is between 0-100.
 "⚠️!!! Beware not to set more than 80 in minfree_levels mode. It will break you device !!!"
 </pre>
+<img src="https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg" height="500"/>
 
 - Use LMKD PSI aims to provide a smoother user experience.
 - The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
@@ -46,7 +47,10 @@ downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is
 - The SWAP size is customizable, enabling adjustment according to specific requirements.
 - It is possible to fine-tune the SWAP size up to the total RAM capacity, but this is generally not recommended for general users as it may not provide significant performance benefits. The default 50% allocation is typically sufficient.
 - wmemswap command for monitoring
-<img src="https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg"/>
+  <img src="https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg"/>
+
+## CONFIGURATION
+Need to add some config example here later
 
 ## TODO
 
