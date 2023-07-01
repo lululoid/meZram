@@ -4,8 +4,9 @@ MAGENTA='\033[0;35m'
 TURQUOISE='\033[1;36m'
 LIGHT_BLUE='\033[1;34m'
 GREEN='\033[1;32m'
-YELLOW='\033[33m'
+YELLOW_BAD='\033[33m'
 RESET='\033[0m'
+YELLOW='\033[93m'
 
 is_number() {
     case $1 in

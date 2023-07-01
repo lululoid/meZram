@@ -47,7 +47,7 @@ toggle_minfree_levels() {
 }
 
 printme() {
-	echo "${TURQUOISE}> ${RESET}${YELLOW}$1${RESET}"
+	echo "${TURQUOISE}>  ${RESET}${YELLOW}$1${RESET}"
 }
 
 # Parse command-line options
