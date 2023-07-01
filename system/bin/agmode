@@ -62,12 +62,12 @@ for opt in "$@"; do
 	--enable)
 		jq '.agmode = "on"' $CONFIG |
 		awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
-		printme "Aggressive mode enabled"
+		printme "😾 Aggressive mode enabled"
 		;;
 	--disable)
 		jq '.agmode = "off"' $CONFIG |
 		awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
-		printme "Aggressive mode disabled"
+		printme "😿 Aggressive mode disabled"
 		;;
 	-h | --help)
 		if [ "$2" = "id" ]; then
