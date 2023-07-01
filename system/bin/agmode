@@ -1,7 +1,7 @@
 #!/system/bin/sh
 MODDIR="/data/adb/modules/meZram"
 LOGDIR="/data/adb/meZram"
-CONFIG="$LOGDIR/meZram-config.json"
+CONFIG=/sdcard/meZram-config.json
 
 # Loading modules
 export PATH="$MODDIR/modules/bin:$PATH"

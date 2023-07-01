@@ -23,7 +23,7 @@ log_it() {
 
 rm_prop() {
 	for prop in "$@"; do
-		resetprop "$prop" >/dev/null && resetprop --delete "$prop" && \
+		resetprop "$prop" >/dev/null && resetprop --delete "$prop" &&
 			log_it "$prop deleted"
 	done
 }
@@ -184,10 +184,26 @@ else
 	lmkd_apply
 fi
 
-# updating config
-LOGDIR="/data/adb/meZram"
-CONFIG="$LOGDIR"/meZram-config.json
-CONFIG_OLD="$LOGDIR"/meZram.conf
+# Updating config
+LOGDIR=/data/adb/meZram
+CONFIG_OLD_0=$LOGDIR/meZram-config.json
+CONFIG_OLD=$LOGDIR/meZram.conf
+CONFIG=/sdcard/meZram-config.json
+
+if [ -f $CONFIG_OLD ]; then
+	mv -f $CONFIG_OLD $CONFIG_OLD.old &&
+		ui_print "> Old config moved to ${CONFIG_OLD}.old"
+fi
+
+if [ ! -f $CONFIG ]; then
+	cp -f "$MODPATH"/meZram-config.json "$CONFIG" &&
+		ui_print "> meZram-config is $CONFIG"
+fi
+
+if [ -f $CONFIG_OLD_0 ]; then
+	cp -f $CONFIG_OLD_0 $CONFIG &&
+		ui_print "> Old config moved to internal"
+fi
 
 # Updating CONFIGURATION
 log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
@@ -197,15 +213,21 @@ version_prev=$("$MODPATH"/modules/bin/jq '.config_version' "$CONFIG")
 log_it "version = $version"
 log_it "version_prev = $version_prev"
 
-is_update=$(awk -v version="${version}" \
-	-v version_prev="${version_prev}" \
-	'BEGIN {
-		if (version > version_prev) {
-			print "true"
-		} else {
-			print "false"
-		}
+if [ -n "$version_prev" ]; then
+	is_update=$(awk -v version="${version}" \
+		-v version_prev="${version_prev}" \
+		'BEGIN {
+			if (version > version_prev) {
+				print "true"
+			} else {
+				print "false"
+			}
 		}')
+else
+	log_it "$(ls /sdcard/)"
+	rm $CONFIG
+	abort
+fi
 
 log_it "is_update = $is_update"
 ui_print "> Updating configuration"
@@ -213,20 +235,14 @@ ui_print "> Updating configuration"
 if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
 	# Update config version
 	"$MODPATH"/modules/bin/jq \
-	'del(.config_version)' "$CONFIG" >"$MODPATH/update.json"
+		'del(.config_version)' "$CONFIG" >"$MODPATH/update.json"
 	mv "$MODPATH/update.json" "$CONFIG"
 
 	# Slurp entire config
 	"$MODPATH"/modules/bin/jq \
-	-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG >"$MODPATH/update.json"
+		-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG >"$MODPATH/update.json"
 	mv "$MODPATH/update.json" $CONFIG
 	ui_print "> Configuration updated"
-elif [ ! -f "$CONFIG" ]; then
-	mv "$MODPATH"/meZram-config.json "$LOGDIR"
-fi
-
-if [ -f "$CONFIG_OLD" ]; then
-	mv "$CONFIG_OLD" "$CONFIG_OLD.old"
 fi
 
 custom_props_apply && log_it "Custom props applied"

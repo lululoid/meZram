@@ -55,7 +55,7 @@ rm_prop() {
 
 custom_props_apply() {
 	# Applying custom prop
-	local CONFIG="/data/adb/meZram/meZram-config.json"
+	local CONFIG=/sdcard/meZram-config.json
 	props=$(/data/adb/modules_update/meZram/modules/bin/jq \
 	'.custom_props | keys[]' "$CONFIG")
 
