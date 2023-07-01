@@ -13,7 +13,7 @@ Details in here https://source.android.com/docs/core/perf/lmkd
 
 - 😾 Aggressive Mode
 
-<pre style="max-width: 100%; overflow-x: scroll;">Usage: agmode [-OPTION] or OPTIONS...</pre>
+<pre>Usage: agmode [-OPTION] or OPTIONS...</pre>
 
 MANUAL FOR AGGRESSIVE MODE MEZRAM module
 
@@ -22,7 +22,7 @@ MANUAL FOR AGGRESSIVE MODE MEZRAM module
 
 You can use the following commands/options for managing this feature:
 
-<pre style="max-width: 100%; overflow-x: scroll;">-g | --get        Print LMKD properties
+<pre style="max-width: 70%; white-space: pre-wrap; word-wrap: break-word;">-g | --get        Print LMKD properties
 --enable               Enabling aggressive mode 
 --disable              Disabling aggressive mode 
 --log [line number]    Show log.
@@ -37,7 +37,7 @@ You can use the following commands/options for managing this feature:
 downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is between 0-100.
 "⚠️!!! Beware not to set more than 80 in minfree_levels mode. It will break you device !!!"
 </pre>
-<img src="https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg" height="500"/>
+<img src="https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode.jpg" height="500"/>
 
 - Use LMKD PSI aims to provide a smoother user experience.
 - The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
