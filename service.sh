@@ -54,11 +54,11 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
 		mkswap "$zram0" && log_it "$zram0 turned on"
-		swapon "$zram0" && log_it "swap turned on"
+		/system/bin/swapon -p 10 "$zram0" && log_it "swap turned on"
 	fi
 done
 
-swapon /data/swap_file && log_it "swap is turned on"
+/system/bin/swapon -p 5 /data/swap_file && log_it "swap is turned on"
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
 
 # rotate lmkd logs

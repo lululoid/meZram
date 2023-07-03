@@ -85,8 +85,8 @@ count_SWAP() {
 	count=0
 
 	ui_print "> Please select SWAP size"
-	ui_print "  Press VOLUME - to SELECT"
 	ui_print "  Press VOLUME + to DEFAULT"
+	ui_print "  Press VOLUME - to SELECT"
 	ui_print "  DEFAULT is $((totalmem / 1024 / 2))MB of SWAP"
 
 	while true; do
@@ -121,7 +121,7 @@ count_SWAP() {
 make_swap() {
 	dd if=/dev/zero of="$2" bs=1024 count="$1" >/dev/null
 	mkswap "$2" >/dev/null
-	swapon "$2" >/dev/null
+	/system/bin/swapon -p 5 "$2" >/dev/null
 	ui_print "- SWAP is running"
 }
 
