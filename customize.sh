@@ -205,14 +205,14 @@ if [ ! -f $CONFIG ]; then
 		ui_print "> meZram-config is $CONFIG"
 fi
 
-# Make the config easier to edit by mobing it to internal
+# Make the config easier to edit by moving it to internal
 if [ -f $CONFIG_OLD_0 ]; then
 	cp -f $CONFIG_OLD_0 $CONFIG &&
 		ui_print "> Old config copied to internal"
 	rm $CONFIG_OLD_0
 fi
 
-# Updating CONFIGURATION
+# Read config version
 log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
 version=$("$MODPATH"/modules/bin/jq '.config_version' "$MODPATH/meZram-config.json")
 version_prev=$("$MODPATH"/modules/bin/jq '.config_version' "$CONFIG")
@@ -238,21 +238,21 @@ else
 fi
 
 log_it "is_update = $is_update"
-ui_print "> Updating configuration"
 
 if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
 	# Update config version
+	ui_print "> Updating configuration"
 	"$MODPATH"/modules/bin/jq \
-		'del(.config_version)' "$CONFIG" >"$MODPATH/update.json"
-	mv "$MODPATH/update.json" "$CONFIG"
-
+		'del(.config_version)' "$CONFIG" |
+		/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 	# Slurp entire config
 	"$MODPATH"/modules/bin/jq \
-		-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG >"$MODPATH/update.json"
+		-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG |
+		/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 	mv "$MODPATH/update.json" $CONFIG
 	ui_print "> Configuration updated"
 fi
 
-# Tweaks already able to be used without restarting, 
+# Tweaks already able to be used without restarting,
 # that's still not enough if you ask me
 custom_props_apply && log_it "Custom props applied"
