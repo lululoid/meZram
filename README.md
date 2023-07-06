@@ -58,5 +58,5 @@ Need to add some config example here later
 
 ## DEBUG
 
-- Tested on Redmi 10C MIUI 13
+- Tested on Redmi 10C MIUI 13 and MIUI 14
 - Realme 5 Android 10
