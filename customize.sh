@@ -32,7 +32,7 @@ lmkd_apply() {
 	# determine if device is lowram?
 	log_it "totalmem = $totalmem"
 	if [ "$totalmem" -lt 2097152 ]; then
-		ui_print "⚠️ Device is low ram. Applying low raw tweaks"
+		ui_print "⚠️ Device is low ram. Applying low rm tweaks"
 		mv "$MODPATH"/system.props/low-ram-system.prop "$MODPATH"/system.prop
 	else
 		mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
@@ -158,7 +158,8 @@ if [ ! -f $swap_filename ]; then
 	elif [ -z "$free_space" ]; then
 		ui_print "> Make sure you have $((swap_size / 1024))MB space available data partition"
 		ui_print "  Make SWAP?"
-		ui_print "  Press VOLUME - (YES) or VOLUME + (NO)"
+		ui_print "  Press VOLUME + to NO"
+		ui_print "  Press VOLUME - to YES"
 
 		while true; do
 			timeout 0.5 /system/bin/getevent -lqc 1 2>&1 >"$TMPDIR"/events &
@@ -174,9 +175,10 @@ if [ ! -f $swap_filename ]; then
 				break
 			fi
 		done
-	# No SWAP option, only pass
+	# if no SWAP option selected, only pass
 	elif [ $count -eq 3 ]; then
-		true
+		true &&
+			ui_print "> Not making any SWAP. Why bro?"
 	else
 		ui_print "> Storage full. Please free up your storage"
 	fi
@@ -196,20 +198,19 @@ CONFIG_OLD=$LOGDIR/meZram.conf
 CONFIG=/sdcard/meZram-config.json
 
 if [ -f $CONFIG_OLD ]; then
-	mv -f $CONFIG_OLD $CONFIG_OLD.old &&
-		ui_print "> Old config moved to ${CONFIG_OLD}.old"
+	mv -f $CONFIG_OLD /sdcard/$CONFIG_OLD.old &&
+		ui_print "> Very old config moved to ${CONFIG_OLD}.old on internal"
+fi
+
+# Make the config easier to edit by moving it to internal
+if [ -f $CONFIG_OLD_0 ]; then
+	/system/bin/mv -f $CONFIG_OLD_0 $CONFIG &&
+		ui_print "> Old config moved to internal"
 fi
 
 if [ ! -f $CONFIG ]; then
 	cp -f "$MODPATH"/meZram-config.json "$CONFIG" &&
 		ui_print "> meZram-config is $CONFIG"
-fi
-
-# Make the config easier to edit by moving it to internal
-if [ -f $CONFIG_OLD_0 ]; then
-	cp -f $CONFIG_OLD_0 $CONFIG &&
-		ui_print "> Old config copied to internal"
-	rm $CONFIG_OLD_0
 fi
 
 # Read config version
@@ -255,4 +256,4 @@ fi
 
 # Tweaks already able to be used without restarting,
 # that's still not enough if you ask me
-custom_props_apply && log_it "Custom props applied"
+custom_props_apply && ui_print "> Custom props applied. Restarting device is RECOMMENDED"

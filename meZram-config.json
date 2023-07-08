@@ -8,28 +8,6 @@
     },
     "agmode_per_app_configuration": [
         {
-            "package": "com.gaurav.avnc",
-            "props": [
-                {
-                    "ro.lmk.use_minfree_levels": true,
-                    "ro.lmk.use_psi": false,
-                    "ro.lmk.downgrade_pressure": 35,
-                    "ro.lmk.thrashing_limit_decay": 50
-                }
-            ]
-        },
-        {
-            "package": "com.realvnc.viewer.android",
-            "props": [
-                {
-                    "ro.lmk.use_minfree_levels": true,
-                    "ro.lmk.use_psi": false,
-                    "ro.lmk.downgrade_pressure": 35,
-                    "ro.lmk.thrashing_limit_decay": 50
-                }
-            ]
-        },
-        {
             "package": "com.mobile.legends",
             "props": [
                 {

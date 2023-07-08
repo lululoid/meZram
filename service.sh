@@ -2,10 +2,8 @@
 MODDIR=${0%/*}
 LOGDIR="/data/adb/meZram"
 CONFIG=/sdcard/meZram-config.json
-
-if [ ! -f "$CONFIG" ]; then
-	cp "$MODDIR"/man/meZram-config.json "$LOGDIR"
-fi
+BIN_DIR=/system/bin
+MODULES_BIN=/data/adb/modules/meZram/modules/bin 
 
 # Calculate memory to use for zram
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
@@ -54,11 +52,11 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
 		mkswap "$zram0" && log_it "$zram0 turned on"
-		/system/bin/swapon -p 10 "$zram0" && log_it "swap turned on"
+		$BIN_DIR/swapon -p 10 "$zram0" && log_it "swap turned on"
 	fi
 done
 
-/system/bin/swapon -p 5 /data/swap_file && log_it "swap is turned on"
+$BIN_DIR/swapon -p 5 /data/swap_file && log_it "swap is turned on"
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
 
 # rotate lmkd logs
@@ -121,17 +119,17 @@ while true; do
 	if [[ "$agmode" = "on" ]]; then
 		# Determine foreground_app pkg name
 		# Not use + because of POSIX limitation
-		fg_app=$(dumpsys activity | grep -w ResumedActivity | sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' | tail -n 1 | sed 's/ //g')
-		ag_app=$(grep -wo "$fg_app" $CONFIG)
+		fg_app=$(dumpsys activity | $BIN_DIR/fgrep -w ResumedActivity | sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' | tail -n 1 | sed 's/ //g')
+		ag_app=$($BIN_DIR/fgrep -wo "$fg_app" $CONFIG)
 
 		if [ -n "$ag_app" ] && [ -z "$am" ]; then
-			papp_keys=$(/data/adb/modules/meZram/modules/bin/jq \
+			papp_keys=$($MODULES_BIN/jq \
 				--arg fg_app "$fg_app" \
 				'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | keys[]' \
 				"$CONFIG")
 
 			for key in $(echo "$papp_keys"); do
-				value=$(/data/adb/modules/meZram/modules/bin/jq \
+				value=$($MODULES_BIN/jq \
 					--arg fg_app "$fg_app" \
 					--arg key "${key//\"/}" \
 					'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | .[$key]' \
@@ -164,13 +162,13 @@ while true; do
 
 	if [ $wait_time ]; then
 		# Wait before quit agmode to avoid lag
-		wait_time=$(/data/adb/modules/meZram/modules/bin/jq \
+		wait_time=$($MODULES_BIN/jq \
 			'.wait_time' $CONFIG)
 
 		log_it "wait $wait_time before exiting aggressive mode"
 		sleep "${wait_time//\"/}"
 		unset wait_time
 	fi
-	sleep 3
+	sleep 6
 done &
 resetprop "meZram.agmode.pid" "$!"
