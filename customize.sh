@@ -257,4 +257,6 @@ fi
 # Tweaks already able to be used without restarting,
 # that's still not enough if you ask me
 ui_print "> Enjoy the speed of a ⚡⚡⚡"
-custom_props_apply && ui_print "> Custom props applied. Restarting device is RECOMMENDED"
+custom_props_apply && 
+  ui_print "> Custom props applied" 
+  ui_print "  Restarting device is RECOMMENDED"
