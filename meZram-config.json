@@ -1,0 +1,23 @@
+{
+    "agmode": "on",
+    "wait_time": "0",
+    "config_version": 1.6,
+    "custom_props": {
+        "ro.lmk.use_psi": true,
+        "ro.lmk.use_minfree_levels": false
+    },
+    "agmode_per_app_configuration": [
+        {
+            "package": "com.mobile.legends",
+            "props": [
+                {
+                    "ro.lmk.downgrade_pressure": 100,
+                    "ro.lmk.psi_partial_stall_ms": 1,
+                    "ro.lmk.psi_complete_stall_ms": 1,
+                    "ro.lmk.thrashing_limit_decay": 50,
+                    "ro.lmk.low": 400
+                }
+            ]
+        }
+    ]
+}

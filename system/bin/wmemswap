@@ -1,0 +1,66 @@
+#!/system/bin/sh
+MODDIR="/data/adb/modules/meZram"
+
+# Loading modules
+. $MODDIR/modules/lmk.sh
+
+if [ -z "$1" ]; then
+	sec=2
+else
+	sec="$1"
+fi
+
+zram_usage=$(sed -n 2p /proc/swaps | awk '{print $4}' | tr -s " ")
+zram_size=$(sed -n 2p /proc/swaps | awk '{print $3}' | tr -s " ")
+swaps_usage=$(tail -n +3 /proc/swaps | awk '{print $4}' | tr -s " ")
+swaps_size=$(tail -n +3 /proc/swaps | awk '{print $3}' | tr -s " ")
+totalmem=$(free | sed -n 's/[^0-9 ]*//;2p' | tr -s " " | awk '{print $1}')
+mem_usage=$(free | sed -n 's/[^0-9 ]*//;2p' | tr -s " " | awk '{print $2}')
+zu_mb=$((zram_usage / 1024))
+zs_mb=$((zram_size / 1024))
+saving50=$((zram_usage / 1024))
+saving80=$((zram_usage * 80 / 4 / 5 / 1024))
+free_zram_mb=$(((zram_size / 1024) - (zram_usage / 1024)))
+saved=$((mem_usage + zram_usage - totalmem))
+saved_mb=$((saved / 1024))
+swap_count=$(echo "$swaps_usage" | wc -w)
+
+titler "ZRAM & SWAPS STATUS"
+echo "--ZRAM"
+echo "USAGE         : ${zu_mb}MB"
+echo "SIZE          : ${zs_mb}MB"
+echo "FREE          : ${free_zram_mb}MB"
+echo "Saving about ${saving50}MB(50%) to ${saving80}MB(80%) of RAM"
+
+# Read swaps status
+total_swaps_usage=0
+total_swaps_size=0
+
+for usage in $swaps_usage; do
+	total_swaps_usage=$((total_swaps_usage + usage))
+done
+	
+for size in $swaps_size; do
+	total_swaps_size=$((total_swaps_size + size))
+done
+
+total_swaps_free=$((total_swaps_size - total_swaps_usage))
+echo ""
+echo "--SWAP"
+echo "USAGE          : $((total_swaps_usage / 1024))MB"
+echo "SIZE           : $((total_swaps_size / 1024))MB"
+echo "FREE           : $(((total_swaps_free / 1024)))MB"
+
+# Real memory saved because of ZRAM and SWAP
+saved_mb=$(( (saved + usage)/1024 ))
+if [ "$saved_mb" -gt 0 ]; then
+	echo ""
+	echo "--DIAGNOSTIC"
+	echo "Real saved RAM : ${saved_mb}MB"
+
+	if [ "$saved" -ge 0 ]; then
+		echo "Saved by ZRAM  : $((saved / 1024))MB"
+	fi
+
+	echo "Saved by SWAP  : $((total_swaps_usage / 1024))MB"
+fi

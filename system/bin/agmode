@@ -1,0 +1,137 @@
+#!/system/bin/sh
+MODDIR="/data/adb/modules/meZram"
+LOGDIR="/data/adb/meZram"
+CONFIG=/sdcard/meZram-config.json
+
+# Loading modules
+export PATH="$MODDIR/modules/bin:$PATH"
+. $MODDIR/modules/lmk.sh
+
+# Add new key or edit existing value in custom props
+toggle_prop() {
+	local prop_name="$1"
+	local prop_value="$2"
+	local props=$(jq --argjson prop_value "$prop_value" \
+		--arg prop_name "$prop_name" '.custom_props | .[$prop_name] = $prop_value' \
+		$CONFIG)
+
+	jq --argjson props "$props" '.custom_props = $props' \
+		$CONFIG | awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' \
+		$CONFIG
+}
+
+toggle_psi() {
+	local psi_value=$(jq '.custom_props."ro.lmk.use_psi"' "$CONFIG")
+
+	case "$psi_value" in
+	true)
+		toggle_prop "ro.lmk.use_psi" false
+		;;
+	false)
+		toggle_prop "ro.lmk.use_psi" true
+		;;
+	esac
+}
+
+toggle_minfree_levels() {
+	ml_value=$(jq '.custom_props."ro.lmk.use_minfree_levels"' $CONFIG)
+
+	case "$ml_value" in
+	true)
+		toggle_prop "ro.lmk.use_minfree_levels" false
+		;;
+	false)
+		toggle_prop "ro.lmk.use_minfree_levels" true
+		;;
+	esac
+}
+
+printme() {
+	echo "${TURQUOISE}>  ${RESET}${YELLOW}$1${RESET}"
+}
+
+# Parse command-line options
+for opt in "$@"; do
+	case "$opt" in
+	-g | --get)
+		lmkd_props=$(getprop | grep "ro.lmk" | sed 's/\[//g;s/\]//g;s/: /=/g')
+
+		titler "LMKD PROPS"
+		echo "$lmkd_props"
+		;;
+	--enable)
+		jq '.agmode = "on"' $CONFIG |
+		awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+		printme "😾 Aggressive mode enabled"
+		;;
+	--disable)
+		jq '.agmode = "off"' $CONFIG |
+		awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+		printme "😿 Aggressive mode disabled"
+		;;
+	-h | --help)
+		if [ "$2" = "id" ]; then
+			cat "$MODDIR"/man/agmode-id.txt
+			exit 1
+		fi
+
+		cat "$MODDIR"/man/agmode.txt
+		;;
+	--log)
+		if [ "$2" ]; then
+			watch -t tail -n "$2" "$LOGDIR"/meZram.log
+		else
+			watch -t tail -n "$(($(tput lines) - 10))" "$LOGDIR"/meZram.log
+		fi
+		;;
+	--show)
+		titler "MEZRAM CONFIG"
+		cat "$CONFIG"
+		;;
+	--reload)
+		custom_props_apply 2>/dev/null && printme "Custom props applied"
+		;;
+	--rmswap)
+		printme "Turning off SWAP. Please wait"
+		swapoff /data/swap_file >/dev/null
+		rm -vf /data/swap_file
+		printme "SWAP removed. Don't be stupid bud. Make another one!!!"
+		;;
+	--switch)
+		printme "Switching LMKD mode"
+		toggle_psi
+		toggle_minfree_levels
+		custom_props_apply 2>/dev/null
+
+		if [ "$ml_value" = false ]; then
+			printme "LMKD mode switched to minfree_levels"
+		else
+			printme "LMKD mode switched to psi"
+		fi
+		;;
+	--wait-time)
+		jq --arg wait_time "$2" \
+			'.wait_time = $wait_time' $CONFIG \
+			| awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+		printme "Wait time set to $2"
+		;;
+	esac
+done
+
+case "$1" in
+downgrade_pressure=*)
+	value=$(echo "$1" | sed 's/[^0-9]//g')
+
+	if [ -n "$value" ]; then
+		toggle_prop "ro.lmk.downgrade_pressure" "$value"
+		printme "Prop \"ro.lmk.downgrade_pressure\" set to $1"
+		echo "⚠️!!! Beware not to set >= 100 in minfree_levels mode. It will break you device !"
+	else
+		printme "Invalid value"
+	fi
+	;;
+esac
+
+if [ -z "$*" ]; then
+	agmode --help
+fi
