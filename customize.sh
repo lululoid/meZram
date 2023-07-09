@@ -8,7 +8,7 @@ mkdir -p "$NVBASE/meZram"
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
 ui_print ""
-ui_print "  Made with pain by "
+ui_print "  Made with ❤ and 🩸 by "
 sleep 0.5
 ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
 ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
@@ -18,7 +18,7 @@ sleep 0.5
 
 log_it() {
 	log=$(echo "$*" | tr -s " ")
-	true && ui_print "  DEBUG: $log"
+	false && ui_print "  DEBUG: $log"
 }
 
 rm_prop() {
@@ -256,4 +256,5 @@ fi
 
 # Tweaks already able to be used without restarting,
 # that's still not enough if you ask me
+ui_print "> Enjoy the speed of a ⚡⚡⚡"
 custom_props_apply && ui_print "> Custom props applied. Restarting device is RECOMMENDED"
