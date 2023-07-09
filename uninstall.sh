@@ -1,4 +1,4 @@
-#!/system/bin/sh
+#!/data/adb/modules/meZram/modules/bin/bash
 MODDIR=${0%/*}
 MODSDIR=$(dirname "$MODDIR")
 MODULEDIR="$MODSDIR"/meZram-cleaner
