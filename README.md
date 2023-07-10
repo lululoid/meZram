@@ -1,6 +1,6 @@
 # Hi this is my first module
 
-![GitHub all releases](https://img.shields.io/github/downloads/lululoid/https%3A%2F%2Fgithub.com%2Flululoid%2FmeZram.git/total)
+![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total?link=https%3A%2F%2Fgithub.com%2Flululoid%2FmeZram%2Freleases%2Fdownload%2Fv1.6%2FmeZram-v1.6_16003.zip)
 
 # What this module do?
 
@@ -31,7 +31,7 @@ You can use the following commands/options for managing this feature:
 --show      Showing config
 --reload    Reload custom props then reapply
 --help | -h [language] Show this help.
-	--help id Untuk menampilkan bantuan dalam bahasa Indonesia.
+--help id Untuk menampilkan bantuan dalam bahasa Indonesia.
 --rmswap    Remove SWAP from this module. Reinstall module to make new SWAP.
 --switch    Switch LMKD mode. There's two mode, psi and the other one is minfree_levels which is older and less advanced mode.
 --wait-time [number]   Wait time before exiting agmode after application closed. The reason is to prevent lag and apps being killed. Fill the number with 1m for 1 minute, it could also be 30 for 30 seconds. 
@@ -39,17 +39,17 @@ You can use the following commands/options for managing this feature:
 downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is between 0-100.
 "⚠️!!! Beware not to set more than 80 in minfree_levels mode. It will break you device !!!"
 </pre>
-![aggressive mode]("https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode.jpg")
+![aggressive mode](https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode.jpg)
 
 - Use LMKD PSI aims to provide a smoother user experience.
 - The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
 - By reducing memory pressure, particularly in gaming scenarios, there is a potential improvement in gaming performance.
-- Advanced users can manually tweak system properties by modifying the /data/adb/modules/meZram/system.prop file and then restarting the system. It is important to exercise caution as these modifications affect low-level system components. In case of any issues, the module can be reinstalled or removed to restore system functionality.
+- Advanced users can manually tweak lmkd properties by modifying the `meZram-config.json` file in root of internal and enter `agmode --reload` as root user from terminal like termux. See ![[https://source.android.com/docs/core/perf/lmkd#configuring-lmkd](https://source.android.com/docs/core/perf/lmkd#configuring-lmkd)](https://source.android.com/docs/core/perf/lmkd) for list of customizable props.
 - The ZRAM size can be modified to allocate a different portion of the RAM for compressed memory storage.
 - The SWAP size is customizable, enabling adjustment according to specific requirements.
 - It is possible to fine-tune the SWAP size up to the total RAM capacity, but this is generally not recommended for general users as it may not provide significant performance benefits. The default 50% allocation is typically sufficient.
-- wmemswap command for monitoring
-![wmemswap]("https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg")
+- `wmemswap` command for monitoring
+![wmemswap](https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg)
 
 ## CONFIGURATION
 Need to add some config example here later
