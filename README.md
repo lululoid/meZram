@@ -1,5 +1,7 @@
 # Hi this is my first module
 
+![GitHub all releases](https://img.shields.io/github/downloads/lululoid/https%3A%2F%2Fgithub.com%2Flululoid%2FmeZram.git/total)
+
 # What this module do?
 
 To enhance multitasking performance, transition to a more advanced memory management system known as LMKD, which stands for low memory killer daemon but also use PSI (Pressure stall information) which basically better for performance stability. By installing this module, the system gains additional capabilities such as SWAP and adjusts the ZRAM configuration to occupy half of the total RAM capacity. These modifications aim to optimize memory utilization and improve the efficiency of concurrent task execution.
@@ -37,7 +39,7 @@ You can use the following commands/options for managing this feature:
 downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is between 0-100.
 "⚠️!!! Beware not to set more than 80 in minfree_levels mode. It will break you device !!!"
 </pre>
-<img src="https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode.jpg" height="500"/>
+![aggressive mode]("https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode.jpg")
 
 - Use LMKD PSI aims to provide a smoother user experience.
 - The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
@@ -47,7 +49,7 @@ downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is
 - The SWAP size is customizable, enabling adjustment according to specific requirements.
 - It is possible to fine-tune the SWAP size up to the total RAM capacity, but this is generally not recommended for general users as it may not provide significant performance benefits. The default 50% allocation is typically sufficient.
 - wmemswap command for monitoring
-  <img src="https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg"/>
+![wmemswap]("https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg")
 
 ## CONFIGURATION
 Need to add some config example here later
@@ -58,5 +60,6 @@ Need to add some config example here later
 
 ## DEBUG
 
-- Tested on Redmi 10C MIUI 13 and MIUI 14
+Tested on:
+- Redmi 10C MIUI 13 A12 and MIUI 14 A12 & A13
 - Realme 5 Android 10
