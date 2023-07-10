@@ -1,8 +1,6 @@
 # Hi this is my first module
 
-Download count | Download
----|---|
-![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total) | ![Static Badge](https://img.shields.io/badge/Download%20Here-brightgreen?link=https%3A%2F%2Fgithub.com%2Flululoid%2FmeZram%2Freleases%2Fdownload%2Fv1.6%2FmeZram-v1.6_16003.zip)
+![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total) ![Static Badge](https://img.shields.io/badge/Download%20Here-brightgreen?link=https%3A%2F%2Fgithub.com%2Flululoid%2FmeZram%2Freleases%2Fdownload%2Fv1.6%2FmeZram-v1.6_16003.zip)
 
 
 # What this module do?
