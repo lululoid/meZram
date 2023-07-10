@@ -1,5 +1,12 @@
-# Setup modules
+SKIPUNZIP=1
+
+unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH" >&2
+set_perm_recursive "$MODPATH" 0 0 0755 0644
+set_perm_recursive "$MODPATH"/system/bin 0 2000 0755 0755
 set_perm_recursive "$MODPATH"/modules/bin 0 2000 0755 0755
+set_perm_recursive "$MODPATH"/modules/lmk.sh 0 2000 0755 0755
+
+# Setup modules
 . "$MODPATH"/modules/lmk.sh
 
 mkdir -p "$NVBASE/meZram"
@@ -32,7 +39,7 @@ lmkd_apply() {
 	# determine if device is lowram?
 	log_it "totalmem = $totalmem"
 	if [ "$totalmem" -lt 2097152 ]; then
-		ui_print "⚠️ Device is low ram. Applying low rm tweaks"
+		ui_print "⚠️ Device is low ram. Applying low am tweaks"
 		mv "$MODPATH"/system.props/low-ram-system.prop "$MODPATH"/system.prop
 	else
 		mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
@@ -40,29 +47,31 @@ lmkd_apply() {
 
 	# Properties to be removed
 	set --
-	set "ro.config.low_ram" \
-		"ro.lmk.use_psi" \
-		"ro.lmk.use_minfree_levels" \
-		"ro.lmk.low" "ro.lmk.medium" \
-		"ro.lmk.critical" "ro.lmk.critical_upgrade" \
-		"ro.lmk.upgrade_pressure" \
-		"ro.lmk.downgrade_pressure" \
-		"ro.lmk.kill_heaviest_task" \
-		"ro.lmk.kill_timeout_ms" \
-		"ro.lmk.psi_partial_stall_ms" \
-		"ro.lmk.psi_complete_stall_ms" \
-		"ro.lmk.thrashing_limit" \
-		"ro.lmk.thrashing_limit_decay" \
-		"ro.lmk.swap_util_max" \
-		"ro.lmk.swap_free_low_percentage" \
-		"ro.lmk.debug" "sys.lmk.minfree_levels"
+	set ro.config.low_ram \
+		ro.lmk.use_psi \
+		ro.lmk.use_minfree_levels \
+		ro.lmk.low ro.lmk.medium \
+		ro.lmk.critical \
+    ro.lmk.critical_upgrade \
+		ro.lmk.upgrade_pressure \
+		ro.lmk.downgrade_pressure \
+		ro.lmk.kill_heaviest_task \
+		ro.lmk.kill_timeout_ms \
+		ro.lmk.psi_partial_stall_ms \
+		ro.lmk.psi_complete_stall_ms \
+		ro.lmk.thrashing_limit \
+		ro.lmk.thrashing_limit_decay \
+		ro.lmk.swap_util_max \
+		ro.lmk.swap_free_low_percentage \
+		ro.lmk.debug \
+    sys.lmk.minfree_levels
 	rm_prop "$@"
 
 	# applying lmkd tweaks
 	grep -v '^ *#' <"$MODPATH"/system.prop | while IFS= read -r prop; do
 		# log_it "$prop"
 		log_it "resetprop ${prop//=/ }"
-		resetprop ${prop//=/ }
+		resetprop "${prop//=/ }"
 	done
 
 	tl="ro.lmk.thrashing_limit"
@@ -101,15 +110,15 @@ count_SWAP() {
 				 --> RECOMMENDED"
 			elif [ $count -eq 2 ]; then
 				count=$((count + 1))
-				ui_print "  $count. No SWAP"
+				ui_print   $count. No SWAP
 				swap_size=0
-			elif [ "$swap_in_gb" -lt "$totalmem_gb" ]; then
+			elif [ $swap_in_gb -lt $totalmem_gb ]; then
 				count=$((count + 1))
 				swap_in_gb=$((swap_in_gb + 1))
-				ui_print "  $count. ${swap_in_gb}GB of SWAP"
+				ui_print   $count. ${swap_in_gb}GB of SWAP
 				swap_size=$((swap_in_gb * one_gb))
 			fi
-		elif [ "$swap_in_gb" -eq $totalmem_gb ] && [ $count != 0 ]; then
+		elif [ $swap_in_gb -eq $totalmem_gb ] && [ $count != 0 ]; then
 			swap_size=$totalmem
 			count=0
 		elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
@@ -215,7 +224,7 @@ fi
 
 # Read config version
 log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
-version=$("$MODPATH"/modules/bin/jq '.config_version' "$MODPATH/meZram-config.json")
+version=$("$MODPATH"/modules/bin/jq '.config_version' "$MODPATH"/meZram-config.json)
 version_prev=$("$MODPATH"/modules/bin/jq '.config_version' "$CONFIG")
 
 log_it "version = $version"
@@ -233,7 +242,6 @@ if [ -n "$version_prev" ]; then
 			}
 		}')
 else
-	log_it "$(ls /sdcard/)"
 	rm $CONFIG
 	abort
 fi
@@ -256,7 +264,7 @@ fi
 
 # Tweaks already able to be used without restarting,
 # that's still not enough if you ask me
-ui_print "> Enjoy the speed of a ⚡⚡⚡"
-custom_props_apply && 
+ui_print "> Enjoy :)"
+custom_props_apply $CONFIG && 
   ui_print "> Custom props applied" 
   ui_print "  Restarting device is RECOMMENDED"

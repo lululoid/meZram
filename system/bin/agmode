@@ -1,6 +1,6 @@
 #!/system/bin/sh
-MODDIR="/data/adb/modules/meZram"
-LOGDIR="/data/adb/meZram"
+MODDIR=/data/adb/modules/meZram
+LOGDIR=/data/adb/meZram
 CONFIG=/sdcard/meZram-config.json
 
 # Loading modules
@@ -61,12 +61,12 @@ for opt in "$@"; do
 		;;
 	--enable)
 		jq '.agmode = "on"' $CONFIG |
-		awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 		printme "😾 Aggressive mode enabled"
 		;;
 	--disable)
 		jq '.agmode = "off"' $CONFIG |
-		awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 		printme "😿 Aggressive mode disabled"
 		;;
 	-h | --help)
@@ -81,7 +81,7 @@ for opt in "$@"; do
 		if [ "$2" ]; then
 			watch -t tail -n "$2" "$LOGDIR"/meZram.log
 		else
-			watch -t tail -n "$(($(tput lines) - 10))" "$LOGDIR"/meZram.log
+			watch -t tail -n "$(tput lines)" "$LOGDIR"/meZram.log
 		fi
 		;;
 	--show)
@@ -111,8 +111,8 @@ for opt in "$@"; do
 		;;
 	--wait-time)
 		jq --arg wait_time "$2" \
-			'.wait_time = $wait_time' $CONFIG \
-			| awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			'.wait_time = $wait_time' $CONFIG |
+			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 		printme "Wait time set to $2"
 		;;
 	esac
