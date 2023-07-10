@@ -1,7 +1,7 @@
-#!/system/bin/sh
-MODDIR="/data/adb/modules/meZram"
-LOGDIR="/data/adb/meZram"
-CONFIG=/sdcard/meZram-config.json
+#!/data/adb/modules/meZram/modules/bin/bash
+MODDIR=/data/adb/modules/meZram
+LOGDIR=/data/adb/meZram
+CONFIG=$LOGDIR/meZram-config.json
 
 # Loading modules
 export PATH="$MODDIR/modules/bin:$PATH"
@@ -61,12 +61,12 @@ for opt in "$@"; do
 		;;
 	--enable)
 		jq '.agmode = "on"' $CONFIG |
-		awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 		printme "😾 Aggressive mode enabled"
 		;;
 	--disable)
 		jq '.agmode = "off"' $CONFIG |
-		awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 		printme "😿 Aggressive mode disabled"
 		;;
 	-h | --help)
@@ -89,6 +89,7 @@ for opt in "$@"; do
 		cat "$CONFIG"
 		;;
 	--reload)
+    cp /sdcard/meZram-config.json $CONFIG 
 		custom_props_apply 2>/dev/null && printme "Custom props applied"
 		;;
 	--rmswap)
@@ -111,8 +112,8 @@ for opt in "$@"; do
 		;;
 	--wait-time)
 		jq --arg wait_time "$2" \
-			'.wait_time = $wait_time' $CONFIG \
-			| awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			'.wait_time = $wait_time' $CONFIG |
+			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 		printme "Wait time set to $2"
 		;;
 	esac

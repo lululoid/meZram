@@ -193,25 +193,31 @@ fi
 
 # Updating config
 LOGDIR=/data/adb/meZram
-CONFIG_OLD_0=$LOGDIR/meZram-config.json
+CONFIG=$LOGDIR/meZram-config.json
 CONFIG_OLD=$LOGDIR/meZram.conf
-CONFIG=/sdcard/meZram-config.json
+CONFIG_OLD_0=/sdcard/meZram-config.json
 
 if [ -f $CONFIG_OLD ]; then
 	mv -f $CONFIG_OLD /sdcard/$CONFIG_OLD.old &&
-		ui_print "> Very old config moved to ${CONFIG_OLD}.old on internal"
+		ui_print "> Config moved to ${CONFIG_OLD}.old on internal"
 fi
 
-# Make the config easier to edit by moving it to internal
+# Can't read from internal. Why?
 if [ -f $CONFIG_OLD_0 ]; then
-	/system/bin/mv -f $CONFIG_OLD_0 $CONFIG &&
-		ui_print "> Old config moved to internal"
+	/system/bin/mv -f $CONFIG_OLD_0 $CONFIG
 fi
 
 if [ ! -f $CONFIG ]; then
-	cp -f "$MODPATH"/meZram-config.json "$CONFIG" &&
-		ui_print "> meZram-config is $CONFIG"
+	cp -f "$MODPATH"/meZram-config.json "$CONFIG"
 fi
+
+if [ ! -f $CONFIG_OLD_0 ]; then
+	cp -f $CONFIG /sdcard &&
+		ui_print "> Config copy is in internal"
+fi
+
+# in case forgot to reload
+cp -u /sdcard/meZram-config.json $CONFIG
 
 # Read config version
 log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
@@ -250,7 +256,6 @@ if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
 	"$MODPATH"/modules/bin/jq \
 		-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG |
 		/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
-	mv "$MODPATH/update.json" $CONFIG
 	ui_print "> Configuration updated"
 fi
 

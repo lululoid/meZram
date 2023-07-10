@@ -1,5 +1,3 @@
-#!/system/bin/sh
-
 MAGENTA='\033[0;35m'
 TURQUOISE='\033[1;36m'
 LIGHT_BLUE='\033[1;34m'
@@ -55,7 +53,7 @@ rm_prop() {
 
 custom_props_apply() {
 	# Applying custom prop
-	local CONFIG=/sdcard/meZram-config.json
+	local CONFIG=/data/adb/meZram/meZram-config.json
 	props=$(/data/adb/modules_update/meZram/modules/bin/jq \
 	'.custom_props | keys[]' "$CONFIG")
 

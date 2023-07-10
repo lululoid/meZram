@@ -1,9 +1,9 @@
 #!/data/adb/modules/meZram/modules/bin/bash
 MODDIR=${0%/*}
-LOGDIR="/data/adb/meZram"
-CONFIG=/sdcard/meZram-config.json
-BIN_DIR=/system/bin
-MODULES_BIN=/data/adb/modules/meZram/modules/bin 
+LOGDIR=/data/adb/meZram
+CONFIG="$LOGDIR"/meZram-config.json
+BIN=/system/bin
+MODBIN=/data/adb/modules/meZram/modules/bin 
 
 # Calculate memory to use for zram
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
@@ -52,11 +52,11 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
 		mkswap "$zram0" && log_it "$zram0 turned on"
-		$BIN_DIR/swapon -p 10 "$zram0" && log_it "swap turned on"
+		$BIN/swapon -p 10 "$zram0" && log_it "swap turned on"
 	fi
 done
 
-$BIN_DIR/swapon -p 5 /data/swap_file && log_it "swap is turned on"
+$BIN/swapon -p 5 /data/swap_file && log_it "swap is turned on"
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
 
 # rotate lmkd logs
@@ -119,17 +119,17 @@ while true; do
 	if [[ "$agmode" = "on" ]]; then
 		# Determine foreground_app pkg name
 		# Not use + because of POSIX limitation
-		fg_app=$(dumpsys activity | $BIN_DIR/fgrep -w ResumedActivity | sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' | tail -n 1 | sed 's/ //g')
-		ag_app=$($BIN_DIR/fgrep -wo "$fg_app" $CONFIG)
+		fg_app=$(dumpsys activity | $BIN/fgrep -w ResumedActivity | sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' | tail -n 1 | sed 's/ //g')
+		ag_app=$($BIN/fgrep -wo "$fg_app" $CONFIG)
 
 		if [ -n "$ag_app" ] && [ -z "$am" ]; then
-			papp_keys=$($MODULES_BIN/jq \
+			papp_keys=$($MODBIN/jq \
 				--arg fg_app "$fg_app" \
 				'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | keys[]' \
 				"$CONFIG")
 
 			for key in $(echo "$papp_keys"); do
-				value=$($MODULES_BIN/jq \
+				value=$($MODBIN/jq \
 					--arg fg_app "$fg_app" \
 					--arg key "${key//\"/}" \
 					'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | .[$key]' \
@@ -162,7 +162,7 @@ while true; do
 
 	if [ $wait_time ]; then
 		# Wait before quit agmode to avoid lag
-		wait_time=$($MODULES_BIN/jq \
+		wait_time=$($MODBIN/jq \
 			'.wait_time' $CONFIG)
 
 		log_it "wait $wait_time before exiting aggressive mode"
