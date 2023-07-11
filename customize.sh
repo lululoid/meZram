@@ -1,5 +1,12 @@
-# Setup modules
+SKIPUNZIP=1
+
+unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH" >&2
+set_perm_recursive "$MODPATH" 0 0 0755 0644
+set_perm_recursive "$MODPATH"/system/bin 0 2000 0755 0755
 set_perm_recursive "$MODPATH"/modules/bin 0 2000 0755 0755
+set_perm_recursive "$MODPATH"/modules/lmk.sh 0 2000 0755 0755
+
+# Setup modules
 . "$MODPATH"/modules/lmk.sh
 
 mkdir -p "$NVBASE/meZram"
@@ -8,7 +15,7 @@ mkdir -p "$NVBASE/meZram"
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
 ui_print ""
-ui_print "  Made with pain by "
+ui_print "  Made with ❤ and 🩸 by "
 sleep 0.5
 ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
 ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
@@ -32,7 +39,7 @@ lmkd_apply() {
 	# determine if device is lowram?
 	log_it "totalmem = $totalmem"
 	if [ "$totalmem" -lt 2097152 ]; then
-		ui_print "⚠️ Device is low ram. Applying low rm tweaks"
+		ui_print "⚠️ Device is low ram. Applying low am tweaks"
 		mv "$MODPATH"/system.props/low-ram-system.prop "$MODPATH"/system.prop
 	else
 		mv "$MODPATH"/system.props/high-performance-system.prop "$MODPATH"/system.prop
@@ -40,22 +47,24 @@ lmkd_apply() {
 
 	# Properties to be removed
 	set --
-	set "ro.config.low_ram" \
-		"ro.lmk.use_psi" \
-		"ro.lmk.use_minfree_levels" \
-		"ro.lmk.low" "ro.lmk.medium" \
-		"ro.lmk.critical" "ro.lmk.critical_upgrade" \
-		"ro.lmk.upgrade_pressure" \
-		"ro.lmk.downgrade_pressure" \
-		"ro.lmk.kill_heaviest_task" \
-		"ro.lmk.kill_timeout_ms" \
-		"ro.lmk.psi_partial_stall_ms" \
-		"ro.lmk.psi_complete_stall_ms" \
-		"ro.lmk.thrashing_limit" \
-		"ro.lmk.thrashing_limit_decay" \
-		"ro.lmk.swap_util_max" \
-		"ro.lmk.swap_free_low_percentage" \
-		"ro.lmk.debug" "sys.lmk.minfree_levels"
+	set ro.config.low_ram \
+		ro.lmk.use_psi \
+		ro.lmk.use_minfree_levels \
+		ro.lmk.low ro.lmk.medium \
+		ro.lmk.critical \
+		ro.lmk.critical_upgrade \
+		ro.lmk.upgrade_pressure \
+		ro.lmk.downgrade_pressure \
+		ro.lmk.kill_heaviest_task \
+		ro.lmk.kill_timeout_ms \
+		ro.lmk.psi_partial_stall_ms \
+		ro.lmk.psi_complete_stall_ms \
+		ro.lmk.thrashing_limit \
+		ro.lmk.thrashing_limit_decay \
+		ro.lmk.swap_util_max \
+		ro.lmk.swap_free_low_percentage \
+		ro.lmk.debug \
+		sys.lmk.minfree_levels
 	rm_prop "$@"
 
 	# applying lmkd tweaks
@@ -101,15 +110,15 @@ count_SWAP() {
 				 --> RECOMMENDED"
 			elif [ $count -eq 2 ]; then
 				count=$((count + 1))
-				ui_print "  $count. No SWAP"
+				ui_print $count. No SWAP
 				swap_size=0
-			elif [ "$swap_in_gb" -lt "$totalmem_gb" ]; then
+			elif [ $swap_in_gb -lt $totalmem_gb ]; then
 				count=$((count + 1))
 				swap_in_gb=$((swap_in_gb + 1))
-				ui_print "  $count. ${swap_in_gb}GB of SWAP"
+				ui_print $count. ${swap_in_gb}GB of SWAP
 				swap_size=$((swap_in_gb * one_gb))
 			fi
-		elif [ "$swap_in_gb" -eq $totalmem_gb ] && [ $count != 0 ]; then
+		elif [ $swap_in_gb -eq $totalmem_gb ] && [ $count != 0 ]; then
 			swap_size=$totalmem
 			count=0
 		elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
@@ -123,6 +132,80 @@ make_swap() {
 	mkswap "$2" >/dev/null
 	/system/bin/swapon -p 5 "$2" >/dev/null
 	ui_print "- SWAP is running"
+}
+
+config_update() {
+	# Updating config
+	LOGDIR=/data/adb/meZram
+	CONFIG=$LOGDIR/meZram-config.json
+	CONFIG_OLD=$LOGDIR/meZram.conf
+	CONFIG_OLD_0=/sdcard/meZram-config.json
+
+	if [ -f $CONFIG_OLD ]; then
+		mv -f $CONFIG_OLD /sdcard/$CONFIG_OLD.old &&
+			ui_print "> Config moved to ${CONFIG_OLD}.old on internal"
+	fi
+
+	# Can't read from internal. Why?
+	if [ -f $CONFIG_OLD_0 ]; then
+		/system/bin/mv -f $CONFIG_OLD_0 $CONFIG
+	fi
+
+	if [ ! -f $CONFIG ]; then
+		cp -f "$MODPATH"/meZram-config.json "$CONFIG"
+	fi
+
+	if [ ! -f $CONFIG_OLD_0 ]; then
+		cp -f $CONFIG /sdcard &&
+			ui_print "> Config copy is in internal"
+	fi
+
+	# in case forgot to reload
+	cp -u /sdcard/meZram-config.json $CONFIG
+
+	# Read config version
+	log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
+	version=$("$MODPATH"/modules/bin/jq '.config_version' "$MODPATH"/meZram-config.json)
+	version_prev=$("$MODPATH"/modules/bin/jq '.config_version' "$CONFIG")
+
+	log_it "version = $version"
+	log_it "version_prev = $version_prev"
+
+	# Update if version is higher than previous version
+	if [ -n "$version_prev" ]; then
+		is_update=$(awk -v version="${version}" \
+			-v version_prev="${version_prev}" \
+			'BEGIN {
+			if (version > version_prev) {
+				print "true"
+			} else {
+				print "false"
+			}
+		}')
+	else
+		rm $CONFIG
+		abort
+	fi
+
+	log_it "is_update = $is_update"
+
+	if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
+		# Update config version
+		ui_print "> Updating configuration"
+		"$MODPATH"/modules/bin/jq \
+			'del(.config_version)' "$CONFIG" |
+			/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+		# Slurp entire config
+		"$MODPATH"/modules/bin/jq \
+			-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG |
+			/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+		ui_print "> Configuration updated"
+	fi
+
+	# Tweaks already able to be used without restarting,
+	# that's still not enough if you ask me
+	ui_print "> Enjoy :)"
+	ui_print "  Restarting device is RECOMMENDED"
 }
 
 mount /data >/dev/null
@@ -189,76 +272,7 @@ if [ "$sdk_level" -lt 28 ]; then
 	ui_print "  Please upgrade your phone to Android 9+"
 else
 	lmkd_apply
+  config_update
+	custom_props_apply &&
+		ui_print "> Custom props applied"
 fi
-
-# Updating config
-LOGDIR=/data/adb/meZram
-CONFIG=$LOGDIR/meZram-config.json
-CONFIG_OLD=$LOGDIR/meZram.conf
-CONFIG_OLD_0=/sdcard/meZram-config.json
-
-if [ -f $CONFIG_OLD ]; then
-	mv -f $CONFIG_OLD /sdcard/$CONFIG_OLD.old &&
-		ui_print "> Config moved to ${CONFIG_OLD}.old on internal"
-fi
-
-# Can't read from internal. Why?
-if [ -f $CONFIG_OLD_0 ]; then
-	/system/bin/mv -f $CONFIG_OLD_0 $CONFIG
-fi
-
-if [ ! -f $CONFIG ]; then
-	cp -f "$MODPATH"/meZram-config.json "$CONFIG"
-fi
-
-if [ ! -f $CONFIG_OLD_0 ]; then
-	cp -f $CONFIG /sdcard &&
-		ui_print "> Config copy is in internal"
-fi
-
-# in case forgot to reload
-cp -u /sdcard/meZram-config.json $CONFIG
-
-# Read config version
-log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
-version=$("$MODPATH"/modules/bin/jq '.config_version' "$MODPATH/meZram-config.json")
-version_prev=$("$MODPATH"/modules/bin/jq '.config_version' "$CONFIG")
-
-log_it "version = $version"
-log_it "version_prev = $version_prev"
-
-# Update if version is higher than previous version
-if [ -n "$version_prev" ]; then
-	is_update=$(awk -v version="${version}" \
-		-v version_prev="${version_prev}" \
-		'BEGIN {
-			if (version > version_prev) {
-				print "true"
-			} else {
-				print "false"
-			}
-		}')
-else
-	log_it "$(ls /sdcard/)"
-	rm $CONFIG
-	abort
-fi
-
-log_it "is_update = $is_update"
-
-if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
-	# Update config version
-	ui_print "> Updating configuration"
-	"$MODPATH"/modules/bin/jq \
-		'del(.config_version)' "$CONFIG" |
-		/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
-	# Slurp entire config
-	"$MODPATH"/modules/bin/jq \
-		-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG |
-		/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
-	ui_print "> Configuration updated"
-fi
-
-# Tweaks already able to be used without restarting,
-# that's still not enough if you ask me
-custom_props_apply && ui_print "> Custom props applied. Restarting device is RECOMMENDED"

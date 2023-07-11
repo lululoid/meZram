@@ -1,4 +1,3 @@
-#!/data/adb/modules/meZram/modules/bin/bash
 MODDIR=${0%/*}
 LOGDIR=/data/adb/meZram
 CONFIG="$LOGDIR"/meZram-config.json
@@ -15,8 +14,10 @@ lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 . "$MODDIR"/modules/lmk.sh
 
 log_it() {
-	local ms=$(date +%N | cut -c1-3)
-	local td=$(date +%R:%S:"${ms}")
+	local ms
+	local td
+	ms=$(date +%N | cut -c1-3)
+	td=$(date +%R:%S:"${ms}")
 	logger "$td" "$1"
 }
 
@@ -45,7 +46,7 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		log_it "$zram0 RESET"
 
 		# Set up zram size, then turn on both zram and swap
-		echo "$zram_size" >/sys/block/zram0/disksize
+		echo $zram_size >/sys/block/zram0/disksize
 		log_it "set $zram0 disksize to $zram_size"
 
 		# Set up maxium cpu streams
@@ -60,56 +61,55 @@ $BIN/swapon -p 5 /data/swap_file && log_it "swap is turned on"
 # echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
 
 # rotate lmkd logs
-logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log &
+logcat --pid "$lmkd_pid" --file=$LOGDIR/lmkd.log &
 
-lmkd_logger_pid="$!"
+lmkd_logger_pid=$!
 
-resetprop "meZram.lmkd_logger.pid" "$!"
+resetprop meZram.lmkd_logger.pid $!
 
 while true; do
-	lmkd_log_size=$(wc -c <"$LOGDIR"/lmkd.log)
-	meZram_log_size=$(wc -c <"$LOGDIR"/meZram.log)
+	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log)
+	meZram_log_size=$(wc -c <$LOGDIR/meZram.log)
 	today_date=$(date +%R-%a-%d-%m-%Y)
 
-	if [ "$lmkd_log_size" -ge 10485760 ]; then
-		kill -9 "$lmkd_logger_pid"
-		mv "$LOGDIR"/lmkd.log "$LOGDIR/$today_date-lmkd.log"
-		logcat --pid "$lmkd_pid" --file="$LOGDIR"/lmkd.log &
+	if [ $lmkd_log_size -ge 10485760 ]; then
+		kill -9 $lmkd_logger_pid
+		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
+		logcat --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
 
-		lmkd_logger_pid="$!"
+		lmkd_logger_pid=$!
 
-		resetprop "meZram.lmkd_logger.pid" "$!"
+		resetprop meZram.lmkd_logger.pid $!
 	fi
 
 	if [ "$meZram_log_size" -ge 10485760 ]; then
-		mv "$LOGDIR"/meZram.log "$LOGDIR/$today_date-meZram.log"
+		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
 	fi
 
-	logrotate "$LOGDIR"/*lmkd.log
-	logrotate "$LOGDIR"/*meZram.log
+	logrotate $LOGDIR/*lmkd.log
+	logrotate $LOGDIR/*meZram.log
 	sleep 2
 done &
 
-resetprop "meZram.log_rotator.pid" "$!"
-# List of lmkd props
-# set "ro.config.low_ram" "ro.lmk.use_psi" "ro.lmk.use_minfree_levels" "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical" "ro.lmk.critical_upgrade" "ro.lmk.upgrade_pressure" "ro.lmk.downgrade_pressure" "ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" "ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" "ro.lmk.thrashing_limit" "ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" "ro.lmk.swap_free_low_percentage" "ro.lmk.debug" "sys.lmk.minfree_levels"
+resetprop meZram.log_rotator.pid $!
 
-tl="ro.lmk.thrashing_limit"
+tl=ro.lmk.thrashing_limit
 
 # wait until boot completed to remove thrashing_limit in MIUI because it has no effect in MIUI
 while true; do
-	if [ "$(resetprop sys.boot_completed)" -eq "1" ]; then
+	if [ "$(resetprop sys.boot_completed)" -eq 1 ]; then
 		lmkd_props_clean
 		if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-			rm_prop "$tl"
+			rm_prop $tl
 		fi
-		resetprop lmkd.reinit 1
+		custom_props_apply
+		resetprop "lmkd.reinit" 1 &&
+			log_it "custom props applied"
 		break
 	fi
 done
 
-custom_props_apply && resetprop "lmkd.reinit" 1 &&
-	log_it "custom props applied"
+log_it "jq_version = $($MODBIN/jq --version)"
 
 # Start aggressive mode service
 while true; do
@@ -144,6 +144,7 @@ while true; do
 
 			am=true
 			wait_time=true
+
 		elif [ -z "$ag_app" ] && [ "$am" ]; then
 			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
 
@@ -153,8 +154,8 @@ while true; do
 
 			lmkd_props_clean
 			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
-			custom_props_apply && log_it "props restored"
-			resetprop lmkd.reinit 1
+			custom_props_apply && resetprop "lmkd.reinit" 1 &&
+				log_it "custom props applied"
 			log_it "aggressive mode deactivated"
 			unset am
 		fi
@@ -171,4 +172,5 @@ while true; do
 	fi
 	sleep 6
 done &
-resetprop "meZram.agmode.pid" "$!"
+
+resetprop "meZram.aggressive_mode.pid" "$!"

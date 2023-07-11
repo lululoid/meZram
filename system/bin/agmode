@@ -81,7 +81,7 @@ for opt in "$@"; do
 		if [ "$2" ]; then
 			watch -t tail -n "$2" "$LOGDIR"/meZram.log
 		else
-			watch -t tail -n "$(($(tput lines) - 10))" "$LOGDIR"/meZram.log
+			watch -t tail -n "$(tput lines)" "$LOGDIR"/meZram.log
 		fi
 		;;
 	--show)
@@ -90,7 +90,8 @@ for opt in "$@"; do
 		;;
 	--reload)
     cp /sdcard/meZram-config.json $CONFIG 
-		custom_props_apply 2>/dev/null && printme "Custom props applied"
+		custom_props_apply 2>/dev/null &&
+      printme "Custom props applied"
 		;;
 	--rmswap)
 		printme "Turning off SWAP. Please wait"
