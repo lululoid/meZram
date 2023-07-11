@@ -1,10 +1,14 @@
-#!/data/adb/modules/meZram/modules/bin/bash
+#!/system/bin/sh
 MODDIR=/data/adb/modules/meZram
 LOGDIR=/data/adb/meZram
 CONFIG=$LOGDIR/meZram-config.json
 
+sync_config() {
+	cp -rf $CONFIG "$1"
+}
+
 # Loading modules
-export PATH="$MODDIR/modules/bin:$PATH"
+export PATH=$MODDIR/modules/bin:$PATH
 . $MODDIR/modules/lmk.sh
 
 # Add new key or edit existing value in custom props
@@ -18,6 +22,7 @@ toggle_prop() {
 	jq --argjson props "$props" '.custom_props = $props' \
 		$CONFIG | awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' \
 		$CONFIG
+	sync_config /sdcard/meZram-config.json
 }
 
 toggle_psi() {
@@ -61,12 +66,14 @@ for opt in "$@"; do
 		;;
 	--enable)
 		jq '.agmode = "on"' $CONFIG |
-			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG &&
+			sync_config /sdcard/meZram-config.json
 		printme "😾 Aggressive mode enabled"
 		;;
 	--disable)
 		jq '.agmode = "off"' $CONFIG |
-			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG &&
+			sync_config /sdcard/meZram-config.json
 		printme "😿 Aggressive mode disabled"
 		;;
 	-h | --help)
@@ -89,9 +96,11 @@ for opt in "$@"; do
 		cat "$CONFIG"
 		;;
 	--reload)
-    cp /sdcard/meZram-config.json $CONFIG 
+		cp /sdcard/meZram-config.json $CONFIG
 		custom_props_apply 2>/dev/null &&
-      printme "Custom props applied"
+			resetprop lmkd.reinit 1 &&
+			printme "Custom props applied"
+		sync_config /sdcard/meZram-config.json
 		;;
 	--rmswap)
 		printme "Turning off SWAP. Please wait"
@@ -103,7 +112,9 @@ for opt in "$@"; do
 		printme "Switching LMKD mode"
 		toggle_psi
 		toggle_minfree_levels
-		custom_props_apply 2>/dev/null
+		custom_props_apply 2>/dev/null &&
+			resetprop lmkd.reinit 1 &&
+			sync_config /sdcard/meZram-config.json
 
 		if [ "$ml_value" = false ]; then
 			printme "LMKD mode switched to minfree_levels"
@@ -115,24 +126,25 @@ for opt in "$@"; do
 		jq --arg wait_time "$2" \
 			'.wait_time = $wait_time' $CONFIG |
 			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+		sync_config /sdcard/meZram-config.json
 		printme "Wait time set to $2"
+		;;
+	downgrade_pressure=*)
+		value=$(echo "$1" | sed 's/[^0-9]//g')
+
+		if is_number "${value}"; then
+			toggle_prop "ro.lmk.downgrade_pressure" "$value"
+			printme "Prop \"ro.lmk.downgrade_pressure\" set to $1"
+			echo "⚠️!!! Beware not to set >= 100 in minfree_levels mode. It will break you device !"
+		else
+			printme "Invalid value"
+		fi
+		;;
+	*)
+		agmode --help
 		;;
 	esac
 done
-
-case "$1" in
-downgrade_pressure=*)
-	value=$(echo "$1" | sed 's/[^0-9]//g')
-
-	if [ -n "$value" ]; then
-		toggle_prop "ro.lmk.downgrade_pressure" "$value"
-		printme "Prop \"ro.lmk.downgrade_pressure\" set to $1"
-		echo "⚠️!!! Beware not to set >= 100 in minfree_levels mode. It will break you device !"
-	else
-		printme "Invalid value"
-	fi
-	;;
-esac
 
 if [ -z "$*" ]; then
 	agmode --help
