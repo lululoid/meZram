@@ -25,7 +25,7 @@ sleep 0.5
 
 log_it() {
 	log=$(echo "$*" | tr -s " ")
-	true && ui_print "  DEBUG: $log"
+	false && ui_print "  DEBUG: $log"
 }
 
 rm_prop() {
