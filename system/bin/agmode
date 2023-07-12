@@ -87,8 +87,9 @@ for opt in "$@"; do
 	--log)
 		if [ "$2" ]; then
 			watch -t tail -n "$2" "$LOGDIR"/meZram.log
-		else
-			watch -t tail -n "$(tput lines)" "$LOGDIR"/meZram.log
+    else
+      _ln=$(tput lines)
+      watch -t tail -n "$((_ln - 1))" "$LOGDIR"/meZram.log
 		fi
 		;;
 	--show)
