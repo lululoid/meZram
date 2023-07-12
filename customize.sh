@@ -12,7 +12,7 @@ set_perm_recursive "$MODPATH"/modules/lmk.sh 0 2000 0755 0755
 
 log_it() {
 	log=$(echo "$*" | tr -s " ")
-	true && ui_print "  DEBUG: $log"
+	false && ui_print "  DEBUG: $log"
 }
 
 rm_prop() {
