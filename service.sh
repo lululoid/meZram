@@ -2,10 +2,8 @@ MODDIR=${0%/*}
 LOGDIR=/data/adb/meZram
 CONFIG="$LOGDIR"/meZram-config.json
 BIN=/system/bin
-MODBIN=/data/adb/modules/meZram/modules/bin 
-
-# Calculate memory to use for zram
-NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
+MODBIN=/data/adb/modules/meZram/modules/bin
+NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/') # read the cpu cores
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 zram_size=$((totalmem * 1024 / 2))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
@@ -18,11 +16,11 @@ log_it() {
 	local td
 	ms=$(date +%N | cut -c1-3)
 	td=$(date +%R:%S:"${ms}")
-	logger "$td" "$1"
+	logger "$td" "$$ $1"
 }
 
 logrotate() {
-	count=0
+	local count=0
 
 	for log in "$@"; do
 		count=$((count + 1))
@@ -34,6 +32,10 @@ logrotate() {
 	done
 }
 
+logcat --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
+lmkd_logger_pid=$!
+
+resetprop meZram.lmkd_logger.pid $!
 log_it "NRDEVICES = $NRDEVICES"
 log_it "totalmem = $totalmem"
 log_it "zram_size = $zram_size"
@@ -42,65 +44,35 @@ log_it "lmkd_pid = $lmkd_pid"
 for zram0 in /dev/block/zram0 /dev/zram0; do
 	if [ "$(ls $zram0)" ]; then
 		swapoff $zram0 && log_it "$zram0 turned off"
-		echo 1 >/sys/block/zram0/reset
-		log_it "$zram0 RESET"
+		echo 1 >/sys/block/zram0/reset &&
+			log_it "$zram0 RESET"
 
 		# Set up zram size, then turn on both zram and swap
-		echo $zram_size >/sys/block/zram0/disksize
-		log_it "set $zram0 disksize to $zram_size"
+		echo $zram_size >/sys/block/zram0/disksize &&
+			log_it "set $zram0 disksize to $zram_size"
 
 		# Set up maxium cpu streams
 		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
 		mkswap "$zram0" && log_it "$zram0 turned on"
-		$BIN/swapon -p 10 "$zram0" && log_it "swap turned on"
+		$BIN/swapon -p 3 "$zram0" &&
+			log_it "zram is turned on"
 	fi
+	break
 done
 
-$BIN/swapon -p 5 /data/swap_file && log_it "swap is turned on"
-# echo '1' > /sys/kernel/tracing/events/psi/enable 2>> "$MODDIR"/meZram.log
-
-# rotate lmkd logs
-logcat --pid "$lmkd_pid" --file=$LOGDIR/lmkd.log &
-
-lmkd_logger_pid=$!
-
-resetprop meZram.lmkd_logger.pid $!
-
-while true; do
-	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log)
-	meZram_log_size=$(wc -c <$LOGDIR/meZram.log)
-	today_date=$(date +%R-%a-%d-%m-%Y)
-
-	if [ $lmkd_log_size -ge 10485760 ]; then
-		kill -9 $lmkd_logger_pid
-		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
-		logcat --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
-
-		lmkd_logger_pid=$!
-
-		resetprop meZram.lmkd_logger.pid $!
-	fi
-
-	if [ "$meZram_log_size" -ge 10485760 ]; then
-		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
-	fi
-
-	logrotate $LOGDIR/*lmkd.log
-	logrotate $LOGDIR/*meZram.log
-	sleep 2
-done &
-
-resetprop meZram.log_rotator.pid $!
+$BIN/swapon -p 2 /data/swap_file -s ERROR "swap_file gone" 2>logcat && log_it "swap is turned on"
 
 tl=ro.lmk.thrashing_limit
 
 # wait until boot completed to remove thrashing_limit in MIUI because it has no effect in MIUI
 while true; do
 	if [ "$(resetprop sys.boot_completed)" -eq 1 ]; then
-		lmkd_props_clean
+		lmkd_props_clean &&
+			log_it "unnecessary lmkd props cleaned"
 		if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-			rm_prop $tl
+			rm_prop $tl &&
+				log_it "MIUI not support thrashing_limit customization"
 		fi
 		custom_props_apply
 		resetprop "lmkd.reinit" 1 &&
@@ -173,4 +145,29 @@ while true; do
 	sleep 6
 done &
 
-resetprop "meZram.aggressive_mode.pid" "$!"
+resetprop meZram.aggressive_mode.pid $!
+
+while true; do
+	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log)
+	meZram_log_size=$(wc -c <$LOGDIR/meZram.log)
+	today_date=$(date +%R-%a-%d-%m-%Y)
+
+	if [ $lmkd_log_size -ge 10485760 ]; then
+		kill -9 $lmkd_logger_pid
+		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
+		logcat --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
+		lmkd_logger_pid=$!
+		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
+	fi
+
+	if [ $meZram_log_size -ge 10485760 ]; then
+		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
+	fi
+
+	logrotate $LOGDIR/*lmkd.log
+	logrotate $LOGDIR/*meZram.log
+	sleep 2
+done &
+
+resetprop meZram.log_rotator.pid $!
+resetprop meZram.service.pid $$

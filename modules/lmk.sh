@@ -6,6 +6,7 @@ export GREEN='\033[1;32m'
 export YELLOW_BAD='\033[33m'
 export RESET='\033[0m'
 export YELLOW='\033[93m'
+BIN=/system/bin
 
 is_number() {
 	case $1 in
@@ -41,14 +42,20 @@ titler() {
 # $1 is for the format of the log
 # Example -> date +%R:%S:%N_%d-%m-%Y
 logger() {
-	local log=$(echo "$2" | tr -s " ")
+  local log
+	log=$(echo "$2" | tr -s " ")
 	true && echo "$1 $log" >>"$LOGDIR"/meZram.log
 }
 
 rm_prop() {
+  local ms
+  local td
+	ms=$(date +%N | cut -c1-3)
+	td=$(date +%R:%S:"${ms}")
+
 	for prop in "$@"; do
 		resetprop "$prop" >/dev/null && resetprop --delete "$prop" &&
-			logger "$prop deleted"
+			logger "$td" "$(getprop meZram.service.pid) $prop deleted"
 	done
 }
 
@@ -80,10 +87,17 @@ custom_props_apply() {
 
 lmkd_props_clean() {
 	set --
-	set "ro.lmk.low" "ro.lmk.medium" "ro.lmk.critical_upgrade" \
-		"ro.lmk.kill_heaviest_task" "ro.lmk.kill_timeout_ms" \
-		"ro.lmk.psi_partial_stall_ms" "ro.lmk.psi_complete_stall_ms" \
-		"ro.lmk.thrashing_limit_decay" "ro.lmk.swap_util_max" \
-		"sys.lmk.minfree_levels" "ro.lmk.upgrade_pressure"
+	set \
+		"ro.lmk.low" \
+		"ro.lmk.medium" \
+		"ro.lmk.critical_upgrade" \
+		"ro.lmk.kill_heaviest_task" \
+		"ro.lmk.kill_timeout_ms" \
+		"ro.lmk.psi_partial_stall_ms" \
+		"ro.lmk.psi_complete_stall_ms" \
+		"ro.lmk.thrashing_limit_decay" \
+		"ro.lmk.swap_util_max" \
+		"sys.lmk.minfree_levels" \
+		"ro.lmk.upgrade_pressure"
 	rm_prop "$@"
 }

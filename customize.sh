@@ -1,4 +1,5 @@
 SKIPUNZIP=1
+totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
 unzip -o "$ZIPFILE" -x 'META-INF/*' -d "$MODPATH" >&2
 set_perm_recursive "$MODPATH" 0 0 0755 0644
@@ -9,23 +10,9 @@ set_perm_recursive "$MODPATH"/modules/lmk.sh 0 2000 0755 0755
 # Setup modules
 . "$MODPATH"/modules/lmk.sh
 
-mkdir -p "$NVBASE/meZram"
-
-# Calculate size to use for swap (1/2 of ram)
-totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
-
-ui_print ""
-ui_print "  Made with ❤ and 🩸 by "
-sleep 0.5
-ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
-ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
-ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
-ui_print " ==================:)====================="
-sleep 0.5
-
 log_it() {
 	log=$(echo "$*" | tr -s " ")
-	false && ui_print "  DEBUG: $log"
+	true && ui_print "  DEBUG: $log"
 }
 
 rm_prop() {
@@ -69,7 +56,6 @@ lmkd_apply() {
 
 	# applying lmkd tweaks
 	grep -v '^ *#' <"$MODPATH"/system.prop | while IFS= read -r prop; do
-		# log_it "$prop"
 		log_it "resetprop ${prop//=/ }"
 		resetprop ${prop//=/ }
 	done
@@ -90,8 +76,9 @@ lmkd_apply() {
 count_SWAP() {
 	local one_gb=$((1024 * 1024))
 	local totalmem_gb=$(((totalmem / 1024 / 1024) + 1))
-	swap_size=$((totalmem / 2))
-	count=0
+	local swap_size
+	local count=0
+	local swap_in_gb=0
 
 	ui_print "> Please select SWAP size"
 	ui_print "  Press VOLUME + to DEFAULT"
@@ -105,7 +92,7 @@ count_SWAP() {
 			if [ $count -eq 0 ]; then
 				count=$((count + 1))
 				swap_size=$((totalmem / 2))
-				local swap_in_gb=0
+				swap_in_gb=0
 				ui_print "  $count. 50% of RAM ($((swap_size / 1024))MB SWAP)\
 				 --> RECOMMENDED"
 			elif [ $count -eq 2 ]; then
@@ -122,24 +109,24 @@ count_SWAP() {
 			swap_size=$totalmem
 			count=0
 		elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
+			swap_size=$((totalmem / 2))
 			break
 		fi
 	done
+	echo "$swap_size"
 }
 
 make_swap() {
 	dd if=/dev/zero of="$2" bs=1024 count="$1" >/dev/null
 	mkswap "$2" >/dev/null
-	/system/bin/swapon -p 5 "$2" >/dev/null
-	ui_print "- SWAP is running"
 }
 
 config_update() {
 	# Updating config
-	LOGDIR=/data/adb/meZram
-	CONFIG=$LOGDIR/meZram-config.json
-	CONFIG_OLD=$LOGDIR/meZram.conf
-	CONFIG_OLD_0=/sdcard/meZram-config.json
+	local LOGDIR=/data/adb/meZram
+	local CONFIG=$LOGDIR/meZram-config.json
+	local CONFIG_OLD=$LOGDIR/meZram.conf
+	local CONFIG_OLD_0=/sdcard/meZram-config.json
 
 	if [ -f $CONFIG_OLD ]; then
 		mv -f $CONFIG_OLD /sdcard/$CONFIG_OLD.old &&
@@ -208,25 +195,34 @@ config_update() {
 	ui_print "  Restarting device is RECOMMENDED"
 }
 
-mount /data >/dev/null
-
-# Check Android SDK
-sdk_level=$(resetprop ro.build.version.sdk)
+# start installation
 swap_filename=/data/swap_file
 free_space=$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' |
 	sed ':a;N;$!ba;s/\n/ /g' | awk '{print $3}')
 log_it "$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' |
 	sed ':a;N;$!ba;s/\n/ /g')"
 
+# making module directory
+mkdir -p "$NVBASE/meZram"
+ui_print ""
+ui_print "  Made with ❤ and 🩸 by "
+sleep 0.5
+ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
+ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
+ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
+ui_print " ==================:)====================="
+sleep 0.5
+
 if [ -d "/data/adb/modules/meZram" ]; then
 	ui_print "> Thank you so much 😊."
 	ui_print "  You've installed this module before"
 fi
 
-# Making SWAP
+# setup SWAP
 if [ ! -f $swap_filename ]; then
-	# Ask user how much SWAP they want
-	count_SWAP
+	# Ask user how much SWAP user want
+	swap_size=$(count_SWAP)
+
 	log_it "free space = $free_space"
 	log_it "swap size = $swap_size"
 	log_it "sdk_level = $sdk_level"
@@ -250,7 +246,9 @@ if [ ! -f $swap_filename ]; then
 			if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events); then
 				ui_print "> Starting making SWAP. Please wait a moment"
 				sleep 0.5
-				make_swap "$swap_size" $swap_filename
+				make_swap "$swap_size" $swap_filename &&
+					/system/bin/swapon -p 5 "$swap_filename" >/dev/null
+				ui_print "- SWAP is running"
 				break
 			elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
 				cancelled=$(ui_print "> Not making SWAP")
@@ -267,12 +265,15 @@ if [ ! -f $swap_filename ]; then
 	fi
 fi
 
+# props tweak
+sdk_level=$(resetprop ro.build.version.sdk)
+
 if [ "$sdk_level" -lt 28 ]; then
 	ui_print "> Your android version is not supported. Performance tweaks won't applied."
 	ui_print "  Please upgrade your phone to Android 9+"
 else
 	lmkd_apply
-  config_update
+	config_update
 	custom_props_apply &&
 		ui_print "> Custom props applied"
 fi
