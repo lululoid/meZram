@@ -8,7 +8,6 @@
     },
     "agmode_per_app_configuration": [
         {
-            "comment": "this is make system hold much more memory without killing apps",
             "package": "com.realvnc.viewer.android",
             "props": [
                 {
@@ -20,7 +19,6 @@
             ]
         },
         {
-            "comment": "this is make unnecessarry apps stay dead, so no process dirturb the game, resulting in FPS improvement",
             "package": "com.mobile.legends",
             "props": [
                 {
