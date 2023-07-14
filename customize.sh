@@ -124,7 +124,7 @@ config_update() {
 	local LOGDIR=/data/adb/meZram
 	local CONFIG=$LOGDIR/meZram-config.json
 	local CONFIG_OLD=$LOGDIR/meZram.conf
-	local CONFIG_OLD_0=/sdcard/meZram-config.json
+	local _CONFIG=/sdcard/meZram-config.json
 
 	if [ -f $CONFIG_OLD ]; then
 		mv -f $CONFIG_OLD /sdcard/$CONFIG_OLD.old &&
@@ -132,19 +132,21 @@ config_update() {
 	fi
 
 	# Can't read from internal. Why?
-	if [ -f $CONFIG_OLD_0 ]; then
-		/system/bin/mv -f $CONFIG_OLD_0 $CONFIG &&
-      ui_print "> Config loaded"
-	fi
+	[ -f $_CONFIG ] &&
+		/system/bin/mv -f $_CONFIG $CONFIG &&
+		ui_print "> Config loaded"
 
-	if [ ! -f $CONFIG ]; then
+	[ ! -f $CONFIG ] &&
 		cp -f "$MODPATH"/meZram-config.json "$CONFIG" &&
-      ui_print "> Config is meZram-config.json in internal"
-	fi
+		ui_print "> Config loaded"
+
+	[ ! -f $_CONFIG ] &&
+		cp -f $CONFIG $_CONFIG && 
+    ui_print "> Config is meZram-config.json in internal"
 
 	# in case forgot to reload
 	cp -u /sdcard/meZram-config.json $CONFIG &&
-    ui_print "> Config loaded"
+		ui_print "> Config loaded"
 
 	# Read config version
 	log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
@@ -212,7 +214,7 @@ if [ -d "/data/adb/modules/meZram" ]; then
 fi
 
 mkdir -p "$NVBASE/meZram" &&
-  ui_print "> Folder $NVBASE/meZram is made"
+	ui_print "> Folder $NVBASE/meZram is made"
 
 # setup SWAP
 if [ ! -f $swap_filename ]; then
