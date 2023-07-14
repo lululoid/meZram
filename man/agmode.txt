@@ -14,7 +14,7 @@ You can utilize the following commands/options to manage this feature:
 --show      Showing config
 --reload    Reload custom props then reapply
 --help | -h [language] Show this help.
-	--help id Untuk menampilkan bantuan dalam bahasa Indonesia.
+--help id Untuk menampilkan bantuan dalam bahasa Indonesia.
 --rmswap    Remove SWAP from this module. Reinstall module to make new SWAP.
 --switch    Switch LMKD mode. There's two mode, psi and the other one is minfree_levels which is older and less advanced mode.
 --wait-time [number] Wait time before exiting agmode after application closed. The reason is to prevent lag and apps being killed. Fill the number with 1m for 1 minute, it could also be 30 for 30 seconds. 

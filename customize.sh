@@ -73,10 +73,9 @@ lmkd_apply() {
 	rm -rf "$MODPATH/system.props"
 }
 
-count_SWAP() {
+count_swap() {
 	local one_gb=$((1024 * 1024))
 	local totalmem_gb=$(((totalmem / 1024 / 1024) + 1))
-	local swap_size
 	local count=0
 	local swap_in_gb=0
 
@@ -113,7 +112,6 @@ count_SWAP() {
 			break
 		fi
 	done
-	echo "$swap_size"
 }
 
 make_swap() {
@@ -135,28 +133,26 @@ config_update() {
 
 	# Can't read from internal. Why?
 	if [ -f $CONFIG_OLD_0 ]; then
-		/system/bin/mv -f $CONFIG_OLD_0 $CONFIG
+		/system/bin/mv -f $CONFIG_OLD_0 $CONFIG &&
+      ui_print "> Config loaded"
 	fi
 
 	if [ ! -f $CONFIG ]; then
-		cp -f "$MODPATH"/meZram-config.json "$CONFIG"
-	fi
-
-	if [ ! -f $CONFIG_OLD_0 ]; then
-		cp -f $CONFIG /sdcard &&
-			ui_print "> Config copy is in internal"
+		cp -f "$MODPATH"/meZram-config.json "$CONFIG" &&
+      ui_print "> Config is meZram-config.json in internal"
 	fi
 
 	# in case forgot to reload
-	cp -u /sdcard/meZram-config.json $CONFIG
+	cp -u /sdcard/meZram-config.json $CONFIG &&
+    ui_print "> Config loaded"
 
 	# Read config version
 	log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
 	version=$("$MODPATH"/modules/bin/jq '.config_version' "$MODPATH"/meZram-config.json)
 	version_prev=$("$MODPATH"/modules/bin/jq '.config_version' "$CONFIG")
 
-	log_it "version = $version"
-	log_it "version_prev = $version_prev"
+	log_it "config version = $version"
+	log_it "config version_prev = $version_prev"
 
 	# Update if version is higher than previous version
 	if [ -n "$version_prev" ]; then
@@ -202,15 +198,12 @@ free_space=$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' |
 log_it "$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' |
 	sed ':a;N;$!ba;s/\n/ /g')"
 
-# making module directory
-mkdir -p "$NVBASE/meZram"
-ui_print ""
-ui_print "  Made with ❤ and 🩸 by "
+# making module directorui_print ""
+ui_print " Made with ❤ and 🩸 by "
 sleep 0.5
 ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
 ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀░ █▀▀ █▄▄▀ █▄▀█"
 ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
-ui_print " ==================:)====================="
 sleep 0.5
 
 if [ -d "/data/adb/modules/meZram" ]; then
@@ -218,21 +211,23 @@ if [ -d "/data/adb/modules/meZram" ]; then
 	ui_print "  You've installed this module before"
 fi
 
+mkdir -p "$NVBASE/meZram" &&
+  ui_print "> Folder $NVBASE/meZram is made"
+
 # setup SWAP
 if [ ! -f $swap_filename ]; then
 	# Ask user how much SWAP user want
-	swap_size=$(count_SWAP)
-
+	count_swap
 	log_it "free space = $free_space"
 	log_it "swap size = $swap_size"
-	log_it "sdk_level = $sdk_level"
 	log_it "count = $count"
 	# Making SWAP only if enough free space available
 	if [ "$free_space" -ge "$swap_size" ] && [ "$swap_size" != 0 ]; then
 		ui_print "- Starting making SWAP. Please wait a moment"
 		sleep 0.5
 		ui_print "  $((free_space / 1024))MB available. $((swap_size / 1024))MB needed"
-		make_swap "$swap_size" $swap_filename
+		make_swap "$swap_size" $swap_filename &&
+			swapon $swap_filename
 	# Handling bug on some devices
 	elif [ -z "$free_space" ]; then
 		ui_print "> Make sure you have $((swap_size / 1024))MB space available data partition"
@@ -246,7 +241,7 @@ if [ ! -f $swap_filename ]; then
 			if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events); then
 				ui_print "> Starting making SWAP. Please wait a moment"
 				sleep 0.5
-				make_swap "$swap_size" $swap_filename &&
+				make_swap $swap_size $swap_filename &&
 					/system/bin/swapon -p 5 "$swap_filename" >/dev/null
 				ui_print "- SWAP is running"
 				break
@@ -265,12 +260,12 @@ if [ ! -f $swap_filename ]; then
 	fi
 fi
 
-# props tweak
-sdk_level=$(resetprop ro.build.version.sdk)
+android_version=$(getprop ro.build.version.release)
+log_it "android_version = $android_version"
 
-if [ "$sdk_level" -lt 28 ]; then
-	ui_print "> Your android version is not supported. Performance tweaks won't applied."
-	ui_print "  Please upgrade your phone to Android 9+"
+if [ $android_version -lt 10 ]; then
+	ui_print "> Your android version is not supported. Performance tweaks won't be applied."
+	ui_print "  Please upgrade your phone to Android 10+"
 else
 	lmkd_apply
 	config_update

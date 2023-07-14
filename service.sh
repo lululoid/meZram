@@ -54,14 +54,14 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		# Set up maxium cpu streams
 		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
-		mkswap "$zram0" && log_it "$zram0 turned on"
-		$BIN/swapon -p 3 "$zram0" &&
-			log_it "zram is turned on"
+		mkswap "$zram0" 
+		$BIN/swapon -p 3 "$zram0" && log_it "$zram0 turned on"
 	fi
 	break
 done
 
-$BIN/swapon -p 2 /data/swap_file -s ERROR "swap_file gone" 2>logcat && log_it "swap is turned on"
+$BIN/swapon -p 2 /data/swap_file &&
+  log_it "swap is turned on"
 
 tl=ro.lmk.thrashing_limit
 
@@ -75,7 +75,7 @@ while true; do
 				log_it "MIUI not support thrashing_limit customization"
 		fi
 		custom_props_apply
-		resetprop "lmkd.reinit" 1 &&
+		resetprop lmkd.reinit 1 &&
 			log_it "custom props applied"
 		break
 	fi
@@ -111,7 +111,7 @@ while true; do
 				resetprop "${key//\"/}" "$value"
 			done
 
-			resetprop "lmkd.reinit" 1
+			resetprop lmkd.reinit 1
 			log_it "aggressive mode activated for $fg_app"
 
 			am=true
@@ -125,8 +125,8 @@ while true; do
 			fi
 
 			lmkd_props_clean
-			resetprop ro.lmk.downgrade_pressure "$default_dpressure"
-			custom_props_apply && resetprop "lmkd.reinit" 1 &&
+			resetprop ro.lmk.downgrade_pressure $default_dpressure
+			custom_props_apply && resetprop lmkd.reinit 1 &&
 				log_it "custom props applied"
 			log_it "aggressive mode deactivated"
 			unset am
