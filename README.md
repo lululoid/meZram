@@ -1,10 +1,9 @@
 # Hi this is my first module
 
-![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total?link=https%3A%2F%2Fgithub.com%2Flululoid%2FmeZram%2Freleases%2Fdownload%2Fv1.6%2FmeZram-v1.6_16003.zip)
+[![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total)](https://github.com/lululoid/meZram/releases) ![Static Badge](https://img.shields.io/badge/android-10%2B_-color?color=A4C639) 
 
-# What this module do?
-
-To enhance multitasking performance, transition to a more advanced memory management system known as LMKD, which stands for low memory killer daemon but also use PSI (Pressure stall information) which basically better for performance stability. By installing this module, the system gains additional capabilities such as SWAP and adjusts the ZRAM configuration to occupy half of the total RAM capacity. These modifications aim to optimize memory utilization and improve the efficiency of concurrent task execution.
+## What this module do?
+Enhance multitasking performance, transition to a more advanced memory management system known as LMKD, which stands for low memory killer daemon but also use PSI (Pressure stall information) which basically better for performance stability. Add SWAP and adjusts the ZRAM to occupy half of the total RAM capacity. These modifications aim to optimize memory utilization and improve the efficiency of concurrent task execution.
 
 ## What is lmkd
 
@@ -41,22 +40,57 @@ downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is
 </pre>
 ![aggressive mode](https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode.jpg)
 
-- Use LMKD PSI aims to provide a smoother user experience.
-- The enhanced memory management allows for the concurrent execution of more applications while maintaining performance.
-- By reducing memory pressure, particularly in gaming scenarios, there is a potential improvement in gaming performance.
-- Advanced users can manually tweak lmkd properties by modifying the `meZram-config.json` file in root of internal and enter `agmode --reload` as root user from terminal like termux. See ![[https://source.android.com/docs/core/perf/lmkd#configuring-lmkd](https://source.android.com/docs/core/perf/lmkd#configuring-lmkd)](https://source.android.com/docs/core/perf/lmkd) for list of customizable props.
-- The ZRAM size can be modified to allocate a different portion of the RAM for compressed memory storage.
-- The SWAP size is customizable, enabling adjustment according to specific requirements.
+- PSI (Pressure Stall Information). Android 10 and later support a new lmkd mode that uses kernel pressure stall information (PSI) monitors for memory pressure detection. The PSI patchset in the upstream kernel (backported to 4.9 and 4.14 kernels) measures the amount of time that tasks are delayed as a result of memory shortages. As these delays directly affect user experience, they represent a convenient metric for determining memory pressure severity. The upstream kernel also includes PSI monitors that allow privileged userspace processes (such as lmkd) to specify thresholds for these delays and to subscribe to events from the kernel when a threshold is breached.
+- Reduce lag while maintain multitasking performance
+- Increase FPS through Agressive mode. First add game to config first in `meZram-config.json`
+- Custom lmkd prop. Add custom prop in `meZram-config.json` file in root of internal and then enter `agmode --reload` as root user from terminal like termux. See ![[https://source.android.com/docs/core/perf/lmkd#configuring-lmkd](https://source.android.com/docs/core/perf/lmkd#configuring-lmkd)](https://source.android.com/docs/core/perf/lmkd) for list of customizable props.
+- Change ZRAM size to 50% of RAM.
+- Change SWAP size up to RAM size. Choose when installation.
 - It is possible to fine-tune the SWAP size up to the total RAM capacity, but this is generally not recommended for general users as it may not provide significant performance benefits. The default 50% allocation is typically sufficient.
 - `wmemswap` command for monitoring
 ![wmemswap](https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg)
 
 ## CONFIGURATION
-Need to add some config example here later
+Config located in internal as `meZram-config.json`
+<pre>{
+    "agmode": "on",
+    "wait_time": "0",
+    "config_version": 1.6,
+    "custom_props": {
+        "ro.lmk.use_psi": true,
+        "ro.lmk.use_minfree_levels": false
+    },
+    "agmode_per_app_configuration": [
+        {
+            "comment": "this is make system hold much more memory without killing apps",
+            "package": "com.realvnc.viewer.android",
+            "props": [
+                {
+                    "ro.lmk.use_minfree_levels": true,
+                    "ro.lmk.use_psi": false,
+                    "ro.lmk.downgrade_pressure": 30,
+                    "ro.lmk.thrashing_limit_decay": 50
+                }
+            ]
+        },
+        {
+            "comment": "this is make unnecessarry apps stay dead, so no process dirturb the game, resulting in FPS improvement",
+            "package": "com.mobile.legends",
+            "props": [
+                {
+                    "ro.lmk.downgrade_pressure": 100,
+                    "ro.lmk.psi_partial_stall_ms": 1,
+                    "ro.lmk.psi_complete_stall_ms": 1,
+                    "ro.lmk.thrashing_limit_decay": 50,
+                    "ro.lmk.low": 400
+                }
+            ]
+        }
+    ]
+}</pre>
 
 ## TODO
 
-- How about adding some AI magic? LOL! 😹 Seriously though, things are getting wild! As user demands keep changing, the traditional tweaks just can't keep up. But hey, why not introduce some AI into the mix? Imagine an AI that can adapt to each user's unique needs. Now that's an intriguing idea! But hey, don't mind me, I'm just an rookie myself, and there's still so much for me to learn! 📚
 
 ## DEBUG
 
