@@ -12,7 +12,7 @@
 ---
 
 ## What this module do?
-Enhance multitasking performance, transition to a more advanced memory management system known as LMKD, which stands for low memory killer daemon but also use PSI (Pressure stall information) which basically better for performance stability. Add SWAP and adjusts the ZRAM to occupy half of the total RAM capacity. These modifications aim to optimize memory utilization and improve the efficiency of concurrent task execution.
+Enhance multitasking performance, transition to a more advanced memory management system known as LMKD, which stands for low memory killer daemon which use PSI (Pressure stall information) which basically better for performance stability. Add SWAP and adjusts the ZRAM to occupy half of the total RAM capacity. These modifications aim to optimize memory utilization and improve the efficiency of concurrent task execution.
 
 ## What is lmkd
 
@@ -22,7 +22,7 @@ Details in here https://source.android.com/docs/core/perf/lmkd
 ## Features
 
 - 😾 Aggressive Mode
-
+Agressive mode make lmkd more aggressive when open specified app in `meZram-config.json` but also could do the opposite. See [configuration explanation](#explanation)
 <pre>Usage: agmode [-OPTION] or OPTIONS...</pre>
 
 MANUAL FOR AGGRESSIVE MODE MEZRAM module
@@ -52,7 +52,7 @@ downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is
 
 - PSI (Pressure Stall Information). Android 10 and later support a new lmkd mode that uses kernel pressure stall information (PSI) monitors for memory pressure detection. The PSI patchset in the upstream kernel (backported to 4.9 and 4.14 kernels) measures the amount of time that tasks are delayed as a result of memory shortages. As these delays directly affect user experience, they represent a convenient metric for determining memory pressure severity. The upstream kernel also includes PSI monitors that allow privileged userspace processes (such as lmkd) to specify thresholds for these delays and to subscribe to events from the kernel when a threshold is breached.
 - Reduce lag while maintain multitasking performance
-- Increase FPS through Agressive mode. First add game to config first in `meZram-config.json`
+- Improve FPS through Agressive mode. First add game to config first in `meZram-config.json` see [configuration explanation](#explanation)
 - Custom lmkd prop. Add custom prop in `meZram-config.json` file in root of internal and then enter `agmode --reload` as root user from terminal like termux. See ![[https://source.android.com/docs/core/perf/lmkd#configuring-lmkd](https://source.android.com/docs/core/perf/lmkd#configuring-lmkd)](https://source.android.com/docs/core/perf/lmkd) for list of customizable props.
 - Change ZRAM size to 50% of RAM.
 - Change SWAP size up to RAM size. Choose when installation. The default 50% allocation is typically sufficient.
@@ -60,7 +60,9 @@ downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is
 ![wmemswap](https://github.com/lululoid/meZram/blob/psi_variant/pic/wmemswap.jpg)
 
 ## CONFIGURATION
-Config located in internal as `meZram-config.json`. Use app like ![[JSON & XML Tool - JSON Editor](https://play.google.com/store/apps/details?id=com.vibo.jsontool)](https://play.google.com/store/apps/details?id=com.vibo.jsontool)
+Config located in internal as `meZram-config.json`. Use app like ![[JSON & XML Tool - JSON Editor](https://play.google.com/store/apps/details?id=com.vibo.jsontool)](https://play.google.com/store/apps/details?id=com.vibo.jsontool). Below are the config example.
+![CONFIG EXAMPLE](https://github.com/lululoid/meZram/blob/psi_variant/pic/config_example.jpg)
+or in json format below
 <pre>
 {
     "agmode": "on",
@@ -72,17 +74,6 @@ Config located in internal as `meZram-config.json`. Use app like ![[JSON & XML T
         "ro.lmk.downgrade_pressure": 40
     },
     "agmode_per_app_configuration": [
-        {
-            "package": "com.realvnc.viewer.android",
-            "props": [
-                {
-                    "ro.lmk.use_minfree_levels": true,
-                    "ro.lmk.use_psi": false,
-                    "ro.lmk.downgrade_pressure": 30,
-                    "ro.lmk.thrashing_limit_decay": 50
-                }
-            ]
-        },
         {
             "package": "com.mobile.legends",
             "props": [
@@ -104,39 +95,46 @@ Config located in internal as `meZram-config.json`. Use app like ![[JSON & XML T
 
 This config makes lmkd really aggressive, resulting in background apps stay dead and prevent them from waking up resulting in FPS improvement.
 Below is configuration for game mobile legends.
+![ML](https://github.com/lululoid/meZram/blob/psi_variant/pic/agressive_mode_ml.jpg)
 <pre>
-{
-            "package": "com.mobile.legends",
-            "props": [
-                {
-                    "ro.lmk.downgrade_pressure": 100,
-                    "ro.lmk.psi_partial_stall_ms": 1,
-                    "ro.lmk.psi_complete_stall_ms": 1,
-                    "ro.lmk.thrashing_limit_decay": 50,
-                    "ro.lmk.low": 400
-                }
-            ]
+    {
+      "package": "com.mobile.legends",
+      "props": [
+        {
+          "ro.lmk.use_psi": true,
+          "ro.lmk.use_minfree_levels": false,
+          "ro.lmk.downgrade_pressure": 100,
+          "ro.lmk.psi_partial_stall_ms": 1,
+          "ro.lmk.psi_complete_stall_ms": 1,
+          "ro.lmk.thrashing_limit_decay": 50,
+          "ro.lmk.low": 400
         }
+      ]
+    }
 </pre>
+Mobile legends is already in the config by default. If you want to add your game to the config, just duplicate the mobile legends config object and edit the duplicated object package value to your game package name.
+Note that system apps may still able to waking up since lmkd rely on oom_score and system app is excluded from doze so they have high priority and low oom_score.
 
-To do the opposite add config like below. Keep in mind that set the config like this might make your device lag or even freeze.
+To do the opposite in other word make  aggressive mode not aggressive and make lmkd hold more apps add config like below. Keep in mind that set the config like this might make your device lag or even freeze. Avoid too low `ro.lmk.downgrade_pressure`.
+![example0](https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode_realvnc.jpg)
 <pre>
-{
-            "package": "com.realvnc.viewer.android",
-            "props": [
-                {
-                    "ro.lmk.use_minfree_levels": false,
-                    "ro.lmk.use_psi": true,
-                    "ro.lmk.downgrade_pressure": 30,
-                    "ro.lmk.thrashing_limit_decay": 50
-                }
-            ]
-        },
+    {
+      "package": "com.realvnc.viewer.android",
+      "props": [
+        {
+          "ro.lmk.use_minfree_levels": true,
+          "ro.lmk.use_psi": false,
+          "ro.lmk.downgrade_pressure": 30,
+          "ro.lmk.thrashing_limit_decay": 50
+        }
+      ]
+    }
 </pre>
 
 ### CUSTOM PROPS
 
 This prop applied at boot, to apply manually enter `agmode --reload` in terminal. Below I add `"ro.lmk.downgrade_pressure": 40` to make my phone less aggressive, so it able to hold more apps.
+![custom_props](https://github.com/lululoid/meZram/blob/psi_variant/pic/custom_props.jpg)
 <pre>
 "custom_props": {
         "ro.lmk.use_psi": true,
