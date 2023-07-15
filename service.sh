@@ -142,6 +142,9 @@ while true; do
 		sleep "${wait_time//\"/}"
 		unset wait_time
 	fi
+  is_update=$(cp -uv /sdcard/meZram-config.json /data/adb/meZram/meZram-config.json)
+
+  echo $is_update | $BIN/fgrep -wo ">" && log_it "config updated"
 	sleep 6
 done &
 
