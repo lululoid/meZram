@@ -54,14 +54,14 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		# Set up maxium cpu streams
 		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
-		mkswap "$zram0" 
+		mkswap "$zram0"
 		$BIN/swapon -p 3 "$zram0" && log_it "$zram0 turned on"
+		break
 	fi
-	break
 done
 
 $BIN/swapon -p 2 /data/swap_file &&
-  log_it "swap is turned on"
+	log_it "swap is turned on"
 
 tl=ro.lmk.thrashing_limit
 
@@ -142,9 +142,9 @@ while true; do
 		sleep "${wait_time//\"/}"
 		unset wait_time
 	fi
-  is_update=$(cp -uv /sdcard/meZram-config.json /data/adb/meZram/meZram-config.json)
+	is_update=$(cp -uv /sdcard/meZram-config.json /data/adb/meZram/meZram-config.json)
 
-  echo $is_update | $BIN/fgrep -wo ">" && log_it "config updated"
+	echo $is_update | $BIN/fgrep -wo ">" && log_it "config updated"
 	sleep 6
 done &
 
