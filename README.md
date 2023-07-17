@@ -8,6 +8,7 @@
 - [FEATURES](#features)
 - [CONFIGURATION](#configuration)
   - [CUSTOM PROPS](#custom-props)
+  - [VIDEO EXAMPLE](#video-example)
 - [TESTED DEVICES/DEBUG](#debug)
 ---
 
@@ -114,6 +115,9 @@ Below is configuration for game mobile legends.
 </pre>
 Mobile legends is already in the config by default. If you want to add your game to the config, just duplicate the mobile legends config object and edit the duplicated object package value to your game package name.
 Note that system apps may still able to waking up since lmkd rely on oom_score and system app is excluded from doze so they have high priority and low oom_score.
+
+### VIDEO EXAMPLE
+https://github.com/lululoid/meZram/assets/42432169/a5c527a8-8987-485d-a73e-45822dca98c5
 
 To do the opposite in other word make  aggressive mode not aggressive and make lmkd hold more apps add config like below. Keep in mind that set the config like this might make your device lag or even freeze. Avoid too low `ro.lmk.downgrade_pressure`.
 ![example0](https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode_realvnc.jpg)

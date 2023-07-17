@@ -47,3 +47,4 @@ mv -f "$changelog_file" "meZram-v${version}_$versionCode-beta-psi-changelog.md"
     -x!.git \
     -x!pic \
     -x!tmp
+    -x!vid
