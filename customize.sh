@@ -76,8 +76,9 @@ lmkd_apply() {
 count_swap() {
 	local one_gb=$((1024 * 1024))
 	local totalmem_gb=$(((totalmem / 1024 / 1024) + 1))
-	local count=0
+	count=0
 	local swap_in_gb=0
+	swap_size=$((totalmem / 2))
 
 	ui_print "> Please select SWAP size"
 	ui_print "  Press VOLUME + to DEFAULT"
@@ -92,23 +93,21 @@ count_swap() {
 				count=$((count + 1))
 				swap_size=$((totalmem / 2))
 				swap_in_gb=0
-				ui_print "  $count. 50% of RAM ($((swap_size / 1024))MB SWAP)\
-				 --> RECOMMENDED"
+				ui_print "  $count. 50% of RAM ($((swap_size / 1024))MB SWAP) --> RECOMMENDED"
 			elif [ $count -eq 2 ]; then
 				count=$((count + 1))
-				ui_print $count. No SWAP
+				ui_print "  $count. No SWAP"
 				swap_size=0
 			elif [ $swap_in_gb -lt $totalmem_gb ]; then
 				count=$((count + 1))
 				swap_in_gb=$((swap_in_gb + 1))
-				ui_print $count. ${swap_in_gb}GB of SWAP
+				ui_print "  $count. ${swap_in_gb}GB of SWAP"
 				swap_size=$((swap_in_gb * one_gb))
 			fi
 		elif [ $swap_in_gb -eq $totalmem_gb ] && [ $count != 0 ]; then
 			swap_size=$totalmem
 			count=0
 		elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
-			swap_size=$((totalmem / 2))
 			break
 		fi
 	done
@@ -127,7 +126,7 @@ config_update() {
 	local _CONFIG=/sdcard/meZram-config.json
 	local version=$($MODPATH/modules/bin/jq '.config_version' "$MODPATH"/meZram-config.json)
 	local version_prev=$($MODPATH/modules/bin/jq '.config_version' "$CONFIG")
-  local loaded=true
+	local loaded=true
 
 	log_it "config version = $version"
 	log_it "config version_prev = $version_prev"
@@ -159,11 +158,11 @@ config_update() {
 	# Can't read from internal. Why?
 	[ -f $_CONFIG ] &&
 		/system/bin/mv -f $_CONFIG $CONFIG &&
-		$loaded ui_print "> Config loaded" && unset loaded 
+		$loaded ui_print "> Config loaded" && unset loaded
 
 	[ ! -f $CONFIG ] &&
 		cp -f "$MODPATH"/meZram-config.json "$CONFIG" &&
-		$loaded ui_print "> Config loaded" && unset loaded 
+		$loaded ui_print "> Config loaded" && unset loaded
 
 	[ ! -f $_CONFIG ] &&
 		cp -f $CONFIG $_CONFIG &&
@@ -172,7 +171,7 @@ config_update() {
 	# in case forgot to reload
 	[[ $is_update = "false" ]] &&
 		cp -u /sdcard/meZram-config.json $CONFIG &&
-		$loaded ui_print "> Config loaded" && unset loaded 
+		$loaded ui_print "> Config loaded" && unset loaded
 
 	if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
 		# Update config version
@@ -193,8 +192,6 @@ config_update() {
 
 	# Tweaks already able to be used without restarting,
 	# that's still not enough if you ask me
-	ui_print "> Enjoy :)"
-	ui_print "  Restarting device is RECOMMENDED"
 }
 
 # start installation
@@ -278,3 +275,6 @@ else
 	custom_props_apply &&
 		ui_print "> Custom props applied"
 fi
+
+ui_print "> Enjoy :)"
+ui_print "  Restarting device is RECOMMENDED"

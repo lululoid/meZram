@@ -141,9 +141,6 @@ for opt in "$@"; do
 			printme "Invalid value"
 		fi
 		;;
-	*)
-		agmode --help
-		;;
 	esac
 done
 
