@@ -115,7 +115,7 @@ count_swap() {
 
 make_swap() {
 	dd if=/dev/zero of="$2" bs=1024 count="$1" >/dev/null
-	mkswap "$2" >/dev/null
+	mkswap -L meZram-swap "$2" >/dev/null
 }
 
 config_update() {
@@ -230,7 +230,7 @@ if [ ! -f $swap_filename ]; then
 		sleep 0.5
 		ui_print "  $((free_space / 1024))MB available. $((swap_size / 1024))MB needed"
 		make_swap "$swap_size" $swap_filename &&
-			swapon $swap_filename
+			/system/bin/swapon -p 2 $swap_filename
 	# Handling bug on some devices
 	elif [ -z "$free_space" ]; then
 		ui_print "> Make sure you have $((swap_size / 1024))MB space available data partition"
