@@ -35,7 +35,7 @@ sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$version-beta-psi\"/" meZram.js
 sed -i "s/\"versionCode\": \"[^\"]*\"/\"versionCode\": \"$versionCode\"/" meZram.json
 sed -i "s#\"zipUrl\": \"https://github.com/lululoid/meZram/releases/download/v[0-9.]*-beta-psi/meZram-v[0-9.]*_[0-9]*-beta-psi.zip\",#\"zipUrl\": \"https://github.com/lululoid/meZram/releases/download/v$version-beta-psi/meZram-v$version\_$versionCode-beta-psi.zip\",#g; s#\"changelog\": \"https://github.com/lululoid/meZram/releases/download/v[0-9.]*-beta-psi/meZram-v[0-9.]*_[0-9]*-beta-psi-changelog.md\"#\"changelog\": \"https://github.com/lululoid/meZram/releases/download/v$version-beta-psi/meZram-v$version\_$versionCode-beta-psi-changelog.md\"#g" meZram.json
 
-changelog_file=$(find . -type f -iname "*changelog*")
+changelog_file=$(find . -type f -iname "*changelog.md")
 mv -f "$changelog_file" "meZram-v${version}_$versionCode-beta-psi-changelog.md"
 
 7za a "packages/meZram-v${version}_$versionCode-beta-psi.zip" . \

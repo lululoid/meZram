@@ -1,7 +1,7 @@
 {
   "agmode": "on",
   "wait_time": "0",
-  "config_version": 1.7,
+  "config_version": 1.8,
   "custom_props": {
     "ro.lmk.use_psi": true,
     "ro.lmk.use_minfree_levels": false

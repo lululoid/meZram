@@ -132,8 +132,19 @@ config_update() {
 	log_it "config version_prev = $version_prev"
 	log_it "jq version = $("$MODPATH"/modules/bin/jq --version)"
 
+	if [ -f $CONFIG_OLD ]; then
+		mv -f $CONFIG_OLD /sdcard/$CONFIG_OLD.old &&
+			ui_print "> Config moved to ${CONFIG_OLD}.old on internal"
+	fi
+
+	[ ! -f $CONFIG ] && {
+		cp $MODPATH/meZram-config.json $CONFIG
+		cp $CONFIG $_CONFIG &&
+			ui_print "> Config is in internal root"
+	}
+
 	# Update if version is higher than previous version
-	if [ -n "$version_prev" ]; then
+	[ -n "$version_prev" ] &&
 		is_update=$(awk -v version="${version}" \
 			-v version_prev="${version_prev}" \
 			'BEGIN {
@@ -143,37 +154,10 @@ config_update() {
 				print "false"
 			}
 		}')
-	else
-		rm $CONFIG
-		abort
-	fi
 
 	log_it "is_update = $is_update"
 
-	if [ -f $CONFIG_OLD ]; then
-		mv -f $CONFIG_OLD /sdcard/$CONFIG_OLD.old &&
-			ui_print "> Config moved to ${CONFIG_OLD}.old on internal"
-	fi
-
-	# Can't read from internal. Why?
-	[ -f $_CONFIG ] &&
-		/system/bin/mv -f $_CONFIG $CONFIG &&
-		$loaded ui_print "> Config loaded" && unset loaded
-
-	[ ! -f $CONFIG ] &&
-		cp -f "$MODPATH"/meZram-config.json "$CONFIG" &&
-		$loaded ui_print "> Config loaded" && unset loaded
-
-	[ ! -f $_CONFIG ] &&
-		cp -f $CONFIG $_CONFIG &&
-		ui_print "> Config is meZram-config.json in internal"
-
-	# in case forgot to reload
-	[[ $is_update = "false" ]] &&
-		cp -u /sdcard/meZram-config.json $CONFIG &&
-		$loaded ui_print "> Config loaded" && unset loaded
-
-	if [ -f "$CONFIG" ] && [[ "$is_update" = "true" ]]; then
+	if [[ "$is_update" = "true" ]]; then
 		# Update config version
 		ui_print "> Updating configuration"
 		ui_print "> Making backup $_CONFIG.bcp"
@@ -186,12 +170,13 @@ config_update() {
 			-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG |
 			/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG &&
 			ui_print "> Configuration updated"
+		ui_print "  Please reboot"
 		cp -f $CONFIG $_CONFIG &&
 			ui_print "> Config loaded"
+	else
+		cp -u $_CONFIG $CONFIG &&
+			$loaded ui_print "> Config loaded" && unset loaded
 	fi
-
-	# Tweaks already able to be used without restarting,
-	# that's still not enough if you ask me
 }
 
 # start installation
@@ -226,7 +211,7 @@ if [ ! -f $swap_filename ]; then
 	log_it "count = $count"
 	# Making SWAP only if enough free space available
 	if [ "$free_space" -ge "$swap_size" ] && [ "$swap_size" != 0 ]; then
-		ui_print "- Starting making SWAP. Please wait a moment"
+		ui_print "> Starting making SWAP. Please wait a moment"
 		sleep 0.5
 		ui_print "  $((free_space / 1024))MB available. $((swap_size / 1024))MB needed"
 		make_swap "$swap_size" $swap_filename &&
@@ -246,7 +231,7 @@ if [ ! -f $swap_filename ]; then
 				sleep 0.5
 				make_swap $swap_size $swap_filename &&
 					/system/bin/swapon -p 5 "$swap_filename" >/dev/null
-				ui_print "- SWAP is running"
+				ui_print "> SWAP is running"
 				break
 			elif (grep -q 'KEY_VOLUMEUP *DOWN' "$TMPDIR"/events); then
 				cancelled=$(ui_print "> Not making SWAP")
@@ -256,8 +241,7 @@ if [ ! -f $swap_filename ]; then
 		done
 	# if no SWAP option selected, only pass
 	elif [ $count -eq 3 ]; then
-		true &&
-			ui_print "> Not making any SWAP. Why bro?"
+		ui_print "> Not making any SWAP. Why bro?"
 	else
 		ui_print "> Storage full. Please free up your storage"
 	fi
