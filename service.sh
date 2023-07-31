@@ -42,7 +42,7 @@ log_it "zram_size = $zram_size"
 log_it "lmkd_pid = $lmkd_pid"
 
 for zram0 in /dev/block/zram0 /dev/zram0; do
-	if [ "$(ls $zram0)" ]; then
+	[ "$(ls $zram0)" ] && {
 		swapoff $zram0 && log_it "$zram0 turned off"
 		echo 1 >/sys/block/zram0/reset &&
 			log_it "$zram0 RESET"
@@ -57,7 +57,7 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		mkswap "$zram0"
 		$BIN/swapon -p 3 "$zram0" && log_it "$zram0 turned on"
 		break
-	fi
+	}
 done
 
 $BIN/swapon -p 2 /data/swap_file &&
@@ -67,7 +67,7 @@ tl=ro.lmk.thrashing_limit
 
 # wait until boot completed to remove thrashing_limit in MIUI because it has no effect in MIUI
 while true; do
-	if [ "$(resetprop sys.boot_completed)" -eq 1 ]; then
+	[ "$(resetprop sys.boot_completed)" -eq 1 ] && {
 		lmkd_props_clean &&
 			log_it "unnecessary lmkd props cleaned"
 		if [ "$(resetprop ro.miui.ui.version.code)" ]; then
@@ -78,7 +78,7 @@ while true; do
 		resetprop lmkd.reinit 1 &&
 			log_it "custom props applied"
 		break
-	fi
+	}
 done
 
 log_it "jq_version = $($MODBIN/jq --version)"
@@ -88,7 +88,7 @@ while true; do
 	# Read configuration for aggressive mode
 	agmode=$(sed -n 's#"agmode": "\(.*\)".*#\1#p' "$CONFIG" | sed 's/ //g')
 
-	if [[ "$agmode" = "on" ]]; then
+	[[ "$agmode" = "on" ]] && {
 		# Determine foreground_app pkg name
 		# Not use + because of POSIX limitation
 		fg_app=$(dumpsys activity | $BIN/fgrep -w ResumedActivity | sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' | tail -n 1 | sed 's/ //g')
@@ -115,8 +115,24 @@ while true; do
 			log_it "aggressive mode activated for $fg_app"
 
 			am=true
-			wait_time=true
+			wait_time=$($MODBIN/jq \
+				--arg fg_app "$fg_app" \
+				'.agmode_per_app_configuration[] | select(.package == $fg_app) | .wait_time' \
+				"$CONFIG" | tail -n 1)
 
+			if [[ $wait_time = null ]]; then
+				# Wait before quit agmode to avoid lag
+				wait_time=$($MODBIN/jq \
+					'.wait_time' $CONFIG)
+
+				[[ ${wait_time//\"/} != 0 ]] && {
+					log_it "wait $wait_time before exiting aggressive mode"
+					sleep "${wait_time//\"/}"
+				}
+			elif [[ ${wait_time//\"/} != 0 ]]; then
+				sleep "${wait_time//\"/}" &&
+					log_it "wait $wait_time before exiting aggressive mode because of $fg_app"
+			fi
 		elif [ -z "$ag_app" ] && [ "$am" ]; then
 			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
 
@@ -131,20 +147,7 @@ while true; do
 			log_it "aggressive mode deactivated"
 			unset am
 		fi
-	fi
-
-	if [ $wait_time ]; then
-		# Wait before quit agmode to avoid lag
-		wait_time=$($MODBIN/jq \
-			'.wait_time' $CONFIG)
-
-		log_it "wait $wait_time before exiting aggressive mode"
-		sleep "${wait_time//\"/}"
-		unset wait_time
-	fi
-	is_update=$(cp -uv /sdcard/meZram-config.json /data/adb/meZram/meZram-config.json)
-
-	echo $is_update | $BIN/fgrep -wo ">" && log_it "config updated"
+	}
 	sleep 6
 done &
 
@@ -174,3 +177,13 @@ done &
 
 resetprop meZram.log_rotator.pid $!
 resetprop meZram.service.pid $$
+
+while true; do
+	is_update=$(cp -uv /sdcard/meZram-config.json /data/adb/meZram/meZram-config.json)
+
+	echo $is_update | $BIN/fgrep -wo ">" &&
+		log_it "config updated"
+	sleep 2
+done &
+
+resetprop meZram.config_sync.pid $!
