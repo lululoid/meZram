@@ -1,3 +1,4 @@
+# shellcheck disable=SC3010,SC3060,SC3043,SC2086
 MODDIR=${0%/*}
 LOGDIR=/data/adb/meZram
 CONFIG="$LOGDIR"/meZram-config.json

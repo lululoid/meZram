@@ -1,4 +1,5 @@
 #!/system/bin/sh
+# shellcheck disable=SC1091,SC3043,SC2046,SC2086
 MODDIR=/data/adb/modules/meZram
 LOGDIR=/data/adb/meZram
 CONFIG=$LOGDIR/meZram-config.json
@@ -15,7 +16,8 @@ export PATH=$MODDIR/modules/bin:$PATH
 toggle_prop() {
 	local prop_name="$1"
 	local prop_value="$2"
-	local props=$(jq --argjson prop_value "$prop_value" \
+	local props
+	props=$(jq --argjson prop_value "$prop_value" \
 		--arg prop_name "$prop_name" '.custom_props | .[$prop_name] = $prop_value' \
 		$CONFIG)
 
@@ -26,7 +28,8 @@ toggle_prop() {
 }
 
 toggle_psi() {
-	local psi_value=$(jq '.custom_props."ro.lmk.use_psi"' "$CONFIG")
+	local psi_value
+	psi_value=$(jq '.custom_props."ro.lmk.use_psi"' "$CONFIG")
 
 	case "$psi_value" in
 	true)
@@ -87,9 +90,9 @@ for opt in "$@"; do
 	--log)
 		if [ "$2" ]; then
 			watch -t tail -n "$2" "$LOGDIR"/meZram.log
-    else
-      _ln=$(tput lines)
-      watch -t tail -n "$((_ln - 6))" "$LOGDIR"/meZram.log
+		else
+			_ln=$(tput lines)
+			watch -t tail -n "$((_ln - 6))" "$LOGDIR"/meZram.log
 		fi
 		;;
 	--show)
@@ -141,9 +144,10 @@ for opt in "$@"; do
 			printme "Invalid value"
 		fi
 		;;
+	*)
+		agmode --help
+		;;
 	esac
 done
 
-if [ -z "$*" ]; then
-	agmode --help
-fi
+[ -z $1 ] && agmode --help
