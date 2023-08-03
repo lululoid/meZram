@@ -1,4 +1,4 @@
-# shellcheck disable=SC3010,SC3060,SC3043,SC2086
+# shellcheck disable=SC3010,SC3060,SC3043,SC2086,SC2046
 MODDIR=${0%/*}
 LOGDIR=/data/adb/meZram
 CONFIG="$LOGDIR"/meZram-config.json
@@ -13,10 +13,8 @@ lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 . "$MODDIR"/modules/lmk.sh
 
 log_it() {
-	local ms
-	local td
-	ms=$(date +%N | cut -c1-3)
-	td=$(date +%R:%S:"${ms}")
+	local ms=$(date +%N | cut -c1-3)
+	local td=$(date +%R:%S:"${ms}")
 	logger "$td" "$$ $1"
 }
 
@@ -97,15 +95,15 @@ while true; do
 
 		if [ -n "$ag_app" ] && [ -z "$am" ]; then
 			papp_keys=$($MODBIN/jq \
-				--arg fg_app "$fg_app" \
-				'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | keys[]' \
+				--arg ag_app "$ag_app" \
+				'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | keys[]' \
 				"$CONFIG")
 
 			for key in $(echo "$papp_keys"); do
 				value=$($MODBIN/jq \
-					--arg fg_app "$fg_app" \
+					--arg ag_app "$ag_app" \
 					--arg key "${key//\"/}" \
-					'.agmode_per_app_configuration[] | select(.package == $fg_app) | .props[0] | .[$key]' \
+					'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | .[$key]' \
 					"$CONFIG")
 
 				log_it "applying $key $value"
@@ -115,10 +113,11 @@ while true; do
 			resetprop lmkd.reinit 1
 			log_it "aggressive mode activated for $fg_app"
 
-			am=true
+			am=$ag_app
+		elif [ -z "$ag_app" ] && [ -n "$am" ]; then
 			wait_time=$($MODBIN/jq \
-				--arg fg_app "$fg_app" \
-				'.agmode_per_app_configuration[] | select(.package == $fg_app) | .wait_time' \
+				--arg am "$am" \
+				'.agmode_per_app_configuration[] | select(.package == $am) | .wait_time' \
 				"$CONFIG" | tail -n 1)
 
 			if [[ $wait_time = null ]]; then
@@ -127,16 +126,15 @@ while true; do
 					'.wait_time' $CONFIG)
 
 				[[ ${wait_time//\"/} != 0 ]] && {
-					log_it "wait $wait_time before exiting aggressive mode"
-					sleep "${wait_time//\"/}"
+					log_it "wait $wait_time before exiting aggressive mode" &&
+						sleep "${wait_time//\"/}"
 				}
 			elif [[ ${wait_time//\"/} != 0 ]]; then
-				sleep "${wait_time//\"/}" &&
-					log_it "wait $wait_time before exiting aggressive mode because of $fg_app"
+				log_it "wait $wait_time before exiting aggressive mode because of $am" &&
+					sleep "${wait_time//\"/}"
 			fi
-		elif [ -z "$ag_app" ] && [ "$am" ]; then
-			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
 
+			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
 			if [ -z "$default_dpressure" ]; then
 				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
 			fi

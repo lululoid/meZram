@@ -1,4 +1,5 @@
 #!/system/bin/sh
+# shellcheck disable=SC3043,SC3060,SC2086
 export MAGENTA='\033[0;35m'
 export TURQUOISE='\033[1;36m'
 export LIGHT_BLUE='\033[1;34m'
@@ -42,20 +43,19 @@ titler() {
 # $1 is for the format of the log
 # Example -> date +%R:%S:%N_%d-%m-%Y
 logger() {
-  local log
+	local log
 	log=$(echo "$2" | tr -s " ")
 	true && echo "$1 $log" >>"$LOGDIR"/meZram.log
 }
 
 rm_prop() {
-  local ms
-  local td
+	local ms
+	local td
 	ms=$(date +%N | cut -c1-3)
 	td=$(date +%R:%S:"${ms}")
 
 	for prop in "$@"; do
-		resetprop "$prop" >/dev/null && resetprop --delete "$prop" &&
-			logger "$td" "$(getprop meZram.service.pid) $prop deleted"
+		resetprop "$prop" >/dev/null && resetprop --delete $prop
 	done
 }
 
@@ -100,4 +100,36 @@ lmkd_props_clean() {
 		"sys.lmk.minfree_levels" \
 		"ro.lmk.upgrade_pressure"
 	rm_prop "$@"
+}
+
+restore_props() {
+	default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
+	if [ -z "$default_dpressure" ]; then
+		default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
+	fi
+
+	lmkd_props_clean
+	resetprop ro.lmk.downgrade_pressure $default_dpressure
+	custom_props_apply && resetprop lmkd.reinit 1
+}
+
+wait_time() {
+	local am=$1
+	wait_time=$($MODBIN/jq \
+		--arg am "$am" \
+		'.agmode_per_app_configuration[] | select(.package == $am) | .wait_time' \
+		"$CONFIG" | tail -n 1)
+
+	if [[ $wait_time = null ]]; then
+		# Wait before quit agmode to avoid lag
+		wait_time=$($MODBIN/jq \
+			'.wait_time' $CONFIG)
+
+		[[ ${wait_time//\"/} != 0 ]] && {
+			sleep "${wait_time//\"/}"
+		}
+	elif [[ ${wait_time//\"/} != 0 ]]; then
+		sleep "${wait_time//\"/}"
+	fi
+
 }
