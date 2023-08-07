@@ -12,6 +12,41 @@ lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 # Loading modules
 . $MODDIR/modules/lmk.sh
 
+while true; do
+	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log)
+	meZram_log_size=$(wc -c <$LOGDIR/meZram.log)
+	today_date=$(date +%R-%a-%d-%m-%Y)
+
+	[ -z $lmkd_logger_pid ] && {
+		logcat -v time --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
+		lmkd_logger_pid=$!
+		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
+	}
+	[ -z $meZram_logger_pid ] && {
+		logcat -v time -s meZram --file=$LOGDIR/meZram.log &
+		meZram_logger_pid=$!
+		resetprop meZram.logger.pid $meZram_logger_pid
+	}
+
+	if [ $lmkd_log_size -ge 10485760 ]; then
+		kill -9 $lmkd_logger_pid
+		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
+		resetprop --delete meZram.lmkd_logger.pid
+	fi
+
+	if [ $meZram_log_size -ge 10485760 ]; then
+		kill -9 $meZram_logger_pid
+		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
+		resetprop --delete meZram.logger.pid
+	fi
+
+	logrotate $LOGDIR/*lmkd.log
+	logrotate $LOGDIR/*meZram.log
+	sleep 2
+done &
+
+resetprop meZram.log_rotator.pid $!
+
 logrotate() {
 	local count=0
 
@@ -87,7 +122,9 @@ while true; do
 		# Determine foreground_app pkg name
 		read_agmode_app $CONFIG
 
-		if [ -n "$ag_app" ] && [ -z "$am" ]; then
+		if [ -n "$ag_app" ] && {
+      [ -z "$am" ] || [[ $ag_app != "$am" ]]
+    }; then
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 			am=$ag_app
@@ -120,41 +157,6 @@ while true; do
 done &
 
 resetprop meZram.aggressive_mode.pid $!
-
-while true; do
-	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log)
-	meZram_log_size=$(wc -c <$LOGDIR/meZram.log)
-	today_date=$(date +%R-%a-%d-%m-%Y)
-
-	[ -z $lmkd_logger_pid ] && {
-		logcat --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
-		lmkd_logger_pid=$!
-		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
-	}
-	[ -z $meZram_logger_pid ] && {
-		logcat -s meZram --file=$LOGDIR/meZram.log &
-		meZram_logger_pid=$!
-		resetprop meZram.logger.pid $meZram_logger_pid
-	}
-
-	if [ $lmkd_log_size -ge 10485760 ]; then
-		kill -9 $lmkd_logger_pid
-		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
-		resetprop --delete meZram.lmkd_logger.pid
-	fi
-
-	if [ $meZram_log_size -ge 10485760 ]; then
-		kill -9 $meZram_logger_pid
-		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
-		resetprop --delete meZram.logger.pid
-	fi
-
-	logrotate $LOGDIR/*lmkd.log
-	logrotate $LOGDIR/*meZram.log
-	sleep 2
-done &
-
-resetprop meZram.log_rotator.pid $!
 resetprop meZram.service.pid $$
 
 while true; do
