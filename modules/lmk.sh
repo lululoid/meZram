@@ -8,6 +8,8 @@ export YELLOW_BAD='\033[33m'
 export RESET='\033[0m'
 export YELLOW='\033[93m'
 BIN=/system/bin
+ms=$(date +%N | cut -c1-3)
+td=$(date +%R:%S:"${ms}")
 
 is_number() {
 	case $1 in
@@ -43,14 +45,11 @@ titler() {
 # $1 is for the format of the log
 # Example -> date +%R:%S:%N_%d-%m-%Y
 logger() {
-	local log
 	log=$(echo "$2" | tr -s " ")
-	true && echo "$1 $log" >>"$LOGDIR"/meZram.log
+	true && echo "$1 $$ $log" >>"$LOGDIR"/meZram.log
 }
 
 rm_prop() {
-	local ms
-	local td
 	ms=$(date +%N | cut -c1-3)
 	td=$(date +%R:%S:"${ms}")
 
@@ -80,6 +79,7 @@ custom_props_apply() {
 					--arg prop "${prop//\"/}" '.custom_props | .[$prop]' "$CONFIG")
 			fi
 
+			logger "$td" "${prop//\"/} $prop_value applied"
 			resetprop "${prop//\"/}" "$prop_value"
 		done
 	fi
@@ -113,23 +113,22 @@ restore_props() {
 	custom_props_apply && resetprop lmkd.reinit 1
 }
 
-wait_time() {
-	local am=$1
-	wait_time=$($MODBIN/jq \
-		--arg am "$am" \
-		'.agmode_per_app_configuration[] | select(.package == $am) | .wait_time' \
-		"$CONFIG" | tail -n 1)
+apply_aggressive_mode() {
+	local ag_app=$1
+	papp_keys=$($MODBIN/jq \
+		--arg ag_app "$ag_app" \
+		'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | keys[]' \
+		"$CONFIG")
 
-	if [[ $wait_time = null ]]; then
-		# Wait before quit agmode to avoid lag
-		wait_time=$($MODBIN/jq \
-			'.wait_time' $CONFIG)
+	for key in $(echo "$papp_keys"); do
+		value=$($MODBIN/jq \
+			--arg ag_app "$ag_app" \
+			--arg key "${key//\"/}" \
+			'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | .[$key]' \
+			"$CONFIG")
 
-		[[ ${wait_time//\"/} != 0 ]] && {
-			sleep "${wait_time//\"/}"
-		}
-	elif [[ ${wait_time//\"/} != 0 ]]; then
-		sleep "${wait_time//\"/}"
-	fi
-
+		resetprop "${key//\"/}" "$value" &&
+			logger "$td" "applying $key $value"
+	done
+	resetprop lmkd.reinit 1
 }
