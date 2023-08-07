@@ -17,7 +17,8 @@ Kamu dapat menggunakan perintah/opsi berikut untuk mengelola fitur ini:
 --help id   Untuk menampilkan bantuan dalam bahasa Indonesia.
 --rmswap    Menghapus file SWAP dari module ini. Install ulang module untuk membuat SWAP baru
 --switch    Mengganti mode LMKD. Ada dua mode, psi dan satu lagi minfree_levels yang lebih lama dan kurang advanced.
---wait-time [nomor] Waktu tunggu sebelum agmode dimatikan setelah tidak menggunakan aplikasi. Hal ini untuk menghindari lag dan aplikasi tertutup. Ubah nomor ke 1m untuk 1 menit, bisa juga 30 untuk 30 detik.
+
+wait-time=[nomor] Waktu tunggu sebelum agmode dimatikan setelah tidak menggunakan aplikasi. Hal ini untuk menghindari lag dan aplikasi tertutup. Ubah nomor ke 1m untuk 1 menit, bisa juga 30 untuk 30 detik.
 
 downgrade_pressure=[nilai] Ubah nilai prop ro.lmk.downgrade_pressure. Isi nilai dengan angka antara 0-100
 "⚠️!!! Peringatan jangan set lebih dari 80 di minfree_levels mode. It will break you device !""⚠️!!! Beware not to set to 100 in minfree_levels mode. It will break you device !""⚠️!!! Beware not to set to 100 in minfree_levels mode. It will break you device !""⚠️!!! Beware not to set to 100 in minfree_levels mode. Perangkatmu akan kacau!!!"

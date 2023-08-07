@@ -128,7 +128,7 @@ for opt in "$@"; do
 		fi
 		;;
 	wait-time=*)
-		value=$(echo "$opt" | sed 's/[^0-9]//g')
+		value=$(echo "$opt" | sed 's/[^0-9]*=//g')
 		jq --arg wait_time "$value" \
 			'.wait_time = $wait_time' $CONFIG |
 			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG

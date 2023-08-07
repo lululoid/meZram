@@ -17,12 +17,12 @@ while true; do
 	meZram_log_size=$(wc -c <$LOGDIR/meZram.log)
 	today_date=$(date +%R-%a-%d-%m-%Y)
 
-	[ -z $lmkd_logger_pid ] && {
+  [ -z $(resetprop meZram.lmkd_logger.pid) ] && {
 		logcat -v time --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
 		lmkd_logger_pid=$!
 		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
 	}
-	[ -z $meZram_logger_pid ] && {
+  [ -z $(resetprop meZram.logger.pid) ] && {
 		logcat -v time -s meZram --file=$LOGDIR/meZram.log &
 		meZram_logger_pid=$!
 		resetprop meZram.logger.pid $meZram_logger_pid

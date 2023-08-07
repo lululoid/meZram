@@ -8,8 +8,6 @@ export YELLOW_BAD='\033[33m'
 export RESET='\033[0m'
 export YELLOW='\033[93m'
 BIN=/system/bin
-ms=$(date +%N | cut -c1-3)
-td=$(date +%R:%S:"${ms}")
 
 is_number() {
 	case $1 in
@@ -80,9 +78,8 @@ custom_props_apply() {
 				prop_value=$(/data/adb/modules/meZram/modules/bin/jq \
 					--arg prop "${prop//\"/}" '.custom_props | .[$prop]' "$CONFIG")
 			fi
-
-			logger "${prop//\"/} $prop_value applied"
-			resetprop "${prop//\"/}" "$prop_value"
+			resetprop "${prop//\"/}" "$prop_value" &&
+				logger "${prop//\"/} $prop_value applied"
 		done
 	fi
 }
@@ -112,7 +109,8 @@ restore_props() {
 
 	lmkd_props_clean
 	resetprop ro.lmk.downgrade_pressure $default_dpressure
-	custom_props_apply && resetprop lmkd.reinit 1
+	custom_props_apply && resetprop lmkd.reinit 1 &&
+		logger "default props restored"
 }
 
 apply_aggressive_mode() {
