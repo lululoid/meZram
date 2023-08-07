@@ -15,7 +15,7 @@ lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 log_it() {
 	local ms=$(date +%N | cut -c1-3)
 	local td=$(date +%R:%S:"${ms}")
-	logger "$td" "$$ $1"
+	logger "$td" "$1"
 }
 
 logrotate() {
@@ -23,12 +23,20 @@ logrotate() {
 
 	for log in "$@"; do
 		count=$((count + 1))
+
 		if [ "$count" -gt 5 ]; then
 			oldest_log=$(ls -tr "$1" | head -n 1)
-
 			rm -rf "$oldest_log"
 		fi
 	done
+}
+
+read_agmode_app() {
+	fg_app=$(dumpsys activity |
+		$BIN/fgrep -w ResumedActivity |
+		sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
+		tail -n 1 | sed 's/ //g')
+	ag_app=$($BIN/fgrep -wo "$fg_app" "$1")
 }
 
 logcat --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
@@ -45,11 +53,9 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		swapoff $zram0 && log_it "$zram0 turned off"
 		echo 1 >/sys/block/zram0/reset &&
 			log_it "$zram0 RESET"
-
 		# Set up zram size, then turn on both zram and swap
 		echo $zram_size >/sys/block/zram0/disksize &&
 			log_it "set $zram0 disksize to $zram_size"
-
 		# Set up maxium cpu streams
 		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
@@ -89,30 +95,11 @@ while true; do
 
 	[[ "$agmode" = "on" ]] && {
 		# Determine foreground_app pkg name
-		# Not use + because of POSIX limitation
-		fg_app=$(dumpsys activity | $BIN/fgrep -w ResumedActivity | sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' | tail -n 1 | sed 's/ //g')
-		ag_app=$($BIN/fgrep -wo "$fg_app" $CONFIG)
+		read_agmode_app $CONFIG
 
 		if [ -n "$ag_app" ] && [ -z "$am" ]; then
-			papp_keys=$($MODBIN/jq \
-				--arg ag_app "$ag_app" \
-				'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | keys[]' \
-				"$CONFIG")
-
-			for key in $(echo "$papp_keys"); do
-				value=$($MODBIN/jq \
-					--arg ag_app "$ag_app" \
-					--arg key "${key//\"/}" \
-					'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | .[$key]' \
-					"$CONFIG")
-
-				log_it "applying $key $value"
-				resetprop "${key//\"/}" "$value"
-			done
-
-			resetprop lmkd.reinit 1
-			log_it "aggressive mode activated for $fg_app"
-
+			apply_aggressive_mode $ag_app &&
+				log_it "aggressive mode activated for $fg_app"
 			am=$ag_app
 		elif [ -z "$ag_app" ] && [ -n "$am" ]; then
 			wait_time=$($MODBIN/jq \
@@ -134,20 +121,12 @@ while true; do
 					sleep "${wait_time//\"/}"
 			fi
 
-			default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
-			if [ -z "$default_dpressure" ]; then
-				default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
-			fi
-
-			lmkd_props_clean
-			resetprop ro.lmk.downgrade_pressure $default_dpressure
-			custom_props_apply && resetprop lmkd.reinit 1 &&
-				log_it "custom props applied"
-			log_it "aggressive mode deactivated"
-			unset am
+			# make sure we already close the app
+			read_agmode_app $CONFIG
+			[ -z $ag_app ] && restore_props && log_it "aggressive mode deactivated" && unset am
 		fi
 	}
-	sleep 6
+	sleep 3
 done &
 
 resetprop meZram.aggressive_mode.pid $!
