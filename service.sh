@@ -10,13 +10,7 @@ zram_size=$((totalmem * 1024 / 2))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
 # Loading modules
-. "$MODDIR"/modules/lmk.sh
-
-log_it() {
-	local ms=$(date +%N | cut -c1-3)
-	local td=$(date +%R:%S:"${ms}")
-	logger "$td" "$1"
-}
+. $MODDIR/modules/lmk.sh
 
 logrotate() {
 	local count=0
@@ -39,34 +33,30 @@ read_agmode_app() {
 	ag_app=$($BIN/fgrep -wo "$fg_app" "$1")
 }
 
-logcat --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
-lmkd_logger_pid=$!
-
-resetprop meZram.lmkd_logger.pid $!
-log_it "NRDEVICES = $NRDEVICES"
-log_it "totalmem = $totalmem"
-log_it "zram_size = $zram_size"
-log_it "lmkd_pid = $lmkd_pid"
+logger i "NRDEVICES = $NRDEVICES"
+logger i "totalmem = $totalmem"
+logger i "zram_size = $zram_size"
+logger i "lmkd_pid = $lmkd_pid"
 
 for zram0 in /dev/block/zram0 /dev/zram0; do
 	[ "$(ls $zram0)" ] && {
-		swapoff $zram0 && log_it "$zram0 turned off"
+		swapoff $zram0 && logger i "$zram0 turned off"
 		echo 1 >/sys/block/zram0/reset &&
-			log_it "$zram0 RESET"
+			logger i "$zram0 RESET"
 		# Set up zram size, then turn on both zram and swap
 		echo $zram_size >/sys/block/zram0/disksize &&
-			log_it "set $zram0 disksize to $zram_size"
+			logger i "set $zram0 disksize to $zram_size"
 		# Set up maxium cpu streams
-		log_it "making $zram0 and set max_comp_streams=$NRDEVICES"
+		logger i "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
 		mkswap "$zram0"
-		$BIN/swapon -p 3 "$zram0" && log_it "$zram0 turned on"
+		$BIN/swapon -p 3 "$zram0" && logger i "$zram0 turned on"
 		break
 	}
 done
 
 $BIN/swapon -p 2 /data/swap_file &&
-	log_it "swap is turned on"
+	logger i "swap is turned on"
 
 tl=ro.lmk.thrashing_limit
 
@@ -74,19 +64,19 @@ tl=ro.lmk.thrashing_limit
 while true; do
 	[ "$(resetprop sys.boot_completed)" -eq 1 ] && {
 		lmkd_props_clean &&
-			log_it "unnecessary lmkd props cleaned"
+			logger i "unnecessary lmkd props cleaned"
 		if [ "$(resetprop ro.miui.ui.version.code)" ]; then
 			rm_prop $tl &&
-				log_it "MIUI not support thrashing_limit customization"
+				logger i "MIUI not support thrashing_limit customization"
 		fi
 		custom_props_apply
 		resetprop lmkd.reinit 1 &&
-			log_it "custom props applied"
+			logger i "custom props applied"
 		break
 	}
 done
 
-log_it "jq_version = $($MODBIN/jq --version)"
+logger i "jq_version = $($MODBIN/jq --version)"
 
 # Start aggressive mode service
 while true; do
@@ -99,7 +89,7 @@ while true; do
 
 		if [ -n "$ag_app" ] && [ -z "$am" ]; then
 			apply_aggressive_mode $ag_app &&
-				log_it "aggressive mode activated for $fg_app"
+				logger i "aggressive mode activated for $fg_app"
 			am=$ag_app
 		elif [ -z "$ag_app" ] && [ -n "$am" ]; then
 			wait_time=$($MODBIN/jq \
@@ -113,17 +103,17 @@ while true; do
 					'.wait_time' $CONFIG)
 
 				[[ ${wait_time//\"/} != 0 ]] && {
-					log_it "wait $wait_time before exiting aggressive mode" &&
+					logger i "wait $wait_time before exiting aggressive mode" &&
 						sleep "${wait_time//\"/}"
 				}
 			elif [[ ${wait_time//\"/} != 0 ]]; then
-				log_it "wait $wait_time before exiting aggressive mode because of $am" &&
+				logger i "wait $wait_time before exiting aggressive mode because of $am" &&
 					sleep "${wait_time//\"/}"
 			fi
 
 			# make sure we already close the app
 			read_agmode_app $CONFIG
-			[ -z $ag_app ] && restore_props && log_it "aggressive mode deactivated" && unset am
+			[ -z $ag_app ] && restore_props && logger i "aggressive mode deactivated" && unset am
 		fi
 	}
 	sleep 3
@@ -136,16 +126,27 @@ while true; do
 	meZram_log_size=$(wc -c <$LOGDIR/meZram.log)
 	today_date=$(date +%R-%a-%d-%m-%Y)
 
-	if [ $lmkd_log_size -ge 10485760 ]; then
-		kill -9 $lmkd_logger_pid
-		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
+	[ -z $lmkd_logger_pid ] && {
 		logcat --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
 		lmkd_logger_pid=$!
 		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
+	}
+	[ -z $meZram_logger_pid ] && {
+		logcat -s meZram --file=$LOGDIR/meZram.log &
+		meZram_logger_pid=$!
+		resetprop meZram.logger.pid $meZram_logger_pid
+	}
+
+	if [ $lmkd_log_size -ge 10485760 ]; then
+		kill -9 $lmkd_logger_pid
+		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
+		resetprop --delete meZram.lmkd_logger.pid
 	fi
 
 	if [ $meZram_log_size -ge 10485760 ]; then
+		kill -9 $meZram_logger_pid
 		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
+		resetprop --delete meZram.logger.pid
 	fi
 
 	logrotate $LOGDIR/*lmkd.log
@@ -160,7 +161,7 @@ while true; do
 	is_update=$(cp -uv /sdcard/meZram-config.json /data/adb/meZram/meZram-config.json)
 
 	echo $is_update | $BIN/fgrep -wo ">" &&
-		log_it "config updated"
+		logger i "config updated"
 	sleep 2
 done &
 

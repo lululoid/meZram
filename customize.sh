@@ -1,3 +1,4 @@
+# shellcheck disable=SC3043,SC2034
 SKIPUNZIP=1
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 

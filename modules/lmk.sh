@@ -45,16 +45,18 @@ titler() {
 # $1 is for the format of the log
 # Example -> date +%R:%S:%N_%d-%m-%Y
 logger() {
-	log=$(echo "$2" | tr -s " ")
-	true && echo "$1 $$ $log" >>"$LOGDIR"/meZram.log
+	true && {
+		{
+			[ -n "$2" ] && log="$2" && p=$1
+		} || log="$1" && p=i
+		$BIN/log -p "$p" -t meZram "$log"
+	}
 }
 
 rm_prop() {
-	ms=$(date +%N | cut -c1-3)
-	td=$(date +%R:%S:"${ms}")
-
 	for prop in "$@"; do
-		resetprop "$prop" >/dev/null && resetprop --delete $prop
+		resetprop "$prop" >/dev/null && resetprop --delete $prop &&
+			logger "$prop removed"
 	done
 }
 
@@ -79,7 +81,7 @@ custom_props_apply() {
 					--arg prop "${prop//\"/}" '.custom_props | .[$prop]' "$CONFIG")
 			fi
 
-			logger "$td" "${prop//\"/} $prop_value applied"
+			logger "${prop//\"/} $prop_value applied"
 			resetprop "${prop//\"/}" "$prop_value"
 		done
 	fi
@@ -128,7 +130,7 @@ apply_aggressive_mode() {
 			"$CONFIG")
 
 		resetprop "${key//\"/}" "$value" &&
-			logger "$td" "applying $key $value"
+			logger i "applying $key $value"
 	done
 	resetprop lmkd.reinit 1
 }
