@@ -9,6 +9,8 @@
 - [CONFIGURATION](#configuration)
   - [CUSTOM PROPS](#custom-props)
   - [VIDEO EXAMPLE](#video-example)
+  - [WAIT_TIME](#wait_time)
+  - [PER APP WAIT_TIME](#per-app-wait_time)
 - [TESTED DEVICES/DEBUG](#debug)
 ---
 
@@ -119,7 +121,7 @@ Note that system apps may still able to waking up since lmkd rely on oom_score a
 ### VIDEO EXAMPLE
 https://github.com/lululoid/meZram/assets/42432169/a5c527a8-8987-485d-a73e-45822dca98c5
 
-To do the opposite in other word make  aggressive mode not aggressive and make lmkd hold more apps add config like below. Keep in mind that set the config like this might make your device lag or even freeze. Avoid too low `ro.lmk.downgrade_pressure`.
+To do the opposite in other word make  aggressive mode not aggressive and make lmkd hold more apps or as I called it `disaggressive mode` you can add config like below. Keep in mind that set the config like this might make your device lag or even freeze. Avoid too low `ro.lmk.downgrade_pressure`.
 ![example0](https://github.com/lululoid/meZram/blob/psi_variant/pic/aggressive_mode_realvnc.jpg)
 <pre>
     {
@@ -146,6 +148,12 @@ This prop applied at boot, to apply manually enter `agmode --reload` in terminal
         "ro.lmk.downgrade_pressure": 40
     },
 </pre>
+
+### WAIT_TIME
+Wait time is the amount of time to wait after aggressive mode or disaggressive mode is activated. The problem is that when applied props not enough to hold desired app when do multitasking, the app is automatically closed by system. This is to prevent that.
+
+### PER APP WAIT_TIME
+While wait-time is useful in disaggrssive scenario, aggressive mode not gain benefit from it. The problem that when aggressive mode is activated when wait_time is set. When game or app in aggressive mode closed, the system is still in aggressive mode, so when reopen the game or app, the app or game is alraedy killed by system because of aggressive mode. By set per app wait_time, once the game or app is closed, aggressive mode immediately deactivated so it won't kill the desired app or game , assumming the system is capable to hold the game or app.
 
 ## TODO
 
