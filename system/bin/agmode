@@ -56,6 +56,7 @@ toggle_minfree_levels() {
 
 printme() {
 	echo "${TURQUOISE}>  ${RESET}${YELLOW}$1${RESET}"
+	logger "$1"
 }
 
 # Parse command-line options
@@ -92,7 +93,7 @@ for opt in "$@"; do
 			watch -t tail -n "$2" "$LOGDIR"/meZram.log
 		else
 			_ln=$(tput lines)
-			watch -t tail -n "$((_ln/2))" "$LOGDIR"/meZram.log
+			watch -t tail -n "$((_ln / 2))" "$LOGDIR"/meZram.log
 		fi
 		;;
 	--show)
@@ -108,7 +109,7 @@ for opt in "$@"; do
 		;;
 	--rmswap)
 		printme "Turning off SWAP. Please wait"
-		swapoff /data/swap_file >/dev/null
+		printme "$(swapoff /data/swap_file)"
 		rm -vf /data/swap_file
 		printme "SWAP removed. Don't be stupid bud. Make another one!!!"
 		;;
@@ -126,19 +127,20 @@ for opt in "$@"; do
 			printme "LMKD mode switched to psi"
 		fi
 		;;
-	--wait-time)
-		jq --arg wait_time "$2" \
+	wait-time=*)
+		value=$(echo "$opt" | sed 's/[^0-9]//g')
+		jq --arg wait_time "$value" \
 			'.wait_time = $wait_time' $CONFIG |
 			awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 		sync_config /sdcard/meZram-config.json
-		printme "Wait time set to $2"
+		printme "Wait time set to $value"
 		;;
 	downgrade_pressure=*)
-		value=$(echo "$1" | sed 's/[^0-9]//g')
+		value=$(echo "$opt" | sed 's/[^0-9]//g')
 
 		if is_number "${value}"; then
 			toggle_prop "ro.lmk.downgrade_pressure" "$value"
-			printme "Prop \"ro.lmk.downgrade_pressure\" set to $1"
+			printme "Prop \"ro.lmk.downgrade_pressure\" set to $value"
 			echo "⚠️!!! Beware not to set >= 100 in minfree_levels mode. It will break you device !"
 		else
 			printme "Invalid value"
