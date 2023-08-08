@@ -12,17 +12,38 @@ lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 # Loading modules
 . $MODDIR/modules/lmk.sh
 
+logrotate() {
+	local count=0
+
+	for log in "$@"; do
+		count=$((count + 1))
+
+		if [ "$count" -gt 5 ]; then
+			oldest_log=$(ls -tr "$1" | head -n 1)
+			rm -rf "$oldest_log"
+		fi
+	done
+}
+
+read_agmode_app() {
+	fg_app=$(dumpsys activity |
+		$BIN/fgrep -w ResumedActivity |
+		sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
+		tail -n 1 | sed 's/ //g')
+	ag_app=$($BIN/fgrep -wo "$fg_app" "$1")
+}
+
 while true; do
 	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log)
 	meZram_log_size=$(wc -c <$LOGDIR/meZram.log)
 	today_date=$(date +%R-%a-%d-%m-%Y)
 
-  [ -z $(resetprop meZram.lmkd_logger.pid) ] && {
+	[ -z $(resetprop meZram.lmkd_logger.pid) ] && {
 		logcat -v time --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
 		lmkd_logger_pid=$!
 		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
 	}
-  [ -z $(resetprop meZram.logger.pid) ] && {
+	[ -z $(resetprop meZram.logger.pid) ] && {
 		logcat -v time -s meZram --file=$LOGDIR/meZram.log &
 		meZram_logger_pid=$!
 		resetprop meZram.logger.pid $meZram_logger_pid
@@ -46,27 +67,6 @@ while true; do
 done &
 
 resetprop meZram.log_rotator.pid $!
-
-logrotate() {
-	local count=0
-
-	for log in "$@"; do
-		count=$((count + 1))
-
-		if [ "$count" -gt 5 ]; then
-			oldest_log=$(ls -tr "$1" | head -n 1)
-			rm -rf "$oldest_log"
-		fi
-	done
-}
-
-read_agmode_app() {
-	fg_app=$(dumpsys activity |
-		$BIN/fgrep -w ResumedActivity |
-		sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
-		tail -n 1 | sed 's/ //g')
-	ag_app=$($BIN/fgrep -wo "$fg_app" "$1")
-}
 
 logger i "NRDEVICES = $NRDEVICES"
 logger i "totalmem = $totalmem"
@@ -123,8 +123,8 @@ while true; do
 		read_agmode_app $CONFIG
 
 		if [ -n "$ag_app" ] && {
-      [ -z "$am" ] || [[ $ag_app != "$am" ]]
-    }; then
+			[ -z "$am" ] || [[ $ag_app != "$am" ]]
+		}; then
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 			am=$ag_app
