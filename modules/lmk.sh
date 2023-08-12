@@ -40,8 +40,6 @@ titler() {
 	echo ""
 }
 
-# $1 is for the format of the log
-# Example -> date +%R:%S:%N_%d-%m-%Y
 logger() {
 	true && {
 		{
