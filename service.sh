@@ -56,7 +56,7 @@ while true; do
 		resetprop meZram.logger.pid $meZram_logger_pid
 	}
 
-	# limit log size to ~10MB then restart the service if it's exceed it
+	# limit log size to 10MB then restart the service if it's exceed it
 	if [ $lmkd_log_size -ge 10485760 ]; then
 		kill -9 $lmkd_logger_pid
 		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
@@ -94,12 +94,12 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		logger i "making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
 		mkswap "$zram0"
-		$BIN/swapon -p 3 "$zram0" && logger i "$zram0 turned on"
+		$BIN/swapon -p 69 "$zram0" && logger i "$zram0 turned on"
 		break
 	}
 done
 
-$BIN/swapon -p 2 /data/swap_file &&
+$BIN/swapon -p 2 /data/swap_file || logger f "swap is missing" &&
 	logger i "swap is turned on"
 
 tl=ro.lmk.thrashing_limit
@@ -122,8 +122,9 @@ while true; do
 done
 
 logger i "jq_version = $($MODBIN/jq --version)"
+# make file in temporary because of backgrounding in sleep below
 sltemp=/data/tmp/sltemp
-echo "" >$sltemp
+echo "" >$sltemp # reset the variable
 
 while true; do
 	# Read configuration for aggressive mode
@@ -132,20 +133,28 @@ while true; do
 	[[ "$agmode" = "on" ]] && {
 		read_agmode_app $CONFIG
 
-		# if the foreground app math app in aggressive mode list then activate aggressive mode
+		# if the foreground app match app in aggressive mode list then activate aggressive mode
 		if [ -n "$ag_app" ] && {
 			# am stand for aggressive mode, if am is not activated or am is different than the last am then activate aggressive mode
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		}; then
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
+
 			am=$ag_app
+			# if am is reinitialized then sleep will be restarted
+			kill -9 $sleep_pid && {
+				echo "" >$sltemp
+				logger i "sleep started over"
+				unset restoration
+			}
 		elif [ -n "$am" ] && [ -z $(cat $sltemp) ]; then
-			if [ $skip -eq 1 ]; then
-				read_agmode_app $CONFIG
-				restore_props && logger i "aggressive mode deactivated" && unset am
-				unset skip
-			else
+			read_agmode_app $CONFIG
+			if [ $restoration -eq 1 ]; then
+				[ -z $ag_app ] &&
+					restore_props && logger i "aggressive mode deactivated" && unset am
+				unset restoration
+			elif [ -z $ag_app ]; then
 				wait_time=$($MODBIN/jq \
 					--arg am "$am" \
 					'.agmode_per_app_configuration[] | select(.package == $am) | .wait_time' \
@@ -159,16 +168,19 @@ while true; do
 					[[ $wait_time != 0 ]] && {
 						echo "$wait_time" >$sltemp
 						logger i "wait $wait_time before exiting aggressive mode" && {
+							# i use cat because i can't read the variable, maybe because of backgrounding
 							sleep "$(cat $sltemp)" && echo "" >$sltemp
 						} &
+						sleep_pid=$!
 					}
 				elif [[ $wait_time != 0 ]]; then
 					echo "$wait_time" >$sltemp
 					logger i "wait $wait_time before exiting aggressive mode" && {
 						sleep "$(cat $sltemp)" && echo "" >$sltemp
 					} &
-        fi
-        skip=1
+					sleep_pid=$!
+				fi
+				restoration=1
 			fi
 		fi
 	}
