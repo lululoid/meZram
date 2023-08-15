@@ -2,8 +2,8 @@
 MODDIR=${0%/*}
 LOGDIR=/data/adb/meZram
 CONFIG="$LOGDIR"/meZram-config.json
-BIN=/system/bin # magisk restrict the PATH env to only in their busybox, i don't know why
-MODBIN=/data/adb/modules/meZram/modules/bin # modules binary
+BIN=/system/bin                                                # magisk restrict the PATH env to only in their busybox, i don't know why
+MODBIN=/data/adb/modules/meZram/modules/bin                    # modules binary
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/') # read the cpu cores
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 zram_size=$((totalmem * 1024 / 2))
@@ -41,22 +41,22 @@ while true; do
 	meZram_log_size=$(wc -c <$LOGDIR/meZram.log | awk '{print $1}')
 	today_date=$(date +%R-%a-%d-%m-%Y)
 
-  # check for loggers pid, if it's don't exist start one
-  lmkd_logger_pid=$(/system/bin/ps -p $lmkd_logger_pid 2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
+	# check for loggers pid, if it's don't exist start one
+	lmkd_logger_pid=$(/system/bin/ps -p $lmkd_logger_pid 2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
 	[ -z $lmkd_logger_pid ] && {
 		$BIN/logcat -v time --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
-    # save the pid to variable and prop
+		# save the pid to variable and prop
 		lmkd_logger_pid=$!
 		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
 	}
-  meZram_logger_pid=$(/system/bin/ps -p $meZram_logger_pid 2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
+	meZram_logger_pid=$(/system/bin/ps -p $meZram_logger_pid 2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
 	[ -z $meZram_logger_pid ] && {
 		$BIN/logcat -v time -s meZram --file=$LOGDIR/meZram.log &
 		meZram_logger_pid=$!
 		resetprop meZram.logger.pid $meZram_logger_pid
 	}
 
-  # limit log size to ~10MB then restart the service if it's exceed it
+	# limit log size to ~10MB then restart the service if it's exceed it
 	if [ $lmkd_log_size -ge 10485760 ]; then
 		kill -9 $lmkd_logger_pid
 		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
@@ -118,10 +118,12 @@ while true; do
 			logger i "custom props applied"
 		break
 	}
-  sleep 1
+	sleep 1
 done
 
 logger i "jq_version = $($MODBIN/jq --version)"
+sltemp=/data/tmp/sltemp
+echo "" >$sltemp
 
 while true; do
 	# Read configuration for aggressive mode
@@ -130,37 +132,44 @@ while true; do
 	[[ "$agmode" = "on" ]] && {
 		read_agmode_app $CONFIG
 
-    # if the foreground app math app in aggressive mode list then activate aggressive mode
+		# if the foreground app math app in aggressive mode list then activate aggressive mode
 		if [ -n "$ag_app" ] && {
-      # am stand for aggressive mode, if am is not activated or am is different than the last am then activate aggressive mode
+			# am stand for aggressive mode, if am is not activated or am is different than the last am then activate aggressive mode
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		}; then
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 			am=$ag_app
-		elif [ -z "$ag_app" ] && [ -n "$am" ]; then
-			wait_time=$($MODBIN/jq \
-				--arg am "$am" \
-				'.agmode_per_app_configuration[] | select(.package == $am) | .wait_time' \
-				"$CONFIG" | tail -n 1)
-
-			if [[ $wait_time = null ]]; then
-				# Wait before quit agmode to avoid lag or forced closed am app
+		elif [ -n "$am" ] && [ -z $(cat $sltemp) ]; then
+			if [ $skip -eq 1 ]; then
+				read_agmode_app $CONFIG
+				restore_props && logger i "aggressive mode deactivated" && unset am
+				unset skip
+			else
 				wait_time=$($MODBIN/jq \
-					'.wait_time' $CONFIG)
+					--arg am "$am" \
+					'.agmode_per_app_configuration[] | select(.package == $am) | .wait_time' \
+					"$CONFIG" | tail -n 1 | sed 's/"//g')
 
-				[[ ${wait_time//\"/} != 0 ]] && {
-					logger i "wait $wait_time before exiting aggressive mode" &&
-						sleep "${wait_time//\"/}"
-				}
-			elif [[ ${wait_time//\"/} != 0 ]]; then
-				logger i "wait $wait_time before exiting aggressive mode because of $am" &&
-					sleep "${wait_time//\"/}"
+				if [[ $wait_time = null ]]; then
+					# Wait before quit agmode to avoid lag or forced closed am app
+					wait_time=$($MODBIN/jq \
+						'.wait_time' $CONFIG | sed 's/"//g')
+
+					[[ $wait_time != 0 ]] && {
+						echo "$wait_time" >$sltemp
+						logger i "wait $wait_time before exiting aggressive mode" && {
+							sleep "$(cat $sltemp)" && echo "" >$sltemp
+						} &
+					}
+				elif [[ $wait_time != 0 ]]; then
+					echo "$wait_time" >$sltemp
+					logger i "wait $wait_time before exiting aggressive mode" && {
+						sleep "$(cat $sltemp)" && echo "" >$sltemp
+					} &
+        fi
+        skip=1
 			fi
-
-			# make sure we already close the app
-			read_agmode_app $CONFIG
-			[ -z $ag_app ] && restore_props && logger i "aggressive mode deactivated" && unset am
 		fi
 	}
 	sleep 1

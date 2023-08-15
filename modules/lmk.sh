@@ -41,10 +41,12 @@ titler() {
 }
 
 logger() {
+	log=$2
+	p=$1
 	true && {
-		{
-			[ -n "$2" ] && log="$2" && p=$1
-		} || log="$1" && p=i
+		if [ -z $log ]; then
+			log="$1" && p=i
+		fi
 		$BIN/log -p "$p" -t meZram "$log"
 	}
 }
