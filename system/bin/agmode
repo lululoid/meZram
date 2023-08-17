@@ -93,7 +93,14 @@ for opt in "$@"; do
 			watch -t tail -n "$2" "$LOGDIR"/meZram.log
 		else
 			_ln=$(tput lines)
-			watch -t tail -n "$((_ln / 2))" "$LOGDIR"/meZram.log
+			_cols=$(tput cols)
+			tail -n $_ln "$LOGDIR"/meZram.log >/data/tmp/logged.tmp
+			to_remove=0
+			while read -r log; do
+				count_word=$(printf '%s' "$log" | tr -s " " | wc -c)
+				to_remove=$((to_remove + count_word / _cols))
+			done </data/tmp/logged.tmp
+			watch -t tail -n $((_ln - to_remove / 2 - 2)) $LOGDIR/meZram.log
 		fi
 		;;
 	--show)
