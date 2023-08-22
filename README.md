@@ -1,6 +1,6 @@
 # Hi this is my first module
 
-[![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total)](https://github.com/lululoid/meZram/releases) ![Static Badge](https://img.shields.io/badge/android-10%2B_-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/gaming-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/performance-tweaks-color?color=A4C639) 
+[![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total)](https://github.com/lululoid/meZram/releases) ![Static Badge](https://img.shields.io/badge/android-10%2B_-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/gaming-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/performance-tweaks-color?color=A4C639)
 
 ---
 - [WHAT THIS MODULE DO?](#what-this-module-do)
@@ -37,8 +37,8 @@ You can use the following commands/options for managing this feature:
 
 <pre>
 -g | --get  Print LMKD properties
---enable    Enabling aggressive mode 
---disable   Disabling aggressive mode 
+--enable    Enabling aggressive mode
+--disable   Disabling aggressive mode
 --log [line number] Show log.
 --show      Showing config
 --reload    Reload custom props then reapply
@@ -46,7 +46,7 @@ You can use the following commands/options for managing this feature:
 --help id Untuk menampilkan bantuan dalam bahasa Indonesia.
 --rmswap    Remove SWAP from this module. Reinstall module to make new SWAP.
 --switch    Switch LMKD mode. There's two mode, psi and the other one is minfree_levels which is older and less advanced mode.
---wait-time [number]   Wait time before exiting agmode after application closed. The reason is to prevent lag and apps being killed. Fill the number with 1m for 1 minute, it could also be 30 for 30 seconds. 
+--wait-time [number]   Wait time before exiting agmode after application closed. The reason is to prevent lag and apps being killed. Fill the number with 1m for 1 minute, it could also be 30 for 30 seconds.
 
 downgrade_pressure=[value] Change ro.lmk.downgrade_pressure prop value. Value is between 0-100.
 "⚠️!!! Beware not to set more than 80 in minfree_levels mode. It will break you device !!!"
@@ -68,27 +68,29 @@ Config located in internal as `meZram-config.json`. Use app like ![[JSON & XML T
 or in json format below
 <pre>
 {
-    "agmode": "on",
-    "wait_time": "0",
-    "config_version": 1.6,
-    "custom_props": {
-        "ro.lmk.use_psi": true,
-        "ro.lmk.use_minfree_levels": false,
-        "ro.lmk.downgrade_pressure": 40
-    },
-    "agmode_per_app_configuration": [
+  "agmode": "on",
+  "wait_time": "90",
+  "config_version": 1.9,
+  "custom_props": {
+    "ro.lmk.use_psi": true,
+    "ro.lmk.use_minfree_levels": false,
+    "ro.lmk.downgrade_pressure": 40
+  },
+  "agmode_per_app_configuration": [
+    {
+      "package": "com.mobile.legends",
+      "props": [
         {
-            "package": "com.mobile.legends",
-            "props": [
-                {
-                    "ro.lmk.downgrade_pressure": 100,
-                    "ro.lmk.psi_partial_stall_ms": 1,
-                    "ro.lmk.psi_complete_stall_ms": 1,
-                    "ro.lmk.thrashing_limit_decay": 50,
-                    "ro.lmk.low": 400
-                }
-            ]
+          "ro.lmk.use_psi": true,
+          "ro.lmk.use_minfree_levels": false,
+          "ro.lmk.downgrade_pressure": 100,
+          "ro.lmk.psi_partial_stall_ms": 1,
+          "ro.lmk.psi_complete_stall_ms": 1,
+          "ro.lmk.thrashing_limit_decay": 50,
+          "ro.lmk.low": 400
         }
+      ],
+      "wait_time": "0"
     ]
 }
 
@@ -112,7 +114,8 @@ Below is configuration for game mobile legends.
           "ro.lmk.thrashing_limit_decay": 50,
           "ro.lmk.low": 400
         }
-      ]
+      ],
+      "wait_time": "0"
     }
 </pre>
 Mobile legends is already in the config by default. If you want to add your game to the config, just duplicate the mobile legends config object and edit the duplicated object package value to your game package name.
@@ -133,7 +136,8 @@ To do the opposite in other word make  aggressive mode not aggressive and make l
           "ro.lmk.downgrade_pressure": 30,
           "ro.lmk.thrashing_limit_decay": 50
         }
-      ]
+      ],
+      "wait_time": "5m"
     }
 </pre>
 
@@ -142,18 +146,20 @@ To do the opposite in other word make  aggressive mode not aggressive and make l
 This prop applied at boot, to apply manually enter `agmode --reload` in terminal. Below I add `"ro.lmk.downgrade_pressure": 40` to make my phone less aggressive, so it able to hold more apps.
 ![custom_props](https://github.com/lululoid/meZram/blob/psi_variant/pic/custom_props.jpg)
 <pre>
-"custom_props": {
-        "ro.lmk.use_psi": true,
-        "ro.lmk.use_minfree_levels": false,
-        "ro.lmk.downgrade_pressure": 40
-    },
+  "custom_props": {
+    "ro.lmk.use_psi": true,
+    "ro.lmk.use_minfree_levels": false,
+    "ro.lmk.downgrade_pressure": 40
+  },
 </pre>
 
 ### WAIT_TIME
 Wait time is the amount of time to wait after aggressive mode or disaggressive mode is activated. The problem is that when applied props not enough to hold desired app when do multitasking, the app is automatically closed by system. This is to prevent that.
+![wait_time](pic/wait_time.jpg)
 
 ### PER APP WAIT_TIME
 While wait-time is useful in disaggrssive scenario, aggressive mode not gain benefit from it. The problem that when aggressive mode is activated when wait_time is set. When game or app in aggressive mode closed, the system is still in aggressive mode, so when reopen the game or app, the app or game is alraedy killed by system because of aggressive mode. By set per app wait_time, once the game or app is closed, aggressive mode immediately deactivated so it won't kill the desired app or game , assumming the system is capable to hold the game or app.
+![wait_time_per_app](pic/wait_time_per_app.jpg)
 
 ## TODO
 

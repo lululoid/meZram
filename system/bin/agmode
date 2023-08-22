@@ -148,7 +148,7 @@ for opt in "$@"; do
 		if is_number "${value}"; then
 			toggle_prop "ro.lmk.downgrade_pressure" "$value"
 			printme "Prop \"ro.lmk.downgrade_pressure\" set to $value"
-			echo "⚠️!!! Beware not to set >= 100 in minfree_levels mode. It will break you device !"
+			echo "⚠️!!! Beware not to set >=80 in minfree_levels mode. It will break you device !"
 		else
 			printme "Invalid value"
 		fi

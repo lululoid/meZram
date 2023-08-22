@@ -128,7 +128,7 @@ apply_aggressive_mode() {
 			"$CONFIG")
 
 		resetprop "${key//\"/}" "$value" &&
-			logger i "applying $key $value"
+			logger i "applying ${key//\"/} $value"
 	done
 	resetprop lmkd.reinit 1
 }
