@@ -20,6 +20,7 @@ logrotate() {
 		count=$((count + 1))
 
 		if [ "$count" -gt 5 ]; then
+			# shellcheck disable=SC2012
 			oldest_log=$(ls -tr "$1" | head -n 1)
 			rm -rf "$oldest_log"
 		fi
@@ -28,11 +29,12 @@ logrotate() {
 
 # look for foreground app that in aggressive mode list
 read_agmode_app() {
+	local CONF=$1
 	fg_app=$(dumpsys activity |
 		$BIN/fgrep -w ResumedActivity |
 		sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
 		tail -n 1 | sed 's/ //g')
-	ag_app=$($BIN/fgrep -wo "$fg_app" "$1")
+	ag_app=$($BIN/fgrep -wo "$fg_app" "$CONF")
 }
 
 # logging service
@@ -57,17 +59,17 @@ while true; do
 	}
 
 	# limit log size to 10MB then restart the service if it's exceed it
-	if [ $lmkd_log_size -ge 10485760 ]; then
+	[ $lmkd_log_size -ge 10485760 ] && {
 		kill -9 $lmkd_logger_pid
 		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
 		resetprop meZram.lmkd_logger.pid dead
-	fi
+	}
 
-	if [ $meZram_log_size -ge 10485760 ]; then
+	[ $meZram_log_size -ge 10485760 ] && {
 		kill -9 $meZram_logger_pid
 		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
 		resetprop meZram.logger.pid dead
-	fi
+	}
 
 	logrotate $LOGDIR/*lmkd.log
 	logrotate $LOGDIR/*meZram.log
@@ -109,10 +111,10 @@ while true; do
 	[ "$(resetprop sys.boot_completed)" -eq 1 ] && {
 		lmkd_props_clean &&
 			logger i "unnecessary lmkd props cleaned"
-		if [ "$(resetprop ro.miui.ui.version.code)" ]; then
+		[ "$(resetprop ro.miui.ui.version.code)" ] && {
 			rm_prop $tl &&
 				logger i "MIUI not support thrashing_limit customization"
-		fi
+		}
 		custom_props_apply
 		resetprop lmkd.reinit 1 &&
 			logger i "custom props applied"
@@ -134,10 +136,10 @@ while true; do
 		read_agmode_app $CONFIG
 
 		# if the foreground app match app in aggressive mode list then activate aggressive mode
-		if [ -n "$ag_app" ] && {
+		[ -n "$ag_app" ] && {
 			# am stand for aggressive mode, if am is not activated or am is different than the last am then activate aggressive mode
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
-		}; then
+		} && {
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 
@@ -148,19 +150,24 @@ while true; do
 				logger i "sleep started over"
 				unset restoration
 			}
-		elif [ -n "$am" ] && [ -z $(cat $sltemp) ]; then
+		}
+
+		[ -n "$am" ] && [ -z $(cat $sltemp) ] && {
 			read_agmode_app $CONFIG
-			if [ $restoration -eq 1 ]; then
+			[ $restoration -eq 1 ] && {
 				[ -z $ag_app ] &&
 					restore_props && logger i "aggressive mode deactivated" && unset am
 				unset restoration
-			elif [ -z $ag_app ]; then
+			}
+
+			[ -z $ag_app ] && {
+        # shellcheck disable=SC2016
 				wait_time=$($MODBIN/jq \
 					--arg am "$am" \
 					'.agmode_per_app_configuration[] | select(.package == $am) | .wait_time' \
 					"$CONFIG" | tail -n 1 | sed 's/"//g')
 
-				if [[ $wait_time = null ]]; then
+				[[ $wait_time = null ]] && {
 					# Wait before quit agmode to avoid lag or forced closed am app
 					wait_time=$($MODBIN/jq \
 						'.wait_time' $CONFIG | sed 's/"//g')
@@ -173,16 +180,18 @@ while true; do
 						} &
 						sleep_pid=$!
 					}
-				elif [[ $wait_time != 0 ]]; then
+				}
+
+				[[ $wait_time != 0 ]] && {
 					echo "$wait_time" >$sltemp
 					logger i "wait $wait_time before exiting aggressive mode" && {
 						sleep "$(cat $sltemp)" && echo "" >$sltemp
 					} &
 					sleep_pid=$!
-				fi
+				}
 				restoration=1
-			fi
-		fi
+			}
+		}
 	}
 	sleep 1
 done &
