@@ -1,6 +1,6 @@
 # Hi this is my first module
 
-[![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total)](https://github.com/lululoid/meZram/releases) ![Static Badge](https://img.shields.io/badge/android-10%2B_-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/gaming-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/performance-tweaks-color?color=A4C639)
+[![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total)](https://github.com/lululoid/meZram/releases) ![Static Badge](https://img.shields.io/badge/android-11%2B_-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/gaming-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/performance-tweaks-color?color=A4C639)
 
 ---
 - [WHAT THIS MODULE DO?](#what-this-module-do)
