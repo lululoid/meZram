@@ -35,10 +35,11 @@ sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$version\"/" meZram.json
 sed -i "s/\"versionCode\": \"[^\"]*\"/\"versionCode\": \"$versionCode\"/" meZram.json
 sed -i "s#\"zipUrl\": \"https://github.com/lululoid/meZram/releases/download/v[0-9.]*/meZram-v[0-9.]*_[0-9]*.zip\",#\"zipUrl\": \"https://github.com/lululoid/meZram/releases/download/v$version/meZram-v$version\_$versionCode.zip\",#g; s#\"changelog\": \"https://github.com/lululoid/meZram/releases/download/v[0-9.]*/meZram-v[0-9.]*_[0-9]*-changelog.md\"#\"changelog\": \"https://github.com/lululoid/meZram/releases/download/v$version/meZram-v$version\_$versionCode-changelog.md\"#g" meZram.json
 
-changelog_file=$(find . -type f -iname '*changelog.md')
-mv "$changelog_file" "meZram-v${version}_$versionCode-changelog.md"
+module_name=$(sed -n 's/id=\(.*\)/\1/p' module.prop)
+mv "$changelog_file" "$module_name-v${version}_$versionCode-changelog.md"
+changelog_file=$(find . -type f -iname "*changelog.md")
 
-7za a "packages/meZram-v${version}_$versionCode.zip" . \
+7za a "packages/$module_name-v${version}_$versionCode.zip" . \
 	-x!meZram.json \
 	-x!meZram*changelog.md \
 	-x!wrapit.sh \
@@ -46,4 +47,5 @@ mv "$changelog_file" "meZram-v${version}_$versionCode-changelog.md"
 	-x!packages \
 	-x!.git \
 	-x!pic \
-	-x!tmp
+	-x!tmp \
+  -x!test*
