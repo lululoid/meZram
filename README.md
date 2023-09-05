@@ -1,6 +1,6 @@
 # Hi this is my first module
 
-[![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total)](https://github.com/lululoid/meZram/releases) ![Static Badge](https://img.shields.io/badge/android-11%2B_-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/gaming-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/performance-tweaks-color?color=A4C639)
+[![GitHub all releases](https://img.shields.io/github/downloads/lululoid/meZram/total)](https://github.com/lululoid/meZram/releases) ![Static Badge](https://img.shields.io/badge/android-10%2B_-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/gaming-color?color=A4C639) ![Static Badge](https://img.shields.io/badge/performance-tweaks-color?color=A4C639)
 
 ---
 - [WHAT THIS MODULE DO?](#what-this-module-do)
@@ -16,6 +16,7 @@
 
 ## What this module do?
 Enhance multitasking performance, transition to a more advanced memory management system known as LMKD, which stands for low memory killer daemon which use PSI (Pressure stall information) which basically better for performance stability. Add SWAP and adjusts the ZRAM to occupy half of the total RAM capacity. These modifications aim to optimize memory utilization and improve the efficiency of concurrent task execution.
+- This module should not interfere with any tweaks modules because it doesn't touch any kernel things, instead it just modify lmkd parameters through props manipulation.
 
 ## What is lmkd
 
