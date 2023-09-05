@@ -1,4 +1,4 @@
-# shellcheck disable=SC3043,SC2034
+# shellcheck disable=SC3043,SC2034,SC2086,SC3060,SC3010
 SKIPUNZIP=1
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
@@ -87,6 +87,7 @@ count_swap() {
 	ui_print "  DEFAULT is $((totalmem / 1024 / 2))MB of SWAP"
 
 	while true; do
+		# shellcheck disable=SC2069
 		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 >"$TMPDIR"/events &
 		sleep 0.1
 		if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events); then
@@ -125,7 +126,9 @@ config_update() {
 	local CONFIG=$LOGDIR/meZram-config.json
 	local CONFIG_OLD=$LOGDIR/meZram.conf
 	local _CONFIG=/sdcard/meZram-config.json
+	# shellcheck disable=SC2086,SC2046,SC2155
 	local version=$($MODPATH/modules/bin/jq '.config_version' "$MODPATH"/meZram-config.json)
+	# shellcheck disable=SC2086,SC2046,SC2155
 	local version_prev=$($MODPATH/modules/bin/jq '.config_version' "$CONFIG")
 	local loaded=true
 
@@ -225,6 +228,7 @@ if [ ! -f $swap_filename ]; then
 		ui_print "  Press VOLUME - to YES"
 
 		while true; do
+			# shellcheck disable=SC2069
 			timeout 0.5 /system/bin/getevent -lqc 1 2>&1 >"$TMPDIR"/events &
 			sleep 0.1
 			if (grep -q 'KEY_VOLUMEDOWN *DOWN' "$TMPDIR"/events); then

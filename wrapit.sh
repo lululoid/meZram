@@ -39,8 +39,9 @@ module_name=$(sed -n 's/id=\(.*\)/\1/p' module.prop)
 mv "$changelog_file" "$module_name-v${version}_$versionCode-changelog.md"
 changelog_file=$(find . -type f -iname "*changelog.md")
 
-7za a "packages/meZram-v${version}_$versionCode-beta-psi.zip" . \
-	-x!meZram.json \
+7za a \
+  "packages/$module_name-v${version}_$versionCode.zip" \
+  . -x!meZram.json \
 	-x!meZram*changelog.md \
 	-x!wrapit.sh \
 	-x!README.md \

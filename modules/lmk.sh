@@ -70,6 +70,7 @@ custom_props_apply() {
 	fi
 
 	if [ -n "$props" ]; then
+		# shellcheck disable=SC2116
 		for prop in $(echo "$props"); do
 			prop_value=$(/data/adb/modules_update/meZram/modules/bin/jq \
 				--arg prop "${prop//\"/}" '.custom_props | .[$prop]' "$CONFIG")
@@ -115,12 +116,15 @@ restore_props() {
 
 apply_aggressive_mode() {
 	local ag_app=$1
+	# shellcheck disable=SC2016
 	papp_keys=$($MODBIN/jq \
 		--arg ag_app "$ag_app" \
 		'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | keys[]' \
 		"$CONFIG")
 
+	# shellcheck disable=SC2116
 	for key in $(echo "$papp_keys"); do
+		# shellcheck disable=SC2016
 		value=$($MODBIN/jq \
 			--arg ag_app "$ag_app" \
 			--arg key "${key//\"/}" \
