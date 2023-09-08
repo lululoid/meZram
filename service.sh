@@ -149,6 +149,7 @@ while true; do
 				echo "" >$sltemp
 				logger i "sleep started over"
 				unset restoration
+				unset sleep_pid
 			}
 		}
 
@@ -161,10 +162,10 @@ while true; do
 			}
 
 			[ -z $ag_app ] && {
-        # shellcheck disable=SC2016
+				# shellcheck disable=SC2016
 				wait_time=$($MODBIN/jq \
 					--arg am "$am" \
-					'.agmode_per_app_configuration[] | select(.package == $am) | .wait_time' \
+					'.agmode_per_app_configuration[] | select(.packages[] == $am) | .wait_time' \
 					"$CONFIG" | tail -n 1 | sed 's/"//g')
 
 				[[ $wait_time = null ]] && {
@@ -182,7 +183,7 @@ while true; do
 					}
 				}
 
-				[[ $wait_time != 0 ]] && {
+				[[ $wait_time != 0 ]] && [ -z $sleep_pid ] && {
 					echo "$wait_time" >$sltemp
 					logger i "wait $wait_time before exiting aggressive mode" && {
 						sleep "$(cat $sltemp)" && echo "" >$sltemp

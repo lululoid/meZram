@@ -1,49 +1,49 @@
 {
   "agmode": "on",
   "wait_time": "0",
-  "config_version": 1.9,
+  "config_version": 2.0,
   "custom_props": {
     "ro.lmk.use_psi": true,
     "ro.lmk.use_minfree_levels": false
   },
   "agmode_per_app_configuration": [
     {
-      "package": "com.mobile.legends",
-      "props": [
-        {
-          "ro.lmk.use_psi": true,
-          "ro.lmk.use_minfree_levels": false,
-          "ro.lmk.downgrade_pressure": 100,
-          "ro.lmk.psi_partial_stall_ms": 1,
-          "ro.lmk.psi_complete_stall_ms": 1,
-          "ro.lmk.thrashing_limit_decay": 50,
-          "ro.lmk.low": 400
-        }
+      "packages": [
+        "com.mobile.legends"
       ],
+      "props": {
+        "ro.lmk.use_psi": true,
+        "ro.lmk.use_minfree_levels": false,
+        "ro.lmk.downgrade_pressure": 100,
+        "ro.lmk.psi_partial_stall_ms": 1,
+        "ro.lmk.psi_complete_stall_ms": 1,
+        "ro.lmk.thrashing_limit_decay": 50,
+        "ro.lmk.low": 400
+      },
       "wait_time": "0"
     },
     {
-      "package": "com.gaurav.avnc",
-      "props": [
-        {
-          "ro.lmk.use_psi": true,
-          "ro.lmk.use_minfree_levels": false,
-          "ro.lmk.downgrade_pressure": 100,
-          "ro.lmk.thrashing_limit_decay": 50
-        }
+      "packages": [
+        "com.gaurav.avnc"
       ],
+      "props": {
+        "ro.lmk.use_psi": true,
+        "ro.lmk.use_minfree_levels": false,
+        "ro.lmk.downgrade_pressure": 10,
+        "ro.lmk.thrashing_limit_decay": 50
+      },
       "wait_time": "5m"
     },
     {
-      "package": "com.github.android",
-      "props": [
-        {
-          "ro.lmk.use_psi": true,
-          "ro.lmk.use_minfree_levels": false,
-          "ro.lmk.downgrade_pressure": 100,
-          "ro.lmk.thrashing_limit_decay": 50
-        }
+      "packages": [
+        "com.github.android"
       ],
+      "props": {
+        "ro.lmk.use_psi": true,
+        "ro.lmk.use_minfree_levels": false,
+        "ro.lmk.downgrade_pressure": 100,
+        "ro.lmk.thrashing_limit_decay": 50
+      },
       "wait_time": "0"
     }
   ]

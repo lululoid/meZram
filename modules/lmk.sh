@@ -117,19 +117,23 @@ restore_props() {
 apply_aggressive_mode() {
 	local ag_app=$1
 	# shellcheck disable=SC2016
-	papp_keys=$($MODBIN/jq \
-		--arg ag_app "$ag_app" \
-		'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | keys[]' \
-		"$CONFIG")
+	papp_keys=$(
+		$MODBIN/jq \
+			--arg ag_app "$ag_app" \
+			'.agmode_per_app_configuration[] | select(.packages[] == $ag_app) | .props | keys[]' \
+			"$CONFIG"
+	)
 
 	# shellcheck disable=SC2116
 	for key in $(echo "$papp_keys"); do
 		# shellcheck disable=SC2016
-		value=$($MODBIN/jq \
-			--arg ag_app "$ag_app" \
-			--arg key "${key//\"/}" \
-			'.agmode_per_app_configuration[] | select(.package == $ag_app) | .props[0] | .[$key]' \
-			"$CONFIG")
+		value=$(
+			$MODBIN/jq \
+				--arg ag_app "$ag_app" \
+				--arg key "${key//\"/}" \
+				'.agmode_per_app_configuration[] | select(.packages[] == $ag_app) | .props | .[$key]' \
+				"$CONFIG"
+		)
 
 		resetprop "${key//\"/}" "$value" &&
 			logger i "applying ${key//\"/} $value"
