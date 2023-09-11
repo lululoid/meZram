@@ -41,8 +41,8 @@ titler() {
 }
 
 logger() {
-	log=$2
-	p=$1
+	local log=$2
+	local p=$1
 	true && {
 		if [ -z $log ]; then
 			log="$1" && p=i
@@ -61,6 +61,8 @@ rm_prop() {
 custom_props_apply() {
 	# Applying custom prop
 	local CONFIG=/data/adb/meZram/meZram-config.json
+	local props
+	local prop_value
 	props=$(/data/adb/modules_update/meZram/modules/bin/jq \
 		'.custom_props | keys[]' "$CONFIG")
 
@@ -102,7 +104,30 @@ lmkd_props_clean() {
 	rm_prop "$@"
 }
 
+restore_battery_opt() {
+	local packages_list
+	local status
+	packages_list=$(
+		$MODBIN/jq \
+			'.agmode_per_app_configuration[].packages' \
+			$CONFIG | sed 's/\[//g;s/\]//g;s/,//g;s/"//g' |
+			grep -v '^$'
+	)
+
+	while IFS= read -r pkg; do
+		packages_list=$(echo "$packages_list" | grep -wv $pkg)
+	done <$LOGDIR/default_optimized.txt
+
+	for pkg in $packages_list; do
+		# shellcheck disable=SC2154
+		status=$(dumpsys deviceidle whitelist -$pkg)
+		[ -n "$status" ] &&
+			logger w "$pkg is battery_optimized"
+	done
+}
+
 restore_props() {
+	local default_dpressure
 	default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
 	if [ -z "$default_dpressure" ]; then
 		default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
@@ -116,12 +141,22 @@ restore_props() {
 
 apply_aggressive_mode() {
 	local ag_app=$1
+	local papp_keys
+	local value
 	# shellcheck disable=SC2016
 	papp_keys=$(
 		$MODBIN/jq \
 			--arg ag_app "$ag_app" \
 			'.agmode_per_app_configuration[] | select(.packages[] == $ag_app) | .props | keys[]' \
 			"$CONFIG"
+	)
+
+	# shellcheck disable=SC2016
+	battery_optimized=$(
+		$MODBIN/jq \
+			--arg ag_app "$ag_app" \
+			'.agmode_per_app_configuration[] | select(.packages  [] == $ag_app) | .battery_optimized' \
+			$CONFIG
 	)
 
 	# shellcheck disable=SC2116
@@ -138,5 +173,16 @@ apply_aggressive_mode() {
 		resetprop "${key//\"/}" "$value" &&
 			logger i "applying ${key//\"/} $value"
 	done
+
+	# shellcheck disable=SC3010
+	[[ $battery_optimized != null ]] &&
+		[ -z $default_opt_set ] && {
+		dumpsys deviceidle whitelist |
+			sed 's/^[^,]*,//;s/,[^,]*$//' >$LOGDIR/default_optimized.txt
+		default_opt_set=1
+	}
+
+	dumpsys deviceidle whitelist +"$ag_app" &&
+		logger "$ag_app is excluded from battery_optimized"
 	resetprop lmkd.reinit 1
 }

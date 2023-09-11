@@ -1,7 +1,7 @@
 # shellcheck disable=SC3010,SC3060,SC3043,SC2086,SC2046
 MODDIR=${0%/*}
 LOGDIR=/data/adb/meZram
-CONFIG="$LOGDIR"/meZram-config.json
+CONFIG=$LOGDIR/meZram-config.json
 BIN=/system/bin                                                # magisk restrict the PATH env to only in their busybox, i don't know why
 MODBIN=/data/adb/modules/meZram/modules/bin                    # modules binary
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/') # read the cpu cores
@@ -29,12 +29,13 @@ logrotate() {
 
 # look for foreground app that in aggressive mode list
 read_agmode_app() {
-	local CONF=$1
-	fg_app=$(dumpsys activity |
-		$BIN/fgrep -w ResumedActivity |
-		sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
-		tail -n 1 | sed 's/ //g')
-	ag_app=$($BIN/fgrep -wo "$fg_app" "$CONF")
+	fg_app=$(
+		dumpsys activity |
+			$BIN/fgrep -w ResumedActivity |
+			sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
+			tail -n 1 | sed 's/ //g'
+	)
+	ag_app=$($BIN/fgrep -wo "$fg_app" $CONFIG)
 }
 
 # logging service
@@ -94,8 +95,8 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 			logger i "set $zram0 disksize to $zram_size"
 		# Set up maxium cpu streams
 		logger i "making $zram0 and set max_comp_streams=$NRDEVICES"
-		echo "$NRDEVICES" >/sys/block/zram0/max_comp_streams
-		mkswap "$zram0"
+		echo $NRDEVICES >/sys/block/zram0/max_comp_streams
+		mkswap $zram0
 		$BIN/swapon -p 69 "$zram0" && logger i "$zram0 turned on"
 		break
 	}
@@ -108,10 +109,10 @@ tl=ro.lmk.thrashing_limit
 
 # wait until boot completed to remove thrashing_limit in MIUI because it has no effect in MIUI
 while true; do
-	[ "$(resetprop sys.boot_completed)" -eq 1 ] && {
+	[ $(resetprop sys.boot_completed) -eq 1 ] && {
 		lmkd_props_clean &&
 			logger i "unnecessary lmkd props cleaned"
-		[ "$(resetprop ro.miui.ui.version.code)" ] && {
+		[ $(resetprop ro.miui.ui.version.code) ] && {
 			rm_prop $tl &&
 				logger i "MIUI not support thrashing_limit customization"
 		}
@@ -126,14 +127,15 @@ done
 logger i "jq_version = $($MODBIN/jq --version)"
 # make file in temporary because of backgrounding in sleep below
 sltemp=/data/tmp/sltemp
-echo "" >$sltemp # reset the variable
+rm -f $sltemp
+restore_battery_opt
 
 while true; do
 	# Read configuration for aggressive mode
 	agmode=$(sed -n 's#"agmode": "\(.*\)".*#\1#p' "$CONFIG" | sed 's/ //g')
 
-	[[ "$agmode" = "on" ]] && {
-		read_agmode_app $CONFIG
+	[[ $agmode = on ]] && {
+		read_agmode_app
 
 		# if the foreground app match app in aggressive mode list then activate aggressive mode
 		[ -n "$ag_app" ] && {
@@ -146,49 +148,53 @@ while true; do
 			am=$ag_app
 			# if am is reinitialized then sleep will be restarted
 			kill -9 $sleep_pid && {
-				echo "" >$sltemp
 				logger i "sleep started over"
+				rm -f $sltemp
 				unset restoration
-				unset sleep_pid
 			}
 		}
 
-		[ -n "$am" ] && [ -z $(cat $sltemp) ] && {
-			read_agmode_app $CONFIG
-			[ $restoration -eq 1 ] && {
-				[ -z $ag_app ] &&
-					restore_props && logger i "aggressive mode deactivated" && unset am
-				unset restoration
-			}
-
-			[ -z $ag_app ] && {
-				# shellcheck disable=SC2016
-				wait_time=$($MODBIN/jq \
-					--arg am "$am" \
-					'.agmode_per_app_configuration[] | select(.packages[] == $am) | .wait_time' \
-					"$CONFIG" | tail -n 1 | sed 's/"//g')
-
-				[[ $wait_time = null ]] && {
-					# Wait before quit agmode to avoid lag or forced closed am app
-					wait_time=$($MODBIN/jq \
-						'.wait_time' $CONFIG | sed 's/"//g')
-
-					[[ $wait_time != 0 ]] && {
-						echo "$wait_time" >$sltemp
-						logger i "wait $wait_time before exiting aggressive mode" && {
-							# i use cat because i can't read the variable, maybe because of backgrounding
-							sleep "$(cat $sltemp)" && echo "" >$sltemp
-						} &
-						sleep_pid=$!
+		[ -n "$am" ] && {
+			read_agmode_app
+			[ -z $ag_app ] && [ ! -f $sltemp ] && {
+				{
+					[ $restoration -eq 1 ] && {
+						restore_battery_opt
+						restore_props &&
+							logger i "aggressive mode deactivated"
+						unset am restoration
 					}
 				}
 
-				[[ $wait_time != 0 ]] && [ -z $sleep_pid ] && {
-					echo "$wait_time" >$sltemp
-					logger i "wait $wait_time before exiting aggressive mode" && {
-						sleep "$(cat $sltemp)" && echo "" >$sltemp
-					} &
-					sleep_pid=$!
+				[ -z $restoration ] && {
+					# shellcheck disable=SC2016
+					wait_time=$(
+						$MODBIN/jq \
+							--arg am "$am" \
+							'.agmode_per_app_configuration[] | select(.packages[] == $am) | .wait_time' \
+							$CONFIG | sed 's/"//g'
+					)
+
+					[[ $wait_time = null ]] || [ -z $wait_time ] && {
+						# Wait before quit agmode to avoid lag or forced closed am app
+						wait_time=$(
+							$MODBIN/jq \
+								'.wait_time' $CONFIG | sed 's/"//g'
+						)
+					}
+
+					{
+						[[ $wait_time != 0 ]] &&
+							[ -n "$wait_time" ] && {
+							touch $sltemp
+							logger i "wait $wait_time before exiting aggressive mode"
+							{
+								sleep $wait_time && rm -f $sltemp &&
+									logger "wakee wakee"
+							} &
+							sleep_pid=$!
+						}
+					} || logger f "sleep failed. wait_time=$wait_time"
 				}
 				restoration=1
 			}

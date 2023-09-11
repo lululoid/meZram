@@ -48,4 +48,5 @@ mv "$changelog_file" "$module_name-v${version}_$versionCode-beta-psi-changelog.m
 	-x!.git \
 	-x!pic \
 	-x!tmp \
-	-x!test*
+	-x!test* \
+  -x!*patch
