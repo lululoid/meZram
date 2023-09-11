@@ -127,7 +127,7 @@ done
 logger i "jq_version = $($MODBIN/jq --version)"
 # make file in temporary because of backgrounding in sleep below
 sltemp=/data/tmp/sltemp
-rm -f $sltemp
+rm $sltemp
 restore_battery_opt
 
 while true; do
@@ -145,58 +145,48 @@ while true; do
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 
-			am=$ag_app
 			# if am is reinitialized then sleep will be restarted
 			kill -9 $sleep_pid && {
 				logger i "sleep started over"
-				rm -f $sltemp
-				unset restoration
+				rm $sltemp
+				unset restoration sleep_pid
+			}
+
+			am=$ag_app
+			# shellcheck disable=SC2016
+			$MODBIN/jq \
+				--arg am "$am" \
+				'.agmode_per_app_configuration[] | select(.packages[] == $am) | .wait_time' \
+				$CONFIG | sed 's/"//g' >$sltemp
+
+			[[ $(cat $sltemp) = null ]] ||
+				[ -z $(cat $sltemp) ] && {
+				# Wait before quit agmode to avoid lag or forced closed am app
+				$MODBIN/jq \
+					'.wait_time' $CONFIG | sed 's/"//g' >$sltemp
 			}
 		}
 
 		[ -n "$am" ] && {
 			read_agmode_app
-			[ -z $ag_app ] && [ ! -f $sltemp ] && {
-				{
-					[ $restoration -eq 1 ] && {
-						restore_battery_opt
-						restore_props &&
-							logger i "aggressive mode deactivated"
-						unset am restoration
-					}
+			[ -z $ag_app ] && {
+				[ $restoration -eq 1 ] && [ ! -f $sltemp ] && {
+					restore_battery_opt
+					restore_props &&
+						logger i "aggressive mode deactivated"
+					unset am restoration sleep_pid
 				}
 
-				[ -z $restoration ] && {
-					# shellcheck disable=SC2016
-					wait_time=$(
-						$MODBIN/jq \
-							--arg am "$am" \
-							'.agmode_per_app_configuration[] | select(.packages[] == $am) | .wait_time' \
-							$CONFIG | sed 's/"//g'
-					)
-
-					[[ $wait_time = null ]] || [ -z $wait_time ] && {
-						# Wait before quit agmode to avoid lag or forced closed am app
-						wait_time=$(
-							$MODBIN/jq \
-								'.wait_time' $CONFIG | sed 's/"//g'
-						)
-					}
-
+				[ -f $sltemp ] && [ -z $sleep_pid ] && {
+					logger \
+						"wait $(cat $sltemp) before exiting aggressive mode"
+					# never use variable for a subshell
 					{
-						[[ $wait_time != 0 ]] &&
-							[ -n "$wait_time" ] && {
-							touch $sltemp
-							logger i "wait $wait_time before exiting aggressive mode"
-							{
-								sleep $wait_time && rm -f $sltemp &&
-									logger "wakee wakee"
-							} &
-							sleep_pid=$!
-						}
-					} || logger f "sleep failed. wait_time=$wait_time"
+						sleep $(cat $sltemp) && rm $sltemp
+					} &
+					sleep_pid=$!
+					restoration=1
 				}
-				restoration=1
 			}
 		}
 	}

@@ -109,9 +109,8 @@ restore_battery_opt() {
 	local status
 	packages_list=$(
 		$MODBIN/jq \
-			'.agmode_per_app_configuration[].packages' \
-			$CONFIG | sed 's/\[//g;s/\]//g;s/,//g;s/"//g' |
-			grep -v '^$'
+			'.agmode_per_app_configuration[].packages[]' \
+			$CONFIG | sed 's/"//g'
 	)
 
 	while IFS= read -r pkg; do
