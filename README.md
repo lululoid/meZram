@@ -172,3 +172,7 @@ Tested on:
   - MIUI 13 A12
   - MIUI 14 A12 & A13
 - Realme 5 Android 10
+
+## APPLICATION USED:
+### - ![yq](https://github.com/mikefarah/yq)
+yq is a portable command-line YAML, JSON, XML, CSV, TOML and properties processor 
