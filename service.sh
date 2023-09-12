@@ -146,11 +146,9 @@ while true; do
 				logger i "aggressive mode activated for $fg_app"
 
 			# if am is reinitialized then sleep will be restarted
-			kill -9 $sleep_pid && {
-				logger i "sleep started over"
-				rm $sltemp
-				unset restoration sleep_pid
-			}
+			kill -9 $sleep_pid && logger "sleep started over"
+			rm $sltemp
+			unset restoration sleep_pid
 
 			am=$ag_app
 			# shellcheck disable=SC2016

@@ -123,6 +123,8 @@ restore_battery_opt() {
 		[ -n "$status" ] &&
 			logger w "$pkg is battery_optimized"
 	done
+
+	unset default_opt_set
 }
 
 restore_props() {
@@ -145,7 +147,7 @@ apply_aggressive_mode() {
 	# shellcheck disable=SC2016
 	papp_keys=$(
 		$MODBIN/jq \
-			--arg ag_app "$ag_app" \
+			--arg ag_app $ag_app \
 			'.agmode_per_app_configuration[] | select(.packages[] == $ag_app) | .props | keys[]' \
 			"$CONFIG"
 	)
@@ -153,7 +155,7 @@ apply_aggressive_mode() {
 	# shellcheck disable=SC2016
 	battery_optimized=$(
 		$MODBIN/jq \
-			--arg ag_app "$ag_app" \
+			--arg ag_app $ag_app \
 			'.agmode_per_app_configuration[] | select(.packages  [] == $ag_app) | .battery_optimized' \
 			$CONFIG
 	)
@@ -163,13 +165,13 @@ apply_aggressive_mode() {
 		# shellcheck disable=SC2016
 		value=$(
 			$MODBIN/jq \
-				--arg ag_app "$ag_app" \
+				--arg ag_app $ag_app \
 				--arg key "${key//\"/}" \
 				'.agmode_per_app_configuration[] | select(.packages[] == $ag_app) | .props | .[$key]' \
 				"$CONFIG"
 		)
 
-		resetprop "${key//\"/}" "$value" &&
+		resetprop "${key//\"/}" $value &&
 			logger i "applying ${key//\"/} $value"
 	done
 

@@ -148,7 +148,7 @@ config_update() {
 	}
 
 	# Update if version is higher than previous version
-	[ -n "$version_prev" ] &&
+	[ -n "$version_prev" ] && {
 		is_update=$(awk -v version="${version}" \
 			-v version_prev="${version_prev}" \
 			'BEGIN {
@@ -159,30 +159,64 @@ config_update() {
 			}
 		}')
 
+		is_less_2=$(awk -v version=2.0 \
+			-v version_prev="${version_prev}" \
+			'BEGIN {
+      if (version_prev < version) {
+				print "true"
+			} else {
+				print "false"
+			}
+		}')
+	}
+
 	log_it "is_update = $is_update"
+	log_it "is_less_2 = $is_less_2"
 
-	if [[ "$is_update" = "true" ]]; then
-		# Update config version
-		ui_print "> Updating configuration"
-		ui_print "> Making backup $_CONFIG.bcp"
-		today_date=$(date +%R-%a-%d-%m-%Y)
-		cp -f $_CONFIG ${_CONFIG}_$today_date.bcp
+	{
+		[[ "$is_update" = "true" ]] && {
+			# Update config version
+			ui_print "> Updating configuration"
+			ui_print "> Making backup $_CONFIG.bcp"
+			today_date=$(date +%R-%a-%d-%m-%Y)
+			cp -f $_CONFIG ${_CONFIG}_$today_date.bcp
 
-		"$MODPATH"/modules/bin/jq \
-			'del(.config_version)' "$CONFIG" |
-			/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
-		# Slurp entire config
-		"$MODPATH"/modules/bin/jq \
-			-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG |
-			/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG &&
-			ui_print "> Configuration updated"
-		ui_print "  Please reboot"
-		cp -f $CONFIG $_CONFIG &&
-			ui_print "> Config loaded"
-	else
+			[[ $is_less_2 = "true" ]] && {
+				# only do this onece for config version 2.0
+				"$MODPATH"/modules/bin/jq \
+					'{agmode: .agmode,
+        wait_time: .wait_time,
+        config_version: .config_version,
+        custom_props: .custom_props,
+        agmode_per_app_configuration: .agmode_per_app_configuration
+          | group_by(.props)
+          | map({
+            packages: map(.package),
+            props: .[0].props[0],
+            wait_time: .[0].wait_time
+          })
+      }' $CONFIG |
+					"$MODPATH"/modules/bin/jq \
+						'del(.. | nulls)' >$_CONFIG
+				cp -u $_CONFIG $CONFIG
+			}
+
+			"$MODPATH"/modules/bin/jq \
+				'del(.config_version)' "$CONFIG" |
+				/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			# Slurp entire config
+			"$MODPATH"/modules/bin/jq \
+				-s '.[0] * .[1]' "$MODPATH"/meZram-config.json $CONFIG |
+				/system/bin/awk 'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG &&
+				ui_print "> Configuration updated"
+			ui_print "  Please reboot"
+			cp -f $CONFIG $_CONFIG &&
+				ui_print "> Config loaded"
+		}
+	} || {
 		cp -u $_CONFIG $CONFIG &&
-			$loaded ui_print "> Config loaded" && unset loaded
-	fi
+			$loaded && ui_print "> Config loaded" && unset loaded
+	}
 }
 
 # start installation
