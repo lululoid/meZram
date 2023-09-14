@@ -9,6 +9,7 @@ export RESET='\033[0m'
 export YELLOW='\033[93m'
 BIN=/system/bin
 
+# why I create this function?
 is_number() {
 	case $1 in
 	'' | *[!0-9]*)
@@ -20,10 +21,12 @@ is_number() {
 	esac
 }
 
+# make a line with the character given
 liner() {
 	printf '%*s' "$2" | tr ' ' "$1"
 }
 
+# make and the title in the middle of the line. yay !
 titler() {
 	text="$*"
 
@@ -51,42 +54,56 @@ logger() {
 	}
 }
 
+# remove a bunch of props
 rm_prop() {
 	for prop in "$@"; do
-		resetprop "$prop" >/dev/null && resetprop --delete $prop &&
-			logger "$prop removed"
+		resetprop "$prop" >/dev/null &&
+			resetprop --delete $prop && logger "$prop removed"
 	done
 }
 
+# applying custom props specified in the config
 custom_props_apply() {
-	# Applying custom prop
+	# i read local is more efficient
 	local CONFIG=/data/adb/meZram/meZram-config.json
 	local props
 	local prop_value
-	props=$(/data/adb/modules_update/meZram/modules/bin/jq \
-		'.custom_props | keys[]' "$CONFIG")
+	props=$(
+		/data/adb/modules_update/meZram/modules/bin/jq \
+			'.custom_props | keys[]' $CONFIG | sed 's/"//g'
+	)
 
+	# double props is to make sure always use the latest jq
+	# my module provided even when just a module update
 	if [ -z "$props" ]; then
-		props=$(/data/adb/modules/meZram/modules/bin/jq \
-			'.custom_props | keys[]' "$CONFIG")
+		props=$(
+			/data/adb/modules/meZram/modules/bin/jq \
+				'.custom_props | keys[]' $CONFIG | sed 's/"//g'
+		)
 	fi
 
-	if [ -n "$props" ]; then
-		# shellcheck disable=SC2116
-		for prop in $(echo "$props"); do
-			prop_value=$(/data/adb/modules_update/meZram/modules/bin/jq \
-				--arg prop "${prop//\"/}" '.custom_props | .[$prop]' "$CONFIG")
+	# shellcheck disable=SC2116
+	for prop in $(echo "$props"); do
+		prop_value=$(
+			/data/adb/modules_update/meZram/modules/bin/jq \
+				--arg prop $prop \
+				'.custom_props | .[$prop]' $CONFIG
+		)
 
-			if [ -z "$prop_value" ]; then
-				prop_value=$(/data/adb/modules/meZram/modules/bin/jq \
-					--arg prop "${prop//\"/}" '.custom_props | .[$prop]' "$CONFIG")
-			fi
-			resetprop "${prop//\"/}" "$prop_value" &&
-				logger "${prop//\"/} $prop_value applied"
-		done
-	fi
+		[ -z "$prop_value" ] && {
+			prop_value=$(
+				/data/adb/modules/meZram/modules/bin/jq \
+					--arg prop $prop \
+					'.custom_props | .[$prop]' $CONFIG
+			)
+		}
+		resetprop $prop $prop_value &&
+			logger "$prop $prop_value applied"
+	done
 }
 
+# clean safely removable lmkd props, i dont use array because
+# magisk doesn't support it
 lmkd_props_clean() {
 	set --
 	set \
@@ -104,6 +121,7 @@ lmkd_props_clean() {
 	rm_prop "$@"
 }
 
+# restore default battery optimization setting
 restore_battery_opt() {
 	local packages_list
 	local status
@@ -113,9 +131,10 @@ restore_battery_opt() {
 			$CONFIG | sed 's/"//g'
 	)
 
+	# save the list to /data/adb/meZram
 	while IFS= read -r pkg; do
 		packages_list=$(echo "$packages_list" | grep -wv $pkg)
-	done <$LOGDIR/default_optimized.txt
+	done <$default_optimized_list
 
 	for pkg in $packages_list; do
 		# shellcheck disable=SC2154
@@ -129,10 +148,16 @@ restore_battery_opt() {
 
 restore_props() {
 	local default_dpressure
-	default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "$CONFIG")
-	if [ -z "$default_dpressure" ]; then
-		default_dpressure=$(sed -n 's/^ro.lmk.downgrade_pressure=//p' "${MODDIR}/system.prop")
-	fi
+	default_dpressure=$(
+		sed -n 's/^ro.lmk.downgrade_pressure=//p' $CONFIG
+	)
+
+	[ -z $default_dpressure ] && {
+		default_dpressure=$(
+			sed -n 's/^ro.lmk.downgrade_pressure=//p' \
+				$MODDIR/system.prop
+		)
+	}
 
 	lmkd_props_clean
 	resetprop ro.lmk.downgrade_pressure $default_dpressure
@@ -148,15 +173,19 @@ apply_aggressive_mode() {
 	papp_keys=$(
 		$MODBIN/jq \
 			--arg ag_app $ag_app \
-			'.agmode_per_app_configuration[] | select(.packages[] == $ag_app) | .props | keys[]' \
-			"$CONFIG"
+			'.agmode_per_app_configuration[]
+          | select(.packages[] == $ag_app) 
+          | .props | keys[]' \
+			$CONFIG | sed 's/"//g'
 	)
 
 	# shellcheck disable=SC2016
 	battery_optimized=$(
 		$MODBIN/jq \
 			--arg ag_app $ag_app \
-			'.agmode_per_app_configuration[] | select(.packages  [] == $ag_app) | .battery_optimized' \
+			'.agmode_per_app_configuration[]
+          | select(.packages[] == $ag_app)
+          | .battery_optimized' \
 			$CONFIG
 	)
 
@@ -166,24 +195,30 @@ apply_aggressive_mode() {
 		value=$(
 			$MODBIN/jq \
 				--arg ag_app $ag_app \
-				--arg key "${key//\"/}" \
-				'.agmode_per_app_configuration[] | select(.packages[] == $ag_app) | .props | .[$key]' \
-				"$CONFIG"
+				--arg key $key \
+				'.agmode_per_app_configuration[]
+              | select(.packages[] == $ag_app)
+              | .props | .[$key]' \
+				$CONFIG
 		)
 
-		resetprop "${key//\"/}" $value &&
-			logger i "applying ${key//\"/} $value"
+		{
+			resetprop $key $value &&
+				logger i "applying $key $value"
+		} || logger f "$value or $key is invalid"
 	done
 
+	default_optimized_list=$LOGDIR/default_optimized.txt
 	# shellcheck disable=SC3010
-	[[ $battery_optimized != null ]] &&
+	$battery_optimized && [ -n "$battery_optimized" ] &&
 		[ -z $default_opt_set ] && {
 		dumpsys deviceidle whitelist |
-			sed 's/^[^,]*,//;s/,[^,]*$//' >$LOGDIR/default_optimized.txt
+			sed 's/^[^,]*,//;s/,[^,]*$//' \
+				>$default_optimized_list
 		default_opt_set=1
-	}
 
-	dumpsys deviceidle whitelist +"$ag_app" &&
-		logger "$ag_app is excluded from battery_optimized"
+		dumpsys deviceidle whitelist +$ag_app &&
+			logger "$ag_app is excluded from battery_optimized"
+	}
 	resetprop lmkd.reinit 1
 }

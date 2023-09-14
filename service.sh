@@ -2,14 +2,18 @@
 MODDIR=${0%/*}
 LOGDIR=/data/adb/meZram
 CONFIG=$LOGDIR/meZram-config.json
-BIN=/system/bin                                                # magisk restrict the PATH env to only in their busybox, i don't know why
-MODBIN=/data/adb/modules/meZram/modules/bin                    # modules binary
-NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/') # read the cpu cores
+# magisk restrict the PATH env to only in their busybox,
+# i don't know why
+BIN=/system/bin                
+# this modules binary
+MODBIN=/data/adb/modules/meZram/modules/bin
+# read the cpu cores amount
+NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 zram_size=$((totalmem * 1024 / 2))
 lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
 
-# Loading modules
+# loading modules
 . $MODDIR/modules/lmk.sh
 
 # keep the specified logs no more than 5
@@ -28,6 +32,7 @@ logrotate() {
 }
 
 # look for foreground app that in aggressive mode list
+# specified in the config
 read_agmode_app() {
 	fg_app=$(
 		dumpsys activity |
@@ -35,10 +40,12 @@ read_agmode_app() {
 			sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
 			tail -n 1 | sed 's/ //g'
 	)
+  # check if current foreground app is in aggressive mode config
 	ag_app=$($BIN/fgrep -wo "$fg_app" $CONFIG)
 }
 
-# logging service
+# logging service, keeping the log alive bcz system sometimes
+# kill them for unknown reason
 while true; do
 	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log | awk '{print $1}')
 	meZram_log_size=$(wc -c <$LOGDIR/meZram.log | awk '{print $1}')
@@ -59,7 +66,8 @@ while true; do
 		resetprop meZram.logger.pid $meZram_logger_pid
 	}
 
-	# limit log size to 10MB then restart the service if it's exceed it
+	# limit log size to 10MB then restart the service
+  # if it's exceed it
 	[ $lmkd_log_size -ge 10485760 ] && {
 		kill -9 $lmkd_logger_pid
 		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
@@ -77,6 +85,7 @@ while true; do
 	sleep 1
 done &
 
+# save the pid to a prop
 resetprop meZram.log_rotator.pid $!
 
 logger i "NRDEVICES = $NRDEVICES"
@@ -107,7 +116,7 @@ $BIN/swapon -p 2 /data/swap_file || logger f "swap is missing" &&
 
 tl=ro.lmk.thrashing_limit
 
-# wait until boot completed to remove thrashing_limit in MIUI because it has no effect in MIUI
+# thrashing limit has no effect in MIUI
 while true; do
 	[ $(resetprop sys.boot_completed) -eq 1 ] && {
 		lmkd_props_clean &&
@@ -125,11 +134,13 @@ while true; do
 done
 
 logger i "jq_version = $($MODBIN/jq --version)"
-# make file in temporary because of backgrounding in sleep below
+# for saving wait_time state, exist if wait_time is on
 sltemp=/data/tmp/sltemp
+# reset states and variables to default
 rm $sltemp
 restore_battery_opt
 
+# aggressive mode service starts here
 while true; do
 	# Read configuration for aggressive mode
 	agmode=$(sed -n 's#"agmode": "\(.*\)".*#\1#p' "$CONFIG" | sed 's/ //g')
@@ -137,36 +148,49 @@ while true; do
 	[[ $agmode = on ]] && {
 		read_agmode_app
 
-		# if the foreground app match app in aggressive mode list then activate aggressive mode
+		# if the foreground app match app in aggressive mode list 
+    # then activate aggressive mode
 		[ -n "$ag_app" ] && {
-			# am stand for aggressive mode, if am is not activated or am is different than the last am then activate aggressive mode
+			# am = aggressive mode, if am is not activated or
+      # am is different than the last am then
+      # activate aggressive mode
+      # this is for efficiency reason
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		} && {
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 
-			# if am is reinitialized then sleep will be restarted
+      # restart wait_time and some variables
+      # if new am app is opened
 			kill -9 $sleep_pid && logger "sleep started over"
 			rm $sltemp
 			unset restoration sleep_pid
 
+      # set current am app
 			am=$ag_app
 			# shellcheck disable=SC2016
+      # read wait_time per app from the config
+      # wait_time is intended to prevent app from being closed
+      # by system while doing multitasking
 			$MODBIN/jq \
 				--arg am "$am" \
 				'.agmode_per_app_configuration[] | select(.packages[] == $am) | .wait_time' \
 				$CONFIG | sed 's/"//g' >$sltemp
 
+      # if wait_time per app is not set the read wait_time
 			[[ $(cat $sltemp) = null ]] ||
 				[ -z $(cat $sltemp) ] && {
-				# Wait before quit agmode to avoid lag or forced closed am app
 				$MODBIN/jq \
 					'.wait_time' $CONFIG | sed 's/"//g' >$sltemp
 			}
 		}
 
+    # check if am is activated
 		[ -n "$am" ] && {
 			read_agmode_app
+      # if theres no am app curently open or in foreground
+      # and wait_time is not running
+      # then restore states and variables
 			[ -z $ag_app ] && {
 				[ $restoration -eq 1 ] && [ ! -f $sltemp ] && {
 					restore_battery_opt
@@ -175,25 +199,32 @@ while true; do
 					unset am restoration sleep_pid
 				}
 
+        # the logic is to make it only run once
 				[ -f $sltemp ] && [ -z $sleep_pid ] && {
 					logger \
 						"wait $(cat $sltemp) before exiting aggressive mode"
-					# never use variable for a subshell
+					# never use variable for a subshell, i got really
+          # annoying trouble by forgot of this fact
 					{
 						sleep $(cat $sltemp) && rm $sltemp
 					} &
+          # restore if wait_time is done
 					sleep_pid=$!
 					restoration=1
 				}
 			}
 		}
 	}
+  # after optimizing the code i reduce sleep from 6 to 1 and
+  # still don't know why it's has performance issue last time
+  # big idiot big smile :) big brain
 	sleep 1
 done &
 
 resetprop meZram.aggressive_mode.pid $!
 
-# sync service because i can't read from internal for some reason?
+# sync service because i can't read from internal
+# for some reason? tell me why please
 while true; do
 	is_update=$(cp -uv /sdcard/meZram-config.json /data/adb/meZram/meZram-config.json)
 
