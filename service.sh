@@ -4,7 +4,7 @@ LOGDIR=/data/adb/meZram
 CONFIG=$LOGDIR/meZram-config.json
 # magisk restrict the PATH env to only in their busybox,
 # i don't know why
-BIN=/system/bin                
+BIN=/system/bin
 # this modules binary
 MODBIN=/data/adb/modules/meZram/modules/bin
 # read the cpu cores amount
@@ -40,8 +40,20 @@ read_agmode_app() {
 			sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
 			tail -n 1 | sed 's/ //g'
 	)
-  # check if current foreground app is in aggressive mode config
-	ag_app=$($BIN/fgrep -wo "$fg_app" $CONFIG)
+
+	[ -z $ag_apps ] && {
+		ag_apps=$(
+			$MODBIN/jq \
+				'.agmode_per_app_configuration[].packages[]' \
+				$CONFIG | sed 's/"//g'
+		)
+	}
+	# check if current foreground app is in aggressive
+	# mode config
+	ag_app=$(echo "$ag_apps" | sed -n "/^$fg_app$/p")
+	{
+		[ -n "$ag_app" ] && true
+	} || false
 }
 
 # logging service, keeping the log alive bcz system sometimes
@@ -67,7 +79,7 @@ while true; do
 	}
 
 	# limit log size to 10MB then restart the service
-  # if it's exceed it
+	# if it's exceed it
 	[ $lmkd_log_size -ge 10485760 ] && {
 		kill -9 $lmkd_logger_pid
 		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
@@ -123,7 +135,8 @@ while true; do
 			logger i "unnecessary lmkd props cleaned"
 		[ $(resetprop ro.miui.ui.version.code) ] && {
 			rm_prop $tl &&
-				logger i "MIUI not support thrashing_limit customization"
+				logger i \
+					"MIUI not support thrashing_limit customization"
 		}
 		custom_props_apply
 		resetprop lmkd.reinit 1 &&
@@ -146,38 +159,37 @@ while true; do
 	agmode=$(sed -n 's#"agmode": "\(.*\)".*#\1#p' "$CONFIG" | sed 's/ //g')
 
 	[[ $agmode = on ]] && {
-		read_agmode_app
-
-		# if the foreground app match app in aggressive mode list 
-    # then activate aggressive mode
-		[ -n "$ag_app" ] && {
+		# if the foreground app match app in aggressive mode list
+		# then activate aggressive mode
+		read_agmode_app && {
 			# am = aggressive mode, if am is not activated or
-      # am is different than the last am then
-      # activate aggressive mode
-      # this is for efficiency reason
+			# am is different than the last am then
+			# activate aggressive mode
+			# this is for efficiency reason
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		} && {
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 
-      # restart wait_time and some variables
-      # if new am app is opened
+			# restart wait_time and some variables
+			# if new am app is opened
 			kill -9 $sleep_pid && logger "sleep started over"
 			rm $sltemp
 			unset restoration sleep_pid
 
-      # set current am app
+			# set current am app
 			am=$ag_app
 			# shellcheck disable=SC2016
-      # read wait_time per app from the config
-      # wait_time is intended to prevent app from being closed
-      # by system while doing multitasking
+			# read wait_time per app from the config
+			# wait_time is intended to prevent app from being closed
+			# by system while doing multitasking
 			$MODBIN/jq \
 				--arg am "$am" \
-				'.agmode_per_app_configuration[] | select(.packages[] == $am) | .wait_time' \
+				'.agmode_per_app_configuration[]
+          | select(.packages[] == $am) | .wait_time' \
 				$CONFIG | sed 's/"//g' >$sltemp
 
-      # if wait_time per app is not set the read wait_time
+			# if wait_time per app is not set the read wait_time
 			[[ $(cat $sltemp) = null ]] ||
 				[ -z $(cat $sltemp) ] && {
 				$MODBIN/jq \
@@ -185,39 +197,38 @@ while true; do
 			}
 		}
 
-    # check if am is activated
+		# check if am is activated
 		[ -n "$am" ] && {
-			read_agmode_app
-      # if theres no am app curently open or in foreground
-      # and wait_time is not running
-      # then restore states and variables
-			[ -z $ag_app ] && {
+			# if theres no am app curently open or in foreground
+			# and wait_time is not running
+			# then restore states and variables
+			! read_agmode_app && {
 				[ $restoration -eq 1 ] && [ ! -f $sltemp ] && {
 					restore_battery_opt
 					restore_props &&
 						logger i "aggressive mode deactivated"
-					unset am restoration sleep_pid
+					unset am restoration sleep_pid ag_apps
 				}
 
-        # the logic is to make it only run once
+				# the logic is to make it only run once
 				[ -f $sltemp ] && [ -z $sleep_pid ] && {
 					logger \
 						"wait $(cat $sltemp) before exiting aggressive mode"
 					# never use variable for a subshell, i got really
-          # annoying trouble by forgot of this fact
+					# annoying trouble by forgot of this fact
 					{
 						sleep $(cat $sltemp) && rm $sltemp
 					} &
-          # restore if wait_time is done
+					# restore if wait_time is done
 					sleep_pid=$!
 					restoration=1
 				}
 			}
 		}
 	}
-  # after optimizing the code i reduce sleep from 6 to 1 and
-  # still don't know why it's has performance issue last time
-  # big idiot big smile :) big brain
+	# after optimizing the code i reduce sleep from 6 to 1 and
+	# still don't know why it's has performance issue last time
+	# big idiot big smile :) big brain
 	sleep 1
 done &
 
