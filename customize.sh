@@ -1,4 +1,4 @@
-# shellcheck disable=SC3043,SC2034,SC2086,SC3060,SC3010
+# shellcheck disable=SC3043,SC2034,SC2086,SC3060,SC3010,SC2046
 SKIPUNZIP=1
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
@@ -80,12 +80,12 @@ count_swap() {
 	local totalmem_gb=$(((totalmem / 1024 / 1024) + 1))
 	count=0
 	local swap_in_gb=0
-	swap_size=$((totalmem / 2))
+	swap_size=0
 
 	ui_print "> Please select SWAP size"
 	ui_print "  Press VOLUME + to DEFAULT"
 	ui_print "  Press VOLUME - to SELECT"
-	ui_print "  DEFAULT is $((totalmem / 1024 / 2))MB of SWAP"
+	ui_print "  DEFAULT is no SWAP"
 
 	while true; do
 		# shellcheck disable=SC2069
@@ -93,26 +93,25 @@ count_swap() {
 			>$TMPDIR/events &
 		sleep 0.1
 		(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
-			if [ $count -eq 0 ]; then
-				count=$((count + 1))
-				swap_size=$((totalmem / 2))
-				swap_in_gb=0
-				ui_print \
-					"  $count. 50% of RAM ($((swap_size / 1024))MB SWAP) --> RECOMMENDED"
-			elif [ $count -eq 2 ]; then
-				count=$((count + 1))
-				ui_print "  $count. No SWAP"
+			count=$((count + 1))
+
+			if [ $count -eq 1 ]; then
 				swap_size=0
+				ui_print "  $count. No SWAP --> RECOMMENDED"
+			elif [ $count -eq 2 ]; then
+				swap_size=$((totalmem / 2))
+				ui_print \
+					"  $count. 50% of RAM ($((swap_size / 1024)))MB SWAP"
 			elif [ $swap_in_gb -lt $totalmem_gb ]; then
-				count=$((count + 1))
 				swap_in_gb=$((swap_in_gb + 1))
 				ui_print "  $count. ${swap_in_gb}GB of SWAP"
 				swap_size=$((swap_in_gb * one_gb))
+
+				[ $swap_in_gb -ge $totalmem_gb ] && {
+					swap_size=$totalmem
+					count=0
+				}
 			fi
-		}
-		[ $swap_in_gb -eq $totalmem_gb ] && [ $count != 0 ] && {
-			swap_size=$totalmem
-			count=0
 		}
 		(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && break
 	done
@@ -301,8 +300,8 @@ fi
 
 	{
 		# if no SWAP option selected, only pass
-		[ $count -eq 3 ] &&
-			ui_print "> Not making any SWAP. Why bro?"
+		[ $swap_size -eq 0 ] &&
+			ui_print "> Not making any SWAP."
 	} || {
 		ui_print "> Storage full. Please free up your storage"
 	}

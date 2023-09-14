@@ -117,8 +117,7 @@ for opt in "$@"; do
 	--rmswap)
 		printme "Turning off SWAP. Please wait"
 		printme "$(swapoff /data/swap_file)"
-		rm -vf /data/swap_file
-		printme "SWAP removed. Don't be stupid bud. Make another one!!!"
+		rm -vf /data/swap_file && printme "SWAP removed."
 		;;
 	--switch)
 		printme "Switching LMKD mode"
