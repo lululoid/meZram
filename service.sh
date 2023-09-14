@@ -60,18 +60,22 @@ read_agmode_app() {
 # kill them for unknown reason
 while true; do
 	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log | awk '{print $1}')
-	meZram_log_size=$(wc -c <$LOGDIR/meZram.log | awk '{print $1}')
+	meZram_log_size=$(wc -c <$LOGDIR/meZram.log |
+		awk '{print $1}')
 	today_date=$(date +%R-%a-%d-%m-%Y)
 
 	# check for loggers pid, if it's don't exist start one
-	lmkd_logger_pid=$(/system/bin/ps -p $lmkd_logger_pid 2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
+	lmkd_logger_pid=$(/system/bin/ps -p $lmkd_logger_pid \
+		2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
 	[ -z $lmkd_logger_pid ] && {
-		$BIN/logcat -v time --pid $lmkd_pid --file=$LOGDIR/lmkd.log &
+		$BIN/logcat -v time --pid $lmkd_pid \
+			--file=$LOGDIR/lmkd.log &
 		# save the pid to variable and prop
 		lmkd_logger_pid=$!
 		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
 	}
-	meZram_logger_pid=$(/system/bin/ps -p $meZram_logger_pid 2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
+	meZram_logger_pid=$(/system/bin/ps -p $meZram_logger_pid \
+		2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
 	[ -z $meZram_logger_pid ] && {
 		$BIN/logcat -v time -s meZram --file=$LOGDIR/meZram.log &
 		meZram_logger_pid=$!
@@ -210,8 +214,10 @@ while true; do
 					unset am restoration sleep_pid ag_apps
 				}
 
-				# the logic is to make it only run once
-				[ -f $sltemp ] && [ -z $sleep_pid ] && {
+				# the logic is to make it only run once after
+				# aggressive mode activated
+				[ -f $sltemp ] && [ -z $sleep_pid ] &&
+					[ $(cat $sltemp) != 0 ] && {
 					logger \
 						"wait $(cat $sltemp) before exiting aggressive mode"
 					# never use variable for a subshell, i got really

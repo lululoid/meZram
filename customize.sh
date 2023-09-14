@@ -2,7 +2,7 @@
 SKIPUNZIP=1
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 
-unzip -o "$ZIPFILE" -x 'META-INF/*' -d $MODPATH >&2
+unzip -o $ZIPFILE -x 'META-INF/*' -d $MODPATH >&2
 set_perm_recursive $MODPATH 0 0 0755 0644
 set_perm_recursive $MODPATH/system/bin 0 2000 0755 0755
 set_perm_recursive $MODPATH/modules/bin 0 2000 0755 0755
@@ -56,14 +56,15 @@ lmkd_apply() {
 	rm_prop "$@"
 
 	# applying lmkd tweaks
-	grep -v '^ *#' <$MODPATH/system.prop | while IFS= read -r prop; do
-		log_it "resetprop ${prop//=/ }"
-		resetprop ${prop//=/ }
-	done
+	grep -v '^ *#' <$MODPATH/system.prop |
+		while IFS= read -r prop; do
+			log_it "resetprop ${prop//=/ }"
+			resetprop ${prop//=/ }
+		done
 
-	tl="ro.lmk.thrashing_limit"
-	if [ "$(resetprop ro.miui.ui.version.code)" ]; then
-		rm_prop "$tl"
+	tl=ro.lmk.thrashing_limit
+	if [ $(resetprop ro.miui.ui.version.code) ]; then
+		rm_prop $tl
 	fi
 
 	resetprop lmkd.reinit 1 && ui_print "> lmkd reinitialized"
@@ -71,7 +72,7 @@ lmkd_apply() {
 	ui_print "  Give the better of your RAM."
 	ui_print "  RAM better being filled with something"
 	ui_print "  useful than left unused"
-	rm -rf "$MODPATH/system.props"
+	rm -rf $MODPATH/system.props
 }
 
 count_swap() {
@@ -91,12 +92,13 @@ count_swap() {
 		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 \
 			>$TMPDIR/events &
 		sleep 0.1
-		if (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events); then
+		(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
 			if [ $count -eq 0 ]; then
 				count=$((count + 1))
 				swap_size=$((totalmem / 2))
 				swap_in_gb=0
-				ui_print "  $count. 50% of RAM ($((swap_size / 1024))MB SWAP) --> RECOMMENDED"
+				ui_print \
+					"  $count. 50% of RAM ($((swap_size / 1024))MB SWAP) --> RECOMMENDED"
 			elif [ $count -eq 2 ]; then
 				count=$((count + 1))
 				ui_print "  $count. No SWAP"
@@ -107,12 +109,12 @@ count_swap() {
 				ui_print "  $count. ${swap_in_gb}GB of SWAP"
 				swap_size=$((swap_in_gb * one_gb))
 			fi
-		elif [ $swap_in_gb -eq $totalmem_gb ] && [ $count != 0 ]; then
+		}
+		[ $swap_in_gb -eq $totalmem_gb ] && [ $count != 0 ] && {
 			swap_size=$totalmem
 			count=0
-		elif (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events); then
-			break
-		fi
+		}
+		(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && break
 	done
 }
 
@@ -236,7 +238,7 @@ free_space=$(
 log_it "$(df /data -P | sed -n '2p' | sed 's/[^0-9 ]*//g' |
 	sed ':a;N;$!ba;s/\n/ /g')"
 
-# making module directorui_print ""
+ui_print ""
 ui_print " Made with ❤ and 🩸 by "
 sleep 0.5
 ui_print " █▀▀ █▀▀█ █░░░█ ░▀░ █▀▀▄ ▀▀█ █▀▀ █▀▀█ █▀▀█"
@@ -281,18 +283,19 @@ fi
 			timeout 0.5 /system/bin/getevent -lqc 1 2>&1 \
 				>$TMPDIR/events &
 			sleep 0.1
-			if (grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events); then
+			(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
 				ui_print "> Starting making SWAP. Please wait a moment"
 				sleep 0.5
 				make_swap $swap_size $swap_filename &&
 					/system/bin/swapon -p 5 $swap_filename >/dev/null
 				ui_print "> SWAP is running"
 				break
-			elif (grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events); then
+			}
+			(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && {
 				cancelled=$(ui_print "> Not making SWAP")
 				$cancelled && log_it "$cancelled"
 				break
-			fi
+			}
 		done
 	}
 
@@ -308,15 +311,17 @@ fi
 android_version=$(getprop ro.build.version.release)
 log_it "android_version = $android_version"
 
-if [ $android_version -lt 10 ]; then
-	ui_print "> Your android version is not supported. Performance tweaks won't be applied."
-	ui_print "  Please upgrade your phone to Android 10+"
-else
+{
+	[ $android_version -lt 10 ] && {
+		ui_print "> Your android version is not supported. Performance tweaks won't be applied."
+		ui_print "  Please upgrade your phone to Android 10+"
+	}
+} || {
 	lmkd_apply
 	config_update
 	custom_props_apply &&
 		ui_print "> Custom props applied"
-fi
+}
 
 ui_print "> Enjoy :)"
 ui_print "  Reboot and you're ready"
