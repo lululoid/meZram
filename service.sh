@@ -174,21 +174,20 @@ while true; do
 			# this is for efficiency reason
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		} && {
-			[ -z $swap_size ] && {
-				# shellcheck disable=SC2016
-				swap_size=$(
-					$MODBIN/jq \
-						--arg am $am \
-						'.agmode_per_app_configuration[]
+			# shellcheck disable=SC2016
+			swap_size=$(
+				$MODBIN/jq \
+					--arg am $am \
+					'.agmode_per_app_configuration[]
             | select(.packages[] == $am) | .swap' \
-						$CONFIG | sed 's/[^0-9]*//g'
-				)
-			}
+					$CONFIG | sed 's/[^0-9]*//g'
+			)
 
 			{
 				[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
 					length=$(
-						$MODBIN/jq '.agmode_per_app_configuration | length' \
+						$MODBIN/jq \
+							'.agmode_per_app_configuration | length' \
 							$CONFIG
 					)
 
@@ -211,8 +210,7 @@ while true; do
 					kill -9 $swapoff_pid
 					swapon $ag_swap && logger "SWAP is turned on"
 				}
-			} || [ -z $swap_size ] && [ -n "$ag_swap" ] &&
-				[ -f $ag_swap ] && {
+			} || [ $swap_size = null ] && [ -f $ag_swap ] && {
 				rm -f $ag_swap &&
 					logger "$ag_swap deleted because of config"
 			}
@@ -256,7 +254,7 @@ while true; do
 					restore_battery_opt
 					restore_props &&
 						logger i "aggressive mode deactivated"
-					unset am restoration sleep_pid ag_apps swap_size
+					unset am restoration sleep_pid ag_apps
 					{
 						swapoff $ag_swap && logger "$ag_swap turned off"
 					} &
