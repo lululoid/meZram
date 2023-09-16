@@ -127,8 +127,10 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 	}
 done
 
-$BIN/swapon -p 2 /data/swap_file || logger f "swap is missing" &&
-	logger i "swap is turned on"
+{
+	swapon /data/swap_file &&
+		logger i "swap is turned on"
+} || logger f "swap is missing"
 
 tl=ro.lmk.thrashing_limit
 
@@ -172,6 +174,49 @@ while true; do
 			# this is for efficiency reason
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		} && {
+			[ -z $swap_size ] && {
+				# shellcheck disable=SC2016
+				swap_size=$(
+					$MODBIN/jq \
+						--arg am $am \
+						'.agmode_per_app_configuration[]
+            | select(.packages[] == $am) | .swap' \
+						$CONFIG | sed 's/[^0-9]*//g'
+				)
+			}
+
+			{
+				[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
+					length=$(
+						$MODBIN/jq '.agmode_per_app_configuration | length' \
+							$CONFIG
+					)
+
+					for conf_index in $(seq 0 $((length - 1))); do
+						# shellcheck disable=SC2016
+						$MODBIN/jq --argjson index $conf_index \
+							'.agmode_per_app_configuration[$index]' \
+							$CONFIG | grep -qw $am && index=$conf_index
+					done
+
+					ag_swap="$LOGDIR/${index}_swap"
+
+					[ ! -f $ag_swap ] && {
+						dd if=/dev/zero of="$ag_swap" bs=1M \
+							count=$swap_size
+						chmod 0600 $ag_swap
+						$BIN/mkswap -L meZram-swap $ag_swap
+					}
+
+					kill -9 $swapoff_pid
+					swapon $ag_swap && logger "SWAP is turned on"
+				}
+			} || [ -z $swap_size ] && [ -n "$ag_swap" ] &&
+				[ -f $ag_swap ] && {
+				rm -f $ag_swap &&
+					logger "$ag_swap deleted because of config"
+			}
+
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 
@@ -211,7 +256,11 @@ while true; do
 					restore_battery_opt
 					restore_props &&
 						logger i "aggressive mode deactivated"
-					unset am restoration sleep_pid ag_apps
+					unset am restoration sleep_pid ag_apps swap_size
+					{
+						swapoff $ag_swap && logger "$ag_swap turned off"
+					} &
+					swapoff_pid=$!
 				}
 
 				# the logic is to make it only run once after
@@ -221,7 +270,7 @@ while true; do
 					logger \
 						"wait $(cat $sltemp) before exiting aggressive mode"
 					# never use variable for a subshell, i got really
-					# annoying trouble by forgot of this fact
+					# annoying trouble because i forgot of this fact
 					{
 						sleep $(cat $sltemp) && rm $sltemp
 					} &

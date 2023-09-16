@@ -1,6 +1,9 @@
 # shellcheck disable=SC3043,SC2034,SC2086,SC3060,SC3010,SC2046
 SKIPUNZIP=1
-totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
+totalmem=$(
+	free | grep -e "^Mem:" |
+		sed -e 's/^Mem: *//' -e 's/  *.*//'
+)
 
 unzip -o $ZIPFILE -x 'META-INF/*' -d $MODPATH >&2
 set_perm_recursive $MODPATH 0 0 0755 0644
@@ -99,12 +102,20 @@ count_swap() {
 				swap_size=0
 				ui_print "  $count. No SWAP --> RECOMMENDED"
 			elif [ $count -eq 2 ]; then
+				swap_size=$((totalmem / 10))
+				cat <<EOF
+  $count. 10% of RAM ($((swap_size / 1024)))MB SWAP"
+EOF
+			elif [ $count -eq 3 ]; then
 				swap_size=$((totalmem / 2))
-				ui_print \
-					"  $count. 50% of RAM ($((swap_size / 1024)))MB SWAP"
+				cat <<EOF
+  $count. 50% of RAM ($((swap_size / 1024)))MB SWAP"
+EOF
 			elif [ $swap_in_gb -lt $totalmem_gb ]; then
 				swap_in_gb=$((swap_in_gb + 1))
-				ui_print "  $count. ${swap_in_gb}GB of SWAP"
+				cat <<EOF
+  ui_print "  $count. ${swap_in_gb}GB of SWAP"
+EOF
 				swap_size=$((swap_in_gb * one_gb))
 
 				[ $swap_in_gb -ge $totalmem_gb ] && {
@@ -119,7 +130,7 @@ count_swap() {
 
 make_swap() {
 	dd if=/dev/zero of="$2" bs=1024 count=$1 >/dev/null
-	mkswap -L meZram-swap "$2" >/dev/null
+	/system/bin/mkswap -L meZram-swap "$2" >/dev/null
 }
 
 config_update() {
@@ -192,17 +203,17 @@ config_update() {
 				# only do this onece for config version 2.0
 				$MODPATH/modules/bin/jq \
 					'{agmode: .agmode,
-        wait_time: .wait_time,
-        config_version: .config_version,
-        custom_props: .custom_props,
-        agmode_per_app_configuration: .agmode_per_app_configuration
-          | group_by(.props)
-          | map({
-            packages: map(.package),
-            props: .[0].props[0],
-            wait_time: .[0].wait_time
-          })
-      }' $CONFIG |
+wait_time: .wait_time,
+config_version: .config_version,
+custom_props: .custom_props,
+agmode_per_app_configuration: .agmode_per_app_configuration
+  | group_by(.props)
+  | map({
+    packages: map(.package),
+    props: .[0].props[0],
+    wait_time: .[0].wait_time
+  })
+        }' $CONFIG |
 					$MODPATH/modules/bin/jq \
 						'del(.. | nulls)' >$_CONFIG
 				cp -u $_CONFIG $CONFIG

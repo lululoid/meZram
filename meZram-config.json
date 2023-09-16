@@ -1,7 +1,7 @@
 {
   "agmode": "on",
   "wait_time": "0",
-  "config_version": 2.1,
+  "config_version": 2.2,
   "custom_props": {
     "ro.lmk.use_psi": true,
     "ro.lmk.use_minfree_levels": false
@@ -32,7 +32,8 @@
         "ro.lmk.downgrade_pressure": 10,
         "ro.lmk.thrashing_limit_decay": 50
       },
-      "wait_time": "5m"
+      "wait_time": "5m",
+      "swap": "380MB"
     },
     {
       "packages": [
