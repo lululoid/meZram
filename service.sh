@@ -56,6 +56,15 @@ read_agmode_app() {
 	} || false
 }
 
+convert() {
+	local num m
+	num=$(echo $1 | sed 's/[^0-9]//g')
+	m=$(
+		echo $1 | sed 's/[0-9]//g;s/m/60/g'
+	)
+	[ -n "$m" ] && echo $((num * m)) || echo $1
+}
+
 # logging service, keeping the log alive bcz system sometimes
 # kill them for unknown reason
 while true; do
@@ -218,10 +227,10 @@ while true; do
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 
+			prev_waitt=$(convert $(cat $sltemp))
 			# restart wait_time and some variables
 			# if new am app is opened
 			kill -9 $sleep_pid && logger "sleep started over"
-			rm $sltemp
 			unset restoration sleep_pid
 
 			# set current am app
@@ -230,18 +239,31 @@ while true; do
 			# read wait_time per app from the config
 			# wait_time is intended to prevent app from being closed
 			# by system while doing multitasking
-			$MODBIN/jq \
-				--arg am "$am" \
-				'.agmode_per_app_configuration[]
+			wait_time=$(
+				$MODBIN/jq \
+					--arg am "$am" \
+					'.agmode_per_app_configuration[]
           | select(.packages[] == $am) | .wait_time' \
-				$CONFIG | sed 's/"//g' >$sltemp
+					$CONFIG | sed 's/"//g'
+			)
 
 			# if wait_time per app is not set the read wait_time
-			[[ $(cat $sltemp) = null ]] ||
-				[ -z $(cat $sltemp) ] && {
-				$MODBIN/jq \
-					'.wait_time' $CONFIG | sed 's/"//g' >$sltemp
+			[[ $wait_time = null ]] ||
+				[ -z $wait_time ] && {
+				wait_time=$(
+					$MODBIN/jq \
+						'.wait_time' $CONFIG | sed 's/"//g'
+				)
 			}
+
+			current_waitt=$(convert $wait_time)
+
+			[ $current_waitt -gt $prev_waitt ] && {
+				rm $sltemp
+				echo $wait_time >$sltemp
+			}
+
+			[ ! -f $sltemp ] && echo $wait_time >$sltemp
 		}
 
 		# check if am is activated
