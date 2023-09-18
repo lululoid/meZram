@@ -167,6 +167,7 @@ sltemp=/data/tmp/sltemp
 # reset states and variables to default
 rm $sltemp
 restore_battery_opt
+rm /data/tmp/swapoff_pid
 
 # aggressive mode service starts here
 while true; do
@@ -216,7 +217,12 @@ while true; do
 						$BIN/mkswap -L meZram-swap $ag_swap
 					}
 
-					kill -9 $swapoff_pid
+					while IFS= read -r pid; do
+						kill -9 $pid &&
+              logger "swapoff_pid $pid killed"
+					done </data/tmp/swapoff_pid
+					rm /data/tmp/swapoff_pid
+
 					swapon $ag_swap && logger "SWAP is turned on"
 				}
 			} || [ $swap_size = null ] && [ -f $ag_swap ] && {
@@ -277,10 +283,43 @@ while true; do
 					restore_props &&
 						logger i "aggressive mode deactivated"
 					unset am restoration sleep_pid ag_apps
-					{
-						swapoff $ag_swap && logger "$ag_swap turned off"
-					} &
-					swapoff_pid=$!
+
+					while true; do
+						swaps_usages=$(sed -n '1d;/meZram/p' /proc/swaps |
+							awk '{print $4}')
+
+						for usage in $swaps_usages; do
+							limit_in_kb=51200
+							[ $usage -le $limit_in_kb ] && {
+								swaps_name=$(
+									sed -n '1d;/swap/p' /proc/swaps |
+										awk '{print $1}'
+								)
+								[ -z $swap_count ] &&
+									swap_count=$(echo $swaps_name | wc -l)
+
+								for swap in $swaps_name; do
+									{
+										swapoff $swap &&
+											logger "$swap turned off"
+										swap_count=$((swap_count - 1))
+										echo $swap_count >/data/tmp/swap_count
+									} &
+									echo $! >>/data/tmp/swapoff_pid
+									break
+								done
+							}
+						done
+
+						[ $(cat /data/tmp/swap_count) -eq 0 ] && {
+							resetprop meZram.swapoff_service_pid dead
+							break
+						}
+						sleep 1
+					done &
+					swapoff_service_pid=$!
+					resetprop meZram.swapoff_service_pid \
+						$swapoff_service_pid
 				}
 
 				# the logic is to make it only run once after
