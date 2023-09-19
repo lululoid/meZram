@@ -187,9 +187,9 @@ while true; do
 			# shellcheck disable=SC2016
 			swap_size=$(
 				$MODBIN/jq \
-					--arg am $am \
+					--arg ag_app $ag_app \
 					'.agmode_per_app_configuration[]
-            | select(.packages[] == $am) | .swap' \
+            | select(.packages[] == $ag_app) | .swap' \
 					$CONFIG | sed 's/[^0-9]*//g'
 			)
 
@@ -205,7 +205,7 @@ while true; do
 						# shellcheck disable=SC2016
 						$MODBIN/jq --argjson index $conf_index \
 							'.agmode_per_app_configuration[$index]' \
-							$CONFIG | grep -qw $am && index=$conf_index
+							$CONFIG | grep -qw $ag_app && index=$conf_index
 					done
 
 					ag_swap="$LOGDIR/${index}_swap"
@@ -219,7 +219,7 @@ while true; do
 
 					while IFS= read -r pid; do
 						kill -9 $pid &&
-              logger "swapoff_pid $pid killed"
+							logger "swapoff_pid $pid killed"
 					done </data/tmp/swapoff_pid
 					rm /data/tmp/swapoff_pid
 
@@ -297,17 +297,20 @@ while true; do
 								)
 								[ -z $swap_count ] &&
 									swap_count=$(echo $swaps_name | wc -l)
+								swap=$(
+									sed -n '1d;/swap/p' /proc/swaps |
+										grep $usage | awk '{print $1}' | head -n1
+								)
 
-								for swap in $swaps_name; do
-									{
-										swapoff $swap &&
-											logger "$swap turned off"
-										swap_count=$((swap_count - 1))
-										echo $swap_count >/data/tmp/swap_count
-									} &
-									echo $! >>/data/tmp/swapoff_pid
-									break
-								done
+								{
+									swapoff $swap &&
+										logger "$swap turned off"
+									swap_count=$((swap_count - 1))
+									echo $swap_count >/data/tmp/swap_count
+								} &
+
+								echo $! >>/data/tmp/swapoff_pid
+								break
 							}
 						done
 

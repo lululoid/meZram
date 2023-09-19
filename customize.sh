@@ -92,7 +92,7 @@ count_swap() {
 
 	while true; do
 		# shellcheck disable=SC2069
-		timeout 0.5 /system/bin/getevent -lqc 1 2>&1 \
+		timeout 0.25 /system/bin/getevent -lqc 1 2>&1 \
 			>$TMPDIR/events &
 		sleep 0.1
 		(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {

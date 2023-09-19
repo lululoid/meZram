@@ -47,9 +47,10 @@ logger() {
 	local log=$2
 	local p=$1
 	true && {
-		if [ -z $log ]; then
+		[ -z $log ] && {
 			log="$1" && p=i
-		fi
+		}
+
 		$BIN/log -p "$p" -t meZram "$log"
 	}
 }
@@ -205,7 +206,7 @@ apply_aggressive_mode() {
 		{
 			resetprop $key $value &&
 				logger i "applying $key $value"
-		} || logger f "$value or $key is invalid"
+		} || logger w "$value or $key is invalid"
 	done
 
 	default_optimized_list=$LOGDIR/default_optimized.txt
