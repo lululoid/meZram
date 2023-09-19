@@ -283,13 +283,13 @@ while true; do
 					restore_props &&
 						logger i "aggressive mode deactivated"
 					unset am restoration sleep_pid ag_apps
+					limit_in_kb=51200
 
 					while true; do
 						swaps_usages=$(sed -n '1d;/meZram/p' /proc/swaps |
 							awk '{print $4}')
 
 						for usage in $swaps_usages; do
-							limit_in_kb=51200
 							[ $usage -le $limit_in_kb ] && {
 								swaps_name=$(
 									sed -n '1d;/swap/p' /proc/swaps |
@@ -310,7 +310,6 @@ while true; do
 								} &
 
 								echo $! >>/data/tmp/swapoff_pid
-								break
 							}
 						done
 
