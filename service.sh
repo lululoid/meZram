@@ -241,6 +241,7 @@ while true; do
 
 			# set current am app
 			am=$ag_app
+			echo $am >/data/tmp/meZram_am
 			# shellcheck disable=SC2016
 			# read wait_time per app from the config
 			# wait_time is intended to prevent app from being closed
@@ -270,6 +271,45 @@ while true; do
 			}
 
 			[ ! -f $sltemp ] && echo $wait_time >$sltemp
+
+			# rescue service for critical thrashing
+			# calculate total memory + virtual memory
+			total_swap=$(
+				free | $BIN/fgrep Swap | awk '{print $2}'
+			)
+			totalmem_vir=$((totalmem + total_swap))
+			rescue_service_pid=$(
+				resetprop meZram.rescue_service.pid
+			)
+
+			[ -z $rescue_service_pid ] ||
+				[[ $rescue_service_pid = dead ]] && {
+				logger "starting rescue_service"
+				logger "in case you messed up or i messed up"
+
+				while true; do
+					# calculate memory and swap free and or available
+					swap_free=$(free | $BIN/fgrep Swap |
+						awk '{print $4}')
+					mem_available=$(
+						free | $BIN/fgrep Mem | awk '{print $7}'
+					)
+					totalmem_vir_avl=$((swap_free + mem_available))
+					mem_left=$((totalmem_vir_avl * 1000 / totalmem_vir))
+
+					[ $mem_left -le 80 ] && {
+						logger w \
+							"critical event reached, rescue initiated"
+						logger \
+							"$((totalmem_vir_avl / 1024))MB left"
+						logger "mem_left=$mem_left‰"
+						restore_props
+						apply_aggressive_mode $(cat /data/tmp/meZram_am)
+					}
+					sleep 1
+				done &
+				resetprop meZram.rescue_service.pid $!
+			}
 		}
 
 		# check if am is activated
@@ -322,6 +362,8 @@ while true; do
 					swapoff_service_pid=$!
 					resetprop meZram.swapoff_service_pid \
 						$swapoff_service_pid
+					kill -9 $(resetprop meZram.rescue_service.pid)
+					resetprop meZram.rescue_service.pid dead
 				}
 
 				# the logic is to make it only run once after
