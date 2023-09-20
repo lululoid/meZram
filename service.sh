@@ -11,7 +11,7 @@ MODBIN=/data/adb/modules/meZram/modules/bin
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
 totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
 zram_size=$((totalmem * 1024 / 2))
-lmkd_pid=$(getprop init.svc_debug_pid.lmkd)
+lmkd_pid=$(pgrep lmkd)
 
 # loading modules
 . $MODDIR/modules/lmk.sh
@@ -154,7 +154,7 @@ while true; do
 					"MIUI not support thrashing_limit customization"
 		}
 		custom_props_apply
-		resetprop lmkd.reinit 1 &&
+		$BIN/lmkd --reinit &&
 			logger i "custom props applied"
 		break
 	}
@@ -326,19 +326,22 @@ while true; do
 					limit_in_kb=51200
 
 					while true; do
-						swaps_usages=$(sed -n '1d;/meZram/p' /proc/swaps |
-							awk '{print $4}')
+						swaps=$(cat /proc/swaps)
+						swaps_usages=$(
+							echo "$swaps" | sed -n '1d;/meZram/p' |
+								awk '{print $4}'
+						)
 
 						for usage in $swaps_usages; do
 							[ $usage -le $limit_in_kb ] && {
 								swaps_name=$(
-									sed -n '1d;/swap/p' /proc/swaps |
+									echo "$swaps" | sed -n '1d;/swap/p' |
 										awk '{print $1}'
 								)
 								[ -z $swap_count ] &&
 									swap_count=$(echo $swaps_name | wc -l)
 								swap=$(
-									sed -n '1d;/swap/p' /proc/swaps |
+									echo "$swaps" | sed -n '1d;/swap/p' |
 										grep $usage | awk '{print $1}' | head -n1
 								)
 

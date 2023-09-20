@@ -162,7 +162,7 @@ restore_props() {
 
 	lmkd_props_clean
 	resetprop ro.lmk.downgrade_pressure $default_dpressure
-	custom_props_apply && resetprop lmkd.reinit 1 &&
+	custom_props_apply && $BIN/lmkd --reinit &&
 		logger "default props restored"
 }
 
@@ -221,5 +221,5 @@ apply_aggressive_mode() {
 		dumpsys deviceidle whitelist +$ag_app &&
 			logger "$ag_app is excluded from battery_optimized"
 	}
-	resetprop lmkd.reinit 1
+	$BIN/lmkd --reinit
 }

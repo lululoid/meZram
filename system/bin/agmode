@@ -110,7 +110,7 @@ for opt in "$@"; do
 	--reload)
 		cp /sdcard/meZram-config.json $CONFIG
 		custom_props_apply 2>/dev/null &&
-			resetprop lmkd.reinit 1 &&
+			lmkd --reinit &&
 			printme "Custom props applied"
 		sync_config /sdcard/meZram-config.json
 		;;
@@ -124,7 +124,7 @@ for opt in "$@"; do
 		toggle_psi
 		toggle_minfree_levels
 		custom_props_apply 2>/dev/null &&
-			resetprop lmkd.reinit 1 &&
+			lmkd --reinit &&
 			sync_config /sdcard/meZram-config.json
 
 		if [ "$ml_value" = false ]; then

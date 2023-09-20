@@ -70,7 +70,7 @@ lmkd_apply() {
 		rm_prop $tl
 	fi
 
-	resetprop lmkd.reinit 1 && ui_print "> lmkd reinitialized"
+	$BIN/lmkd --reinit && ui_print "> lmkd reinitialized"
 	ui_print "> lmkd multitasking tweak applied."
 	ui_print "  Give the better of your RAM."
 	ui_print "  RAM better being filled with something"
