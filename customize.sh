@@ -29,7 +29,7 @@ rm_prop() {
 lmkd_apply() {
 	# determine if device is lowram?
 	log_it "totalmem = $totalmem"
-	if [ "$totalmem" -lt 2097152 ]; then
+	if [ $totalmem -lt 2097152 ]; then
 		ui_print "⚠️ Device is low ram. Applying low am tweaks"
 		mv $MODPATH/system.props/low-ram-system.prop $MODPATH/system.prop
 	else
@@ -92,7 +92,7 @@ count_swap() {
 
 	while true; do
 		# shellcheck disable=SC2069
-		timeout 0.25 /system/bin/getevent -lqc 1 2>&1 \
+		timeout 0.1 /system/bin/getevent -lqc 1 2>&1 \
 			>$TMPDIR/events &
 		sleep 0.1
 		(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
@@ -256,10 +256,30 @@ ui_print " █▀▀ █▄▄▀ █▄█▄█ ▀█▀ █░░█ ▄▀�
 ui_print " ▀▀▀ ▀░▀▀ ░▀░▀░ ▀▀▀ ▀░░▀ ▀▀▀ ▀▀▀ ▀░▀▀ █▄▄█"
 sleep 0.5
 
-if [ -d "/data/adb/modules/meZram" ]; then
+[ -d "/data/adb/modules/meZram" ] && {
 	ui_print "> Thank you so much 😊."
 	ui_print "  You've installed this module before"
-fi
+	[ -f $swap_filename ] && {
+		ui_print "  I don't recommend SWAP anymore."
+		ui_print "  Do you want to remove previous SWAP?"
+		ui_print "  Volume + --> No"
+		ui_print "  Volume - --> Yes"
+		while true; do
+			# shellcheck disable=SC2069
+			timeout 0.1 /system/bin/getevent -lqc 1 2>&1 \
+				>$TMPDIR/events &
+			sleep 0.1
+			(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
+				# TODO function to remove previous SWAP
+				true
+			}
+			(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && {
+        ui_print "> Hmm no huh! That's fine"
+        break
+      }
+		done
+	}
+}
 
 [ ! -f $NVBASE/meZram ] && {
 	mkdir -p "$NVBASE/meZram" &&
@@ -290,7 +310,7 @@ fi
 
 		while true; do
 			# shellcheck disable=SC2069
-			timeout 0.5 /system/bin/getevent -lqc 1 2>&1 \
+			timeout 0.1 /system/bin/getevent -lqc 1 2>&1 \
 				>$TMPDIR/events &
 			sleep 0.1
 			(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
