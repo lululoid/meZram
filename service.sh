@@ -149,8 +149,7 @@ tl=ro.lmk.thrashing_limit
 # thrashing limit has no effect in MIUI
 while true; do
 	[ $(resetprop sys.boot_completed) -eq 1 ] && {
-		lmkd_props_clean &&
-			logger i "unnecessary lmkd props cleaned"
+		lmkd_props_clean
 		[ $(resetprop ro.miui.ui.version.code) ] && {
 			rm_prop $tl &&
 				logger i \
@@ -228,7 +227,7 @@ while true; do
 							count=$swap_size
 						chmod 0600 $ag_swap
 						$BIN/mkswap -L meZram-swap $ag_swap &&
-							logger "$ag_swap turned on"
+							logger "$ag_swap is made"
 					}
 
 					while IFS= read -r pid; do

@@ -58,8 +58,9 @@ logger() {
 # remove a bunch of props
 rm_prop() {
 	for prop in "$@"; do
-		resetprop "$prop" >/dev/null &&
-			resetprop --delete $prop && logger "$prop removed"
+		resetprop $prop >/dev/null &&
+			resetprop --delete $prop &&
+			logger "$prop removed"
 	done
 }
 
@@ -98,8 +99,12 @@ custom_props_apply() {
 					'.custom_props | .[$prop]' $CONFIG
 			)
 		}
-		resetprop $prop $prop_value &&
-			logger "$prop $prop_value applied"
+		{
+			resetprop $prop $prop_value &&
+				logger "$prop $prop_value applied"
+		} || {
+			logger "$prop $prop_value is invalid"
+		}
 	done
 }
 
@@ -119,7 +124,7 @@ lmkd_props_clean() {
 		"ro.lmk.swap_util_max" \
 		"sys.lmk.minfree_levels" \
 		"ro.lmk.upgrade_pressure"
-	rm_prop "$@"
+	rm_prop "$@" && logger "unnecessary lmkd props cleaned"
 }
 
 # restore default battery optimization setting
@@ -190,6 +195,7 @@ apply_aggressive_mode() {
 			$CONFIG
 	)
 
+	lmkd_props_clean
 	# shellcheck disable=SC2116
 	for key in $(echo "$papp_keys"); do
 		# shellcheck disable=SC2016

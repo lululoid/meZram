@@ -94,7 +94,7 @@ count_swap() {
 		# shellcheck disable=SC2069
 		timeout 0.05 /system/bin/getevent -lqc 1 2>&1 \
 			>$TMPDIR/events &
-    g_event_pid=$!
+		g_event_pid=$!
 		sleep 0.05
 		(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
 			count=$((count + 1))
@@ -127,9 +127,9 @@ EOF
 			}
 		}
 		(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && {
-      kill -9 $g_event_pid
-      break
-    }
+			kill -9 $g_event_pid
+			break
+		}
 	done
 }
 
@@ -276,7 +276,7 @@ EOF
 			# shellcheck disable=SC2069
 			timeout 0.05 /system/bin/getevent -lqc 1 2>&1 \
 				>$TMPDIR/events &
-      g_event_pid=$!
+			g_event_pid=$!
 			sleep 0.05
 			(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
 				# function to remove previous SWAP
@@ -290,7 +290,7 @@ EOF
 			}
 			(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && {
 				ui_print "> Hmm no huh! That's fine"
-        kill -9 $g_event_pid
+				kill -9 $g_event_pid
 				break
 			}
 		done
@@ -322,7 +322,9 @@ EOF
 			make_swap $swap_size $swap_filename &&
 				/system/bin/swapon $swap_filename
 		}
-	} || {
+	}
+
+	[ $free_space -lt $swap_size ] && {
 		ui_print "> Storage full. Please free up your storage"
 	}
 
@@ -340,7 +342,7 @@ EOF
 			# shellcheck disable=SC2069
 			timeout 0.05 /system/bin/getevent -lqc 1 2>&1 \
 				>$TMPDIR/events &
-      g_event_pid=$!
+			g_event_pid=$!
 			sleep 0.05
 			(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
 				ui_print \
@@ -354,7 +356,7 @@ EOF
 			(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && {
 				cancelled=$(ui_print "> Not making SWAP")
 				$cancelled && log_it "$cancelled"
-        kill -9 $g_event_pid
+				kill -9 $g_event_pid
 				break
 			}
 		done
