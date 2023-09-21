@@ -5,11 +5,13 @@ CONFIG=$LOGDIR/meZram-config.json
 # magisk restrict the PATH env to only in their busybox,
 # i don't know why
 BIN=/system/bin
-# this modules binary
+# this module binary
 MODBIN=/data/adb/modules/meZram/modules/bin
 # read the cpu cores amount
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
-totalmem=$(free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//')
+totalmem=$(
+	free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'
+)
 zram_size=$((totalmem * 1024 / 2))
 lmkd_pid=$(pgrep lmkd)
 
@@ -128,7 +130,8 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 		echo $zram_size >/sys/block/zram0/disksize &&
 			logger i "set $zram0 disksize to $zram_size"
 		# Set up maxium cpu streams
-		logger i "making $zram0 and set max_comp_streams=$NRDEVICES"
+		logger i \
+			"making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo $NRDEVICES >/sys/block/zram0/max_comp_streams
 		mkswap $zram0
 		$BIN/swapon -p 69 "$zram0" && logger i "$zram0 turned on"
@@ -139,7 +142,7 @@ done
 {
 	swapon /data/swap_file &&
 		logger i "swap is turned on"
-} || logger f "swap is missing"
+} || logger w "swap is missing"
 
 tl=ro.lmk.thrashing_limit
 
@@ -172,7 +175,8 @@ rm /data/tmp/swapoff_pid
 # aggressive mode service starts here
 while true; do
 	# Read configuration for aggressive mode
-	agmode=$(sed -n 's#"agmode": "\(.*\)".*#\1#p' "$CONFIG" | sed 's/ //g')
+	agmode=$(sed -n 's#"agmode": "\(.*\)".*#\1#p' "$CONFIG" |
+		sed 's/ //g')
 
 	[[ $agmode = on ]] && {
 		# if the foreground app match app in aggressive mode list
@@ -297,7 +301,7 @@ while true; do
 					totalmem_vir_avl=$((swap_free + mem_available))
 					mem_left=$((totalmem_vir_avl * 1000 / totalmem_vir))
 
-					[ $mem_left -le 80 ] && {
+					[ $mem_left -le 100 ] && {
 						logger w \
 							"critical event reached, rescue initiated"
 						logger \
@@ -326,23 +330,21 @@ while true; do
 					limit_in_kb=51200
 
 					while true; do
-						swaps=$(cat /proc/swaps)
+						swaps=$($BIN/fgrep meZram /proc/swaps)
 						swaps_usages=$(
-							echo "$swaps" | sed -n '1d;/meZram/p' |
-								awk '{print $4}'
+							echo "$swaps" | awk '{print $4}'
 						)
 
 						for usage in $swaps_usages; do
 							[ $usage -le $limit_in_kb ] && {
 								swaps_name=$(
-									echo "$swaps" | sed -n '1d;/swap/p' |
-										awk '{print $1}'
+									echo "$swaps" | awk '{print $1}'
 								)
 								[ -z $swap_count ] &&
 									swap_count=$(echo $swaps_name | wc -l)
 								swap=$(
-									echo "$swaps" | sed -n '1d;/swap/p' |
-										grep $usage | awk '{print $1}' | head -n1
+									echo "$swaps" | grep $usage |
+										awk '{print $1}' | head -n1
 								)
 
 								{
@@ -398,7 +400,10 @@ resetprop meZram.aggressive_mode.pid $!
 # sync service because i can't read from internal
 # for some reason? tell me why please
 while true; do
-	is_update=$(cp -uv /sdcard/meZram-config.json /data/adb/meZram/meZram-config.json)
+	is_update=$(
+		cp -uv /sdcard/meZram-config.json \
+			/data/adb/meZram/meZram-config.json
+	)
 
 	echo $is_update | $BIN/fgrep -wo ">" &&
 		logger i "config updated"
