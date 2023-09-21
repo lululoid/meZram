@@ -214,11 +214,21 @@ while true; do
 
 					ag_swap="$LOGDIR/${index}_swap"
 
+					[ -f $ag_swap ] && {
+						ag_swap_size=$(($(wc -c $ag_swap |
+							awk '{print $1}') / 1024 / 1024))
+						[ $ag_swap_size -ne $swap_size ] && {
+							swapoff $ag_swap && rm -f $ag_swap &&
+								logger "$ag_swap removed"
+						}
+					}
+
 					[ ! -f $ag_swap ] && {
 						dd if=/dev/zero of="$ag_swap" bs=1M \
 							count=$swap_size
 						chmod 0600 $ag_swap
-						$BIN/mkswap -L meZram-swap $ag_swap
+						$BIN/mkswap -L meZram-swap $ag_swap &&
+							logger "$ag_swap turned on"
 					}
 
 					while IFS= read -r pid; do
