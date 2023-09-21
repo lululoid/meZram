@@ -92,9 +92,10 @@ count_swap() {
 
 	while true; do
 		# shellcheck disable=SC2069
-		timeout 0.1 /system/bin/getevent -lqc 1 2>&1 \
+		timeout 0.05 /system/bin/getevent -lqc 1 2>&1 \
 			>$TMPDIR/events &
-		sleep 0.1
+    g_event_pid=$!
+		sleep 0.05
 		(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
 			count=$((count + 1))
 
@@ -104,27 +105,31 @@ count_swap() {
 			elif [ $count -eq 2 ]; then
 				swap_size=$((totalmem / 10))
 				cat <<EOF
-  $count. 10% of RAM ($((swap_size / 1024)))MB SWAP"
+  $count. 10% of RAM ($((swap_size / 1024)))MB SWAP
 EOF
 			elif [ $count -eq 3 ]; then
 				swap_size=$((totalmem / 2))
 				cat <<EOF
-  $count. 50% of RAM ($((swap_size / 1024)))MB SWAP"
+  $count. 50% of RAM ($((swap_size / 1024)))MB SWAP
 EOF
 			elif [ $swap_in_gb -lt $totalmem_gb ]; then
 				swap_in_gb=$((swap_in_gb + 1))
 				cat <<EOF
-  ui_print "  $count. ${swap_in_gb}GB of SWAP"
+  $count. ${swap_in_gb}GB of SWAP
 EOF
 				swap_size=$((swap_in_gb * one_gb))
-
-				[ $swap_in_gb -ge $totalmem_gb ] && {
-					swap_size=$totalmem
-					count=0
-				}
 			fi
+
+			[ $swap_in_gb -ge $totalmem_gb ] && {
+				swap_size=$totalmem
+				swap_in_gb=0
+				count=0
+			}
 		}
-		(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && break
+		(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && {
+      kill -9 $g_event_pid
+      break
+    }
 	done
 }
 
@@ -260,28 +265,39 @@ sleep 0.5
 	ui_print "> Thank you so much 😊."
 	ui_print "  You've installed this module before"
 	[ -f $swap_filename ] && {
-		ui_print "  I don't recommend SWAP anymore."
-		ui_print "  Do you want to remove previous SWAP?"
-		ui_print "  Volume + --> No"
-		ui_print "  Volume - --> Yes"
+		cat <<EOF
+  I don't recommend SWAP anymore."
+  It's laggy, and increase I/O and mess with lmkd"
+  Do you want to delete previous SWAP?"
+  Volume + --> No"
+  Volume - --> Yes"
+EOF
 		while true; do
 			# shellcheck disable=SC2069
-			timeout 0.1 /system/bin/getevent -lqc 1 2>&1 \
+			timeout 0.05 /system/bin/getevent -lqc 1 2>&1 \
 				>$TMPDIR/events &
-			sleep 0.1
+      g_event_pid=$!
+			sleep 0.05
 			(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
-				# TODO function to remove previous SWAP
-				true
+				# function to remove previous SWAP
+				ui_print "> Removing SWAP in the background"
+				sleep 1
+				{
+					swapoff $swap_filename && rm -f $swap_filename &&
+						logger "$swap_filename is removed"
+				} &
+				break
 			}
 			(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && {
-        ui_print "> Hmm no huh! That's fine"
-        break
-      }
+				ui_print "> Hmm no huh! That's fine"
+        kill -9 $g_event_pid
+				break
+			}
 		done
 	}
 }
 
-[ ! -f $NVBASE/meZram ] && {
+[ ! -d $NVBASE/meZram ] && {
 	mkdir -p "$NVBASE/meZram" &&
 		ui_print "> Folder $NVBASE/meZram is made"
 }
@@ -294,27 +310,41 @@ sleep 0.5
 	log_it "swap size = $swap_size"
 	log_it "count = $count"
 	# Making SWAP only if enough free space available
-	[ $free_space -ge $swap_size ] && [ $swap_size -gt 0 ] && {
-		ui_print "> Starting making SWAP. Please wait a moment"
-		sleep 0.5
-		ui_print "  $((free_space / 1024))MB available. $((swap_size / 1024))MB needed"
-		make_swap $swap_size $swap_filename &&
-			/system/bin/swapon -p 2 $swap_filename
+	{
+		[ $free_space -ge $swap_size ] &&
+			[ $swap_size -gt 0 ] && {
+			ui_print "> Starting making SWAP. Please wait a moment"
+			sleep 0.5
+			cat <<EOF
+  $((free_space / 1024))MB available.
+  $((swap_size / 1024))MB needed
+EOF
+			make_swap $swap_size $swap_filename &&
+				/system/bin/swapon $swap_filename
+		}
+	} || {
+		ui_print "> Storage full. Please free up your storage"
 	}
+
 	# Handling bug on some devices
 	[ -z $free_space ] && {
-		ui_print "> Make sure you have $((swap_size / 1024))MB space available data partition"
-		ui_print "  Make SWAP?"
-		ui_print "  Press VOLUME + to NO"
-		ui_print "  Press VOLUME - to YES"
+		cat <<EOF
+> Make sure you have $((swap_size / 1024))MB of space
+  available
+  ui_print "  Make SWAP?"
+	ui_print "  Volume + --> No"
+	ui_print "  Volume - --> Yes"
+EOF
 
 		while true; do
 			# shellcheck disable=SC2069
-			timeout 0.1 /system/bin/getevent -lqc 1 2>&1 \
+			timeout 0.05 /system/bin/getevent -lqc 1 2>&1 \
 				>$TMPDIR/events &
-			sleep 0.1
+      g_event_pid=$!
+			sleep 0.05
 			(grep -q 'KEY_VOLUMEDOWN *DOWN' $TMPDIR/events) && {
-				ui_print "> Starting making SWAP. Please wait a moment"
+				ui_print \
+					"> Starting making SWAP. Please wait a moment"
 				sleep 0.5
 				make_swap $swap_size $swap_filename &&
 					/system/bin/swapon -p 5 $swap_filename >/dev/null
@@ -324,6 +354,7 @@ sleep 0.5
 			(grep -q 'KEY_VOLUMEUP *DOWN' $TMPDIR/events) && {
 				cancelled=$(ui_print "> Not making SWAP")
 				$cancelled && log_it "$cancelled"
+        kill -9 $g_event_pid
 				break
 			}
 		done
@@ -332,9 +363,7 @@ sleep 0.5
 	{
 		# if no SWAP option selected, only pass
 		[ $swap_size -eq 0 ] &&
-			ui_print "> Not making any SWAP."
-	} || {
-		ui_print "> Storage full. Please free up your storage"
+			ui_print "> Not making any SWAP. Good"
 	}
 }
 
@@ -343,7 +372,8 @@ log_it "android_version = $android_version"
 
 {
 	[ $android_version -lt 10 ] && {
-		ui_print "> Your android version is not supported. Performance tweaks won't be applied."
+		ui_print "> Your android version is not supported."
+		ui_print "  Performance tweaks won't be applied."
 		ui_print "  Please upgrade your phone to Android 10+"
 	}
 } || {
