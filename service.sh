@@ -217,12 +217,20 @@ while true; do
 						ag_swap_size=$(($(wc -c $ag_swap |
 							awk '{print $1}') / 1024 / 1024))
 						[ $ag_swap_size -ne $swap_size ] && {
+							logger "resizing $ag_swap, please wait.."
+							logger "aggressive_mode won't work for some time"
 							swapoff $ag_swap && rm -f $ag_swap &&
 								logger "$ag_swap removed"
 						}
 					}
 
-					[ ! -f $ag_swap ] && {
+					meZram_tswap=$(($(
+						wc -c $LOGDIR/*swap | tail -n1 | awk '{print $1}'
+					) / 1024 / 1024))
+
+					[ $swap_size -le $meZram_tswap ] ||
+						[ $swap_size -ge $((meZram_tswap + 512)) ] &&
+						[ ! -f $ag_swap ] && {
 						dd if=/dev/zero of="$ag_swap" bs=1M \
 							count=$swap_size
 						chmod 0600 $ag_swap
@@ -230,13 +238,18 @@ while true; do
 							logger "$ag_swap is made"
 					}
 
+					[ $swap_size -ge $meZram_tswap ] && {
+						for swap in "$LOGDIR"/*swap; do
+							swapon $swap && logger "$swap is turned on"
+						done
+					} ||
+						swapon $ag_swap && logger "$ag_swap is turned on"
+
 					while IFS= read -r pid; do
 						kill -9 $pid &&
 							logger "swapoff_pid $pid killed"
 					done </data/tmp/swapoff_pid
 					rm /data/tmp/swapoff_pid
-
-					swapon $ag_swap && logger "SWAP is turned on"
 				}
 			} || [ $swap_size = null ] && [ -f $ag_swap ] && {
 				rm -f $ag_swap &&
