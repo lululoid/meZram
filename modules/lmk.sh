@@ -77,12 +77,12 @@ custom_props_apply() {
 
 	# double props is to make sure always use the latest jq
 	# my module provided even when just a module update
-	if [ -z "$props" ]; then
+	[ -z "$props" ] && {
 		props=$(
 			/data/adb/modules/meZram/modules/bin/jq \
 				'.custom_props | keys[]' $CONFIG | sed 's/"//g'
 		)
-	fi
+	}
 
 	# shellcheck disable=SC2116
 	for prop in $(echo "$props"); do
@@ -99,11 +99,16 @@ custom_props_apply() {
 					'.custom_props | .[$prop]' $CONFIG
 			)
 		}
+
 		{
 			resetprop $prop $prop_value &&
 				logger "$prop $prop_value applied"
 		} || {
-			logger "$prop $prop_value is invalid"
+			[ -n "$prop" ] && {
+				logger "$prop $prop_value is invalid"
+			}
+		} || {
+			logger w "custom_props empty"
 		}
 	done
 }
@@ -153,20 +158,14 @@ restore_battery_opt() {
 }
 
 restore_props() {
-	local default_dpressure
-	default_dpressure=$(
-		sed -n 's/^ro.lmk.downgrade_pressure=//p' $CONFIG
-	)
-
-	[ -z $default_dpressure ] && {
-		default_dpressure=$(
-			sed -n 's/^ro.lmk.downgrade_pressure=//p' \
-				$MODDIR/system.prop
-		)
-	}
+	# applying lmkd tweaks
+	grep -v '^ *#' <$MODDIR/system.prop |
+		while IFS= read -r prop; do
+			resetprop ${prop//=/ } &&
+				logger "prop ${prop//=/ } applied"
+		done
 
 	lmkd_props_clean
-	resetprop ro.lmk.downgrade_pressure $default_dpressure
 	custom_props_apply && $BIN/lmkd --reinit &&
 		logger "default props restored"
 }
