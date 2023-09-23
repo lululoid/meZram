@@ -191,10 +191,15 @@ config_update() {
 				print "false"
 			}
 		}')
+
+		is_v2dot3=$({
+			[[ $version_prev = "2.3" ]] && true
+		} || false)
 	}
 
 	log_it "is_update = $is_update"
 	log_it "is_less_2 = $is_less_2"
+  log_it "is_v2dot3 = $is_v2dot3"
 
 	{
 		$is_update && {
@@ -219,6 +224,15 @@ agmode_per_app_configuration: .agmode_per_app_configuration
     wait_time: .[0].wait_time
   })
         }' $CONFIG |
+					$MODPATH/modules/bin/jq \
+						'del(.. | nulls)' >$_CONFIG
+				cp -u $_CONFIG $CONFIG
+			}
+
+			$is_v2dot3 && {
+				$MODPATH/modules/bin/jq \
+					'del(.agmode_per_app_configuration[].wait_time)
+          | del(.wait_time)' $CONFIG |
 					$MODPATH/modules/bin/jq \
 						'del(.. | nulls)' >$_CONFIG
 				cp -u $_CONFIG $CONFIG
