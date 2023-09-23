@@ -200,9 +200,9 @@ config_update() {
 		$is_update && {
 			# Update config version
 			ui_print "> Updating configuration"
-			ui_print "> Making backup $_CONFIG.bcp"
 			today_date=$(date +%R-%a-%d-%m-%Y)
 			cp -f $_CONFIG ${_CONFIG}_$today_date.bcp
+			ui_print "> Making backup ${_CONFIG}_$today_date.bcp"
 
 			$is_less_2 && {
 				# only do this onece for config version 2.0

@@ -256,6 +256,7 @@ while true; do
 					logger "$ag_swap deleted because of config"
 			}
 
+			# swap should be turned on first to accomodate lmkd
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
 
@@ -298,12 +299,6 @@ while true; do
 
 			[ ! -f $sltemp ] && echo $wait_time >$sltemp
 
-			# rescue service for critical thrashing
-			# calculate total memory + virtual memory
-			total_swap=$(
-				free | $BIN/fgrep Swap | awk '{print $2}'
-			)
-			totalmem_vir=$((totalmem + total_swap))
 			rescue_service_pid=$(
 				resetprop meZram.rescue_service.pid
 			)
@@ -312,6 +307,16 @@ while true; do
 				[[ $rescue_service_pid = dead ]] && {
 				logger "starting rescue_service"
 				logger "in case you messed up or i messed up"
+				# rescue service for critical thrashing
+				# calculate total memory + virtual memory
+				total_swap=$(
+					free | $BIN/fgrep Swap | awk '{print $2}'
+				)
+				totalmem_vir=$((totalmem + total_swap))
+				rescue_limit=$(
+					$MODBIN/jq .rescue_limit $CONFIG |
+						sed 's/[^0-9]*//g'
+				)
 
 				while true; do
 					# calculate memory and swap free and or available
@@ -323,7 +328,7 @@ while true; do
 					totalmem_vir_avl=$((swap_free + mem_available))
 					mem_left=$((totalmem_vir_avl * 1000 / totalmem_vir))
 
-					[ $mem_left -le 100 ] && {
+					[ $mem_left -le $((rescue_limit * 10)) ] && {
 						logger w \
 							"critical event reached, rescue initiated"
 						logger \

@@ -1,11 +1,12 @@
 {
   "agmode": "on",
   "wait_time": "0",
-  "config_version": 2.2,
+  "config_version": 2.3,
   "custom_props": {
     "ro.lmk.use_psi": true,
     "ro.lmk.use_minfree_levels": false
   },
+  "rescue_limit": "15%",
   "agmode_per_app_configuration": [
     {
       "packages": [
