@@ -193,8 +193,8 @@ config_update() {
 		}')
 
 		is_v2dot3=$({
-			[[ $version_prev = "2.3" ]] && true
-		} || false)
+			[[ $version_prev = "2.3" ]] && echo true
+		} || echo false)
 	}
 
 	log_it "is_update = $is_update"

@@ -45,9 +45,8 @@ read_agmode_app() {
 
 	[ -z $ag_apps ] && {
 		ag_apps=$(
-			$MODBIN/jq \
-				'.agmode_per_app_configuration[].packages[]' \
-				$CONFIG | sed 's/"//g'
+			$MODBIN/jq -r \
+				'.agmode_per_app_configuration[].packages[]' $CONFIG
 		)
 	}
 	# check if current foreground app is in aggressive
@@ -64,8 +63,7 @@ ag_swapon() {
 		$MODBIN/jq \
 			--arg ag_app $ag_app \
 			'.agmode_per_app_configuration[]
-            | select(.packages[] == $ag_app) | .swap' \
-			$CONFIG | sed 's/[^0-9]*//g'
+      | select(.packages[] == $ag_app) | .swap' $CONFIG
 	)
 
 	{
@@ -120,8 +118,7 @@ ag_swapon() {
 				for swap in "$LOGDIR"/*swap; do
 					swapon $swap && logger "$swap is turned on"
 				done
-			} ||
-				swapon $ag_swap && logger "$ag_swap is turned on"
+			} || swapon $ag_swap && logger "$ag_swap is turned on"
 		}
 	} || [ $swap_size = null ] && [ -f $ag_swap ] && {
 		rm -f $ag_swap &&
@@ -233,8 +230,7 @@ rm /data/tmp/swapoff_pid
 # aggressive mode service starts here
 while true; do
 	# Read configuration for aggressive mode
-	agmode=$(sed -n 's#"agmode": "\(.*\)".*#\1#p' "$CONFIG" |
-		sed 's/ //g')
+	agmode=$($MODBIN/jq -r .agmode $CONFIG)
 
 	[[ $agmode = on ]] && {
 		# if the foreground app match app in aggressive mode list
@@ -252,7 +248,7 @@ while true; do
 				logger i "aggressive mode activated for $fg_app"
 			# restart persist_service and some variables
 			# if new am app is opened
-			kill -9 $persist_pid
+			kill -9 $persist_pid && logger "persist reset"
 			unset restoration persist_pid
 
 			# set current am app
@@ -273,10 +269,7 @@ while true; do
 					free | $BIN/fgrep Swap | awk '{print $2}'
 				)
 				totalmem_vir=$((totalmem + total_swap))
-				rescue_limit=$(
-					$MODBIN/jq .rescue_limit $CONFIG |
-						sed 's/[^0-9]*//g'
-				)
+				rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
 
 				while true; do
 					# calculate memory and swap free and or available

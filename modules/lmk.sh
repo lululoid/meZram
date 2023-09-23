@@ -71,16 +71,16 @@ custom_props_apply() {
 	local props
 	local prop_value
 	props=$(
-		/data/adb/modules_update/meZram/modules/bin/jq \
-			'.custom_props | keys[]' $CONFIG | sed 's/"//g'
+		/data/adb/modules_update/meZram/modules/bin/jq -r \
+			'.custom_props | keys[]' $CONFIG
 	)
 
 	# double props is to make sure always use the latest jq
 	# my module provided even when just a module update
 	[ -z "$props" ] && {
 		props=$(
-			/data/adb/modules/meZram/modules/bin/jq \
-				'.custom_props | keys[]' $CONFIG | sed 's/"//g'
+			/data/adb/modules/meZram/modules/bin/jq -r \
+				'.custom_props | keys[]' $CONFIG
 		)
 	}
 
@@ -137,9 +137,9 @@ restore_battery_opt() {
 	local packages_list
 	local status
 	packages_list=$(
-		$MODBIN/jq \
+		$MODBIN/jq -r \
 			'.agmode_per_app_configuration[].packages[]' \
-			$CONFIG | sed 's/"//g'
+			$CONFIG
 	)
 
 	# save the list to /data/adb/meZram
@@ -176,12 +176,11 @@ apply_aggressive_mode() {
 	local value
 	# shellcheck disable=SC2016
 	papp_keys=$(
-		$MODBIN/jq \
+		$MODBIN/jq -r \
 			--arg ag_app $ag_app \
 			'.agmode_per_app_configuration[]
           | select(.packages[] == $ag_app) 
-          | .props | keys[]' \
-			$CONFIG | sed 's/"//g'
+          | .props | keys[]' $CONFIG
 	)
 
 	# shellcheck disable=SC2016
@@ -204,8 +203,7 @@ apply_aggressive_mode() {
 				--arg key $key \
 				'.agmode_per_app_configuration[]
               | select(.packages[] == $ag_app)
-              | .props | .[$key]' \
-				$CONFIG
+              | .props | .[$key]' $CONFIG
 		)
 
 		{

@@ -1,9 +1,9 @@
 {
   "agmode": "on",
-  "config_version": 2.5,
+  "config_version": 2.6,
   "custom_props": {
   },
-  "rescue_limit": "15%",
+  "rescue_limit": 15,
   "agmode_per_app_configuration": [
     {
       "packages": [
@@ -30,7 +30,7 @@
         "ro.lmk.downgrade_pressure": 10,
         "ro.lmk.thrashing_limit_decay": 50
       },
-      "swap": "380MB"
+      "swap": "1024MB"
     },
     {
       "packages": [
