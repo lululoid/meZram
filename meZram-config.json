@@ -1,10 +1,7 @@
 {
   "agmode": "on",
-  "wait_time": "0",
-  "config_version": 2.3,
+  "config_version": 2.4,
   "custom_props": {
-    "ro.lmk.use_psi": true,
-    "ro.lmk.use_minfree_levels": false
   },
   "rescue_limit": "15%",
   "agmode_per_app_configuration": [
@@ -33,7 +30,6 @@
         "ro.lmk.downgrade_pressure": 10,
         "ro.lmk.thrashing_limit_decay": 50
       },
-      "wait_time": "5m",
       "swap": "380MB"
     },
     {
@@ -45,8 +41,7 @@
         "ro.lmk.use_minfree_levels": false,
         "ro.lmk.downgrade_pressure": 100,
         "ro.lmk.thrashing_limit_decay": 50
-      },
-      "wait_time": "0"
+      }
     }
   ]
 }

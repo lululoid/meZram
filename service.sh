@@ -13,7 +13,7 @@ totalmem=$(
 	free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'
 )
 zram_size=$((totalmem * 1024 / 2))
-lmkd_pid=$(pgrep lmkd)
+lmkd_pid=$(pidof lmkd)
 
 # loading modules
 . $MODDIR/modules/lmk.sh
@@ -56,48 +56,6 @@ read_agmode_app() {
 	{
 		[ -n "$ag_app" ] && true
 	} || false
-}
-
-convert() {
-	local num m
-	num=$(echo $1 | sed 's/[^0-9]//g')
-	m=$(
-		echo $1 | sed 's/[0-9]//g;s/m/60/g'
-	)
-	[ -n "$m" ] && echo $((num * m)) || echo $1
-}
-
-ag_wait() {
-	# shellcheck disable=SC2016
-	# read wait_time per app from the config
-	# wait_time is intended to prevent app from being closed
-	# by system while doing multitasking
-	wait_time=$(
-		$MODBIN/jq \
-			--arg am "$am" \
-			'.agmode_per_app_configuration[]
-          | select(.packages[] == $am) | .wait_time' \
-			$CONFIG | sed 's/"//g'
-	)
-
-	# if wait_time per app is not set the read wait_time
-	[[ $wait_time = null ]] ||
-		[ -z $wait_time ] && {
-		wait_time=$(
-			$MODBIN/jq \
-				'.wait_time' $CONFIG | sed 's/"//g'
-		)
-	}
-
-	current_waitt=$(convert $wait_time)
-	prev_waitt=$(convert $(cat $sltemp))
-
-	[ $current_waitt -gt $prev_waitt ] && {
-		rm $sltemp
-		echo $wait_time >$sltemp
-	}
-
-	[ ! -f $sltemp ] && echo $wait_time >$sltemp
 }
 
 ag_swapon() {
@@ -268,10 +226,7 @@ while true; do
 done
 
 logger i "jq_version = $($MODBIN/jq --version)"
-# for saving wait_time state, exist if wait_time is on
-sltemp=/data/tmp/sltemp
 # reset states and variables to default
-rm $sltemp
 restore_battery_opt
 rm /data/tmp/swapoff_pid
 
@@ -295,14 +250,13 @@ while true; do
 			# swap should be turned on first to accomodate lmkd
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
-			# restart wait_time and some variables
+			# restart persist_service and some variables
 			# if new am app is opened
-			kill -9 $sleep_pid && logger "sleep started over"
-			unset restoration sleep_pid
+			kill -9 $persist_pid
+			unset restoration persist_pid
 
 			# set current am app
 			am=$ag_app
-			ag_wait
 			rescue_service_pid=$(
 				resetprop meZram.rescue_service.pid
 			)
@@ -352,14 +306,15 @@ while true; do
 		# check if am is activated
 		[ -n "$am" ] && {
 			# if theres no am app curently open or in foreground
-			# and wait_time is not running
+			# and persist_service is not running
 			# then restore states and variables
 			! read_agmode_app && {
-				[ $restoration -eq 1 ] && [ ! -f $sltemp ] && {
+				persist_ps=$($BIN/ps -p $persist_pid | sed 1d)
+				[ $restoration -eq 1 ] && [ -z $persist_ps ] && {
 					restore_battery_opt
 					restore_props &&
 						logger i "aggressive mode deactivated"
-					unset am restoration sleep_pid ag_apps
+					unset am restoration persist_pid ag_apps
 					limit_in_kb=51200
 
 					while true; do
@@ -406,17 +361,17 @@ while true; do
 
 				# the logic is to make it only run once after
 				# aggressive mode activated
-				[ -f $sltemp ] && [ -z $sleep_pid ] &&
-					[ $(cat $sltemp) != 0 ] && {
+        [ -n "$(pidof $am)" ] && [ -z $persist_pid ] && {
 					logger \
-						"wait $(cat $sltemp) before exiting aggressive mode"
+						"wait $am to close before exiting aggressive mode"
 					# never use variable for a subshell, i got really
 					# annoying trouble because i forgot of this fact
-					{
-						sleep $(cat $sltemp) && rm $sltemp
-					} &
-					# restore if wait_time is done
-					sleep_pid=$!
+					while true; do
+						[ -z $(pidof $am) ] && break
+						sleep 1
+					done &
+					# restore if persist_service is done
+					persist_pid=$!
 					restoration=1
 				}
 			}
