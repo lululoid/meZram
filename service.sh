@@ -359,9 +359,22 @@ while true; do
 					resetprop meZram.rescue_service.pid dead
 				}
 
+				# read quick_restore
+				# shellcheck disable=SC2016
+				quick_restore=$(
+					$MODBIN/jq \
+						--arg am $am \
+						'.agmode_per_app_configuration[]
+            | select(.packages[] == $am)
+            | .quick_restore' $CONFIG
+				)
+
 				# the logic is to make it only run once after
 				# aggressive mode activated
-        [ -n "$(pidof $am)" ] && [ -z $persist_pid ] && {
+				[ -z $quick_restore ] ||
+					[[ $quick_restore = null ]] &&
+					[ -n "$(pidof $am)" ] &&
+					[ -z $persist_pid ] && {
 					logger \
 						"wait $am to close before exiting aggressive mode"
 					# never use variable for a subshell, i got really
@@ -372,8 +385,8 @@ while true; do
 					done &
 					# restore if persist_service is done
 					persist_pid=$!
-					restoration=1
 				}
+				restoration=1
 			}
 		}
 	}

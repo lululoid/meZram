@@ -1,6 +1,6 @@
 {
   "agmode": "on",
-  "config_version": 2.4,
+  "config_version": 2.5,
   "custom_props": {
   },
   "rescue_limit": "15%",
@@ -18,7 +18,7 @@
         "ro.lmk.thrashing_limit_decay": 50,
         "ro.lmk.low": 400
       },
-      "wait_time": "0"
+      "quick_restore": true
     },
     {
       "packages": [
