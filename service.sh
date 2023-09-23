@@ -67,6 +67,110 @@ convert() {
 	[ -n "$m" ] && echo $((num * m)) || echo $1
 }
 
+ag_wait() {
+	# shellcheck disable=SC2016
+	# read wait_time per app from the config
+	# wait_time is intended to prevent app from being closed
+	# by system while doing multitasking
+	wait_time=$(
+		$MODBIN/jq \
+			--arg am "$am" \
+			'.agmode_per_app_configuration[]
+          | select(.packages[] == $am) | .wait_time' \
+			$CONFIG | sed 's/"//g'
+	)
+
+	# if wait_time per app is not set the read wait_time
+	[[ $wait_time = null ]] ||
+		[ -z $wait_time ] && {
+		wait_time=$(
+			$MODBIN/jq \
+				'.wait_time' $CONFIG | sed 's/"//g'
+		)
+	}
+
+	current_waitt=$(convert $wait_time)
+	prev_waitt=$(convert $(cat $sltemp))
+
+	[ $current_waitt -gt $prev_waitt ] && {
+		rm $sltemp
+		echo $wait_time >$sltemp
+	}
+
+	[ ! -f $sltemp ] && echo $wait_time >$sltemp
+}
+
+ag_swapon() {
+	# shellcheck disable=SC2016
+	swap_size=$(
+		$MODBIN/jq \
+			--arg ag_app $ag_app \
+			'.agmode_per_app_configuration[]
+            | select(.packages[] == $ag_app) | .swap' \
+			$CONFIG | sed 's/[^0-9]*//g'
+	)
+
+	{
+		[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
+			while IFS= read -r pid; do
+				kill -9 $pid &&
+					logger "swapoff_pid $pid killed"
+			done </data/tmp/swapoff_pid
+			rm /data/tmp/swapoff_pid
+
+			length=$(
+				$MODBIN/jq \
+					'.agmode_per_app_configuration | length' \
+					$CONFIG
+			)
+
+			for conf_index in $(seq 0 $((length - 1))); do
+				# shellcheck disable=SC2016
+				$MODBIN/jq --argjson index $conf_index \
+					'.agmode_per_app_configuration[$index]' \
+					$CONFIG | grep -qw $ag_app && index=$conf_index
+			done
+
+			ag_swap="$LOGDIR/${index}_swap"
+
+			[ -f $ag_swap ] && {
+				ag_swap_size=$(($(wc -c $ag_swap |
+					awk '{print $1}') / 1024 / 1024))
+				[ $ag_swap_size -ne $swap_size ] && {
+					logger "resizing $ag_swap, please wait.."
+					logger "aggressive_mode won't work for some time"
+					swapoff $ag_swap && rm -f $ag_swap &&
+						logger "$ag_swap removed"
+				}
+			}
+
+			meZram_tswap=$(($(
+				wc -c $LOGDIR/*swap | tail -n1 | awk '{print $1}'
+			) / 1024 / 1024))
+
+			[ $swap_size -le $meZram_tswap ] ||
+				[ $swap_size -ge $((meZram_tswap + 512)) ] &&
+				[ ! -f $ag_swap ] && {
+				dd if=/dev/zero of="$ag_swap" bs=1M \
+					count=$swap_size
+				chmod 0600 $ag_swap
+				$BIN/mkswap -L meZram-swap $ag_swap &&
+					logger "$ag_swap is made"
+			}
+
+			[ $swap_size -ge $meZram_tswap ] && {
+				for swap in "$LOGDIR"/*swap; do
+					swapon $swap && logger "$swap is turned on"
+				done
+			} ||
+				swapon $ag_swap && logger "$ag_swap is turned on"
+		}
+	} || [ $swap_size = null ] && [ -f $ag_swap ] && {
+		rm -f $ag_swap &&
+			logger "$ag_swap deleted because of config"
+	}
+}
+
 # logging service, keeping the log alive bcz system sometimes
 # kill them for unknown reason
 while true; do
@@ -187,80 +291,10 @@ while true; do
 			# this is for efficiency reason
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		} && {
-			# shellcheck disable=SC2016
-			swap_size=$(
-				$MODBIN/jq \
-					--arg ag_app $ag_app \
-					'.agmode_per_app_configuration[]
-            | select(.packages[] == $ag_app) | .swap' \
-					$CONFIG | sed 's/[^0-9]*//g'
-			)
-
-			{
-				[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
-					length=$(
-						$MODBIN/jq \
-							'.agmode_per_app_configuration | length' \
-							$CONFIG
-					)
-
-					for conf_index in $(seq 0 $((length - 1))); do
-						# shellcheck disable=SC2016
-						$MODBIN/jq --argjson index $conf_index \
-							'.agmode_per_app_configuration[$index]' \
-							$CONFIG | grep -qw $ag_app && index=$conf_index
-					done
-
-					ag_swap="$LOGDIR/${index}_swap"
-
-					[ -f $ag_swap ] && {
-						ag_swap_size=$(($(wc -c $ag_swap |
-							awk '{print $1}') / 1024 / 1024))
-						[ $ag_swap_size -ne $swap_size ] && {
-							logger "resizing $ag_swap, please wait.."
-							logger "aggressive_mode won't work for some time"
-							swapoff $ag_swap && rm -f $ag_swap &&
-								logger "$ag_swap removed"
-						}
-					}
-
-					meZram_tswap=$(($(
-						wc -c $LOGDIR/*swap | tail -n1 | awk '{print $1}'
-					) / 1024 / 1024))
-
-					[ $swap_size -le $meZram_tswap ] ||
-						[ $swap_size -ge $((meZram_tswap + 512)) ] &&
-						[ ! -f $ag_swap ] && {
-						dd if=/dev/zero of="$ag_swap" bs=1M \
-							count=$swap_size
-						chmod 0600 $ag_swap
-						$BIN/mkswap -L meZram-swap $ag_swap &&
-							logger "$ag_swap is made"
-					}
-
-					[ $swap_size -ge $meZram_tswap ] && {
-						for swap in "$LOGDIR"/*swap; do
-							swapon $swap && logger "$swap is turned on"
-						done
-					} ||
-						swapon $ag_swap && logger "$ag_swap is turned on"
-
-					while IFS= read -r pid; do
-						kill -9 $pid &&
-							logger "swapoff_pid $pid killed"
-					done </data/tmp/swapoff_pid
-					rm /data/tmp/swapoff_pid
-				}
-			} || [ $swap_size = null ] && [ -f $ag_swap ] && {
-				rm -f $ag_swap &&
-					logger "$ag_swap deleted because of config"
-			}
-
+			ag_swapon
 			# swap should be turned on first to accomodate lmkd
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
-
-			prev_waitt=$(convert $(cat $sltemp))
 			# restart wait_time and some variables
 			# if new am app is opened
 			kill -9 $sleep_pid && logger "sleep started over"
@@ -268,47 +302,19 @@ while true; do
 
 			# set current am app
 			am=$ag_app
-			echo $am >/data/tmp/meZram_am
-			# shellcheck disable=SC2016
-			# read wait_time per app from the config
-			# wait_time is intended to prevent app from being closed
-			# by system while doing multitasking
-			wait_time=$(
-				$MODBIN/jq \
-					--arg am "$am" \
-					'.agmode_per_app_configuration[]
-          | select(.packages[] == $am) | .wait_time' \
-					$CONFIG | sed 's/"//g'
-			)
-
-			# if wait_time per app is not set the read wait_time
-			[[ $wait_time = null ]] ||
-				[ -z $wait_time ] && {
-				wait_time=$(
-					$MODBIN/jq \
-						'.wait_time' $CONFIG | sed 's/"//g'
-				)
-			}
-
-			current_waitt=$(convert $wait_time)
-
-			[ $current_waitt -gt $prev_waitt ] && {
-				rm $sltemp
-				echo $wait_time >$sltemp
-			}
-
-			[ ! -f $sltemp ] && echo $wait_time >$sltemp
-
+			ag_wait
 			rescue_service_pid=$(
 				resetprop meZram.rescue_service.pid
 			)
+
+			# rescue service for critical thrashing
+			# calculate total memory + virtual memory
+			echo $am >/data/tmp/meZram_am
 
 			[ -z $rescue_service_pid ] ||
 				[[ $rescue_service_pid = dead ]] && {
 				logger "starting rescue_service"
 				logger "in case you messed up or i messed up"
-				# rescue service for critical thrashing
-				# calculate total memory + virtual memory
 				total_swap=$(
 					free | $BIN/fgrep Swap | awk '{print $2}'
 				)
