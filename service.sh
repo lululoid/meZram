@@ -229,7 +229,7 @@ rm /data/tmp/swapoff_pid
 # aggressive mode service starts here
 while true; do
 	# Read configuration for aggressive mode
-	agmode=$($MODBIN/jq -r .agmode $CONFIG)
+	agmode=$(sed -n 's/"agmode": "\(.*\)",/\1/p' $CONFIG)
 
 	[[ $agmode = on ]] && {
 		# if the foreground app match app in aggressive mode list
@@ -241,7 +241,24 @@ while true; do
 			# this is for efficiency reason
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		} && {
-			ag_swapon
+			[ ! -f /data/tmp/meZram_skip_swap ] && {
+				# shellcheck disable=SC2016
+				quick_restore=$(
+					$MODBIN/jq \
+						--arg am $am \
+						'.agmode_per_app_configuration[]
+            | select(.packages[] == $am)
+            | .quick_restore' $CONFIG
+				)
+			}
+
+			# the logic is to make it only run once after
+			# aggressive mode activated
+			[ -n "$quick_restore" ] ||
+				[[ $quick_restore != null ]] &&
+				touch /data/tmp/meZram_skip_swap
+
+			[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
 			# swap should be turned on first to accomodate lmkd
 			apply_aggressive_mode $ag_app &&
 				logger i "aggressive mode activated for $fg_app"
@@ -310,6 +327,7 @@ while true; do
 					restore_props &&
 						logger i "aggressive mode deactivated"
 					unset am restoration persist_pid ag_apps
+					rm /data/tmp/meZram_skip_swap
 					limit_in_kb=51200
 
 					while true; do
