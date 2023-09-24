@@ -253,8 +253,12 @@ while true; do
 
 			# the logic is to make it only run once after
 			# aggressive mode activated
-			[ $quick_restore = true ] &&
+			[ $quick_restore = true ] && {
 				touch /data/tmp/meZram_skip_swap
+				kill -9 $(resetprop meZram.rescue_service.pid) &&
+					logger "rescue service killed because quick_restore"
+        resetprop meZram.rescue_service.pid dead
+			}
 
 			[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
 			# swap should be turned on first to accomodate lmkd
