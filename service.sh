@@ -225,13 +225,14 @@ logger i "jq_version = $($MODBIN/jq --version)"
 # reset states and variables to default
 restore_battery_opt
 rm /data/tmp/swapoff_pid
+rm /data/tmp/meZram_skip_swap
 
 # aggressive mode service starts here
 while true; do
 	# Read configuration for aggressive mode
 	agmode=$(sed -n 's/"agmode": "\(.*\)",/\1/p' $CONFIG)
 
-	[[ $agmode = on ]] && {
+	[ $agmode = on ] && {
 		# if the foreground app match app in aggressive mode list
 		# then activate aggressive mode
 		read_agmode_app && {
@@ -241,21 +242,18 @@ while true; do
 			# this is for efficiency reason
 			[ -z "$am" ] || [[ $ag_app != "$am" ]]
 		} && {
-			[ ! -f /data/tmp/meZram_skip_swap ] && {
-				# shellcheck disable=SC2016
-				quick_restore=$(
-					$MODBIN/jq \
-						--arg am $am \
-						'.agmode_per_app_configuration[]
-            | select(.packages[] == $am)
+			# shellcheck disable=SC2016
+			quick_restore=$(
+				$MODBIN/jq \
+					--arg ag_app $ag_app \
+					'.agmode_per_app_configuration[]
+            | select(.packages[] == $ag_app)
             | .quick_restore' $CONFIG
-				)
-			}
+			)
 
 			# the logic is to make it only run once after
 			# aggressive mode activated
-			[ -n "$quick_restore" ] ||
-				[[ $quick_restore != null ]] &&
+			[ $quick_restore = true ] &&
 				touch /data/tmp/meZram_skip_swap
 
 			[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
@@ -278,7 +276,9 @@ while true; do
 			echo $am >/data/tmp/meZram_am
 
 			[ -z $rescue_service_pid ] ||
-				[[ $rescue_service_pid = dead ]] && {
+				[ $rescue_service_pid = dead ] &&
+				[ -z $quick_restore ] ||
+				[ $quick_restore = null ] && {
 				logger "starting rescue_service"
 				logger "in case you messed up or i messed up"
 				total_swap=$(
@@ -385,7 +385,7 @@ while true; do
 				# the logic is to make it only run once after
 				# aggressive mode activated
 				[ -z $quick_restore ] ||
-					[[ $quick_restore = null ]] &&
+					[ $quick_restore = null ] &&
 					[ -n "$(pidof $am)" ] &&
 					[ -z $persist_pid ] && {
 					logger \
