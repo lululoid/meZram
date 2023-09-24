@@ -66,6 +66,20 @@ ag_swapon() {
       | select(.packages[] == $ag_app) | .swap' $CONFIG
 	)
 
+	length=$(
+		$MODBIN/jq \
+			'.agmode_per_app_configuration | length' $CONFIG
+	)
+
+	for conf_index in $(seq 0 $((length - 1))); do
+		# shellcheck disable=SC2016
+		$MODBIN/jq --argjson index $conf_index \
+			'.agmode_per_app_configuration[$index]' \
+			$CONFIG | grep -qw $ag_app && index=$conf_index
+	done
+
+	ag_swap="$LOGDIR/${index}_swap"
+
 	{
 		[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
 			while IFS= read -r pid; do
@@ -73,21 +87,6 @@ ag_swapon() {
 					logger "swapoff_pid $pid killed"
 			done </data/tmp/swapoff_pid
 			rm /data/tmp/swapoff_pid
-
-			length=$(
-				$MODBIN/jq \
-					'.agmode_per_app_configuration | length' \
-					$CONFIG
-			)
-
-			for conf_index in $(seq 0 $((length - 1))); do
-				# shellcheck disable=SC2016
-				$MODBIN/jq --argjson index $conf_index \
-					'.agmode_per_app_configuration[$index]' \
-					$CONFIG | grep -qw $ag_app && index=$conf_index
-			done
-
-			ag_swap="$LOGDIR/${index}_swap"
 
 			[ -f $ag_swap ] && {
 				ag_swap_size=$(($(wc -c $ag_swap |
@@ -288,7 +287,10 @@ while true; do
 							"$((totalmem_vir_avl / 1024))MB left"
 						logger "mem_left=$mem_left‰"
 						restore_props
-						apply_aggressive_mode $(cat /data/tmp/meZram_am)
+						meZram_am=$(cat /data/tmp/meZram_am)
+						apply_aggressive_mode $meZram_am &&
+							logger \
+								"aggressive mode activated for $meZram_am"
 					}
 					sleep 1
 				done &
