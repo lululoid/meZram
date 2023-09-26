@@ -2,6 +2,7 @@
 MODDIR=${0%/*}
 LOGDIR=/data/adb/meZram
 CONFIG=$LOGDIR/meZram-config.json
+CONFIG_INT=/sdcard/meZram-config.json
 # magisk restrict the PATH env to only in their busybox,
 # i don't know why
 BIN=/system/bin
@@ -71,6 +72,8 @@ ag_swapon() {
 			'.agmode_per_app_configuration | length' $CONFIG
 	)
 
+	logger "swap_size = $swap_size"
+
 	for conf_index in $(seq 0 $((length - 1))); do
 		# shellcheck disable=SC2016
 		$MODBIN/jq --argjson index $conf_index \
@@ -78,48 +81,85 @@ ag_swapon() {
 			$CONFIG | grep -qw $ag_app && index=$conf_index
 	done
 
-	ag_swap="$LOGDIR/${index}_swap"
+	# shellcheck disable=SC2016
+	ag_swap=$(
+		$MODBIN/jq -r --argjson index $index \
+			'.agmode_per_app_configuration[$index].swap_path' \
+			$CONFIG
+	)
 
-	{
-		[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
-			while IFS= read -r pid; do
-				kill -9 $pid &&
-					logger "swapoff_pid $pid killed"
-			done </data/tmp/swapoff_pid
-			rm /data/tmp/swapoff_pid
+	[ $ag_swap = null ] || [ -z $ag_swap ] && {
+		ag_swap="$LOGDIR/${index}_swap"
+		# shellcheck disable=SC2016
+		$MODBIN/jq \
+			--arg ag_swap $ag_swap \
+			--argjson index $index \
+			'.agmode_per_app_configuration[$index].swap_path
+      |= $ag_swap' $CONFIG |
+			/system/bin/awk \
+				'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG_INT
+		cp -f $CONFIG_INT $CONFIG
+	}
 
-			[ -f $ag_swap ] && {
-				ag_swap_size=$(($(wc -c $ag_swap |
-					awk '{print $1}') / 1024 / 1024))
-				[ $ag_swap_size -ne $swap_size ] && {
-					logger "resizing $ag_swap, please wait.."
-					logger "aggressive_mode won't work for some time"
-					swapoff $ag_swap && rm -f $ag_swap &&
-						logger "$ag_swap removed"
-				}
+	logger "ag_swap = $ag_swap"
+
+	[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
+		while IFS= read -r pid; do
+			kill -9 $pid &&
+				logger "swapoff_pid $pid killed"
+		done </data/tmp/swapoff_pid
+		rm /data/tmp/swapoff_pid
+
+		[ -f $ag_swap ] && {
+			ag_swap_size=$(($(wc -c $ag_swap |
+				awk '{print $1}') / 1024 / 1024))
+			[ $ag_swap_size -ne $swap_size ] && {
+				logger "resizing $ag_swap, please wait.."
+				logger "aggressive_mode won't work for some time"
+				swapoff $ag_swap && rm -f $ag_swap &&
+					logger "$ag_swap removed"
 			}
+		}
 
-			meZram_tswap=$(($(
-				wc -c $LOGDIR/*swap | tail -n1 | awk '{print $1}'
-			) / 1024 / 1024))
+		# shellcheck disable=SC2005
+		swap_list=$(
+			echo $($MODBIN/jq -r \
+				'.agmode_per_app_configuration[].swap_path' \
+				$CONFIG | grep -wv null)
+		)
 
-			[ $swap_size -le $meZram_tswap ] ||
-				[ $swap_size -ge $((meZram_tswap + 512)) ] &&
-				[ ! -f $ag_swap ] && {
-				dd if=/dev/zero of="$ag_swap" bs=1M \
-					count=$swap_size
-				chmod 0600 $ag_swap
-				$BIN/mkswap -L meZram-swap $ag_swap &&
-					logger "$ag_swap is made"
+		meZram_tswap=0
+
+		for swap in $swap_list; do
+			[ -f $swap ] && {
+				size=$((\
+					$(wc -c $swap | awk '{print $1}') / 1024 / 1024))
+				meZram_tswap=$((meZram_tswap + size))
 			}
+		done
 
-			[ $swap_size -ge $meZram_tswap ] && {
-				for swap in "$LOGDIR"/*swap; do
+		logger "meZram_tswap = $meZram_tswap"
+
+		[ $swap_size -le $meZram_tswap ] ||
+			[ $swap_size -ge $((meZram_tswap + 256)) ] &&
+			[ ! -f $ag_swap ] && {
+			logger "making $swap_size $ag_swap. please wait..."
+			dd if=/dev/zero of="$ag_swap" bs=1M count=$swap_size
+			chmod 0600 $ag_swap
+			$BIN/mkswap -L meZram-swap $ag_swap &&
+				logger "$ag_swap is made"
+		}
+
+		{
+			[ $swap_size -ge $meZram_tswap ] &&
+				for swap in $swap_list; do
 					swapon $swap && logger "$swap is turned on"
 				done
-			} || swapon $ag_swap && logger "$ag_swap is turned on"
-		}
-	} || [ $swap_size = null ] && [ -f $ag_swap ] && {
+		} || swapon $ag_swap && logger "$ag_swap is turned on"
+	}
+
+	[ $swap_size = null ] || [ -z $swap_size ] &&
+		[ -f $ag_swap ] && {
 		rm -f $ag_swap &&
 			logger "$ag_swap deleted because of config"
 	}
@@ -257,7 +297,7 @@ while true; do
 				touch /data/tmp/meZram_skip_swap
 				kill -9 $(resetprop meZram.rescue_service.pid) &&
 					logger "rescue service killed because quick_restore"
-        resetprop meZram.rescue_service.pid dead
+				resetprop meZram.rescue_service.pid dead
 			}
 
 			[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
