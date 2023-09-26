@@ -60,108 +60,125 @@ read_agmode_app() {
 
 ag_swapon() {
 	# shellcheck disable=SC2016
-	swap_size=$(
-		$MODBIN/jq \
+	swap_path=$(
+		$MODBIN/jq -r \
 			--arg ag_app $ag_app \
-			'.agmode_per_app_configuration[]
+			'.agmode_per_app_configuration[] |
+    select(.packages[] == $ag_app) | .swap_path' $CONFIG
+	)
+	ag_swap=$swap_path
+
+	{
+		[[ $swap_path != null ]] &&
+			{
+				swapon $ag_swap && logger "$ag_swap is turned on"
+			} || logger "$ag_swap error"
+	} || {
+		# shellcheck disable=SC2016
+		swap_size=$(
+			$MODBIN/jq \
+				--arg ag_app $ag_app \
+				'.agmode_per_app_configuration[]
       | select(.packages[] == $ag_app) | .swap' $CONFIG
-	)
-
-	length=$(
-		$MODBIN/jq \
-			'.agmode_per_app_configuration | length' $CONFIG
-	)
-
-	logger "swap_size = $swap_size"
-
-	for conf_index in $(seq 0 $((length - 1))); do
-		# shellcheck disable=SC2016
-		$MODBIN/jq --argjson index $conf_index \
-			'.agmode_per_app_configuration[$index]' \
-			$CONFIG | grep -qw $ag_app && index=$conf_index
-	done
-
-	# shellcheck disable=SC2016
-	ag_swap=$(
-		$MODBIN/jq -r --argjson index $index \
-			'.agmode_per_app_configuration[$index].swap_path' \
-			$CONFIG
-	)
-
-	[ $ag_swap = null ] || [ -z $ag_swap ] && {
-		ag_swap="$LOGDIR/${index}_swap"
-		# shellcheck disable=SC2016
-		$MODBIN/jq \
-			--arg ag_swap $ag_swap \
-			--argjson index $index \
-			'.agmode_per_app_configuration[$index].swap_path
-      |= $ag_swap' $CONFIG |
-			/system/bin/awk \
-				'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG_INT
-		cp -f $CONFIG_INT $CONFIG
-	}
-
-	logger "ag_swap = $ag_swap"
-
-	[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
-		while IFS= read -r pid; do
-			kill -9 $pid &&
-				logger "swapoff_pid $pid killed"
-		done </data/tmp/swapoff_pid
-		rm /data/tmp/swapoff_pid
-
-		[ -f $ag_swap ] && {
-			ag_swap_size=$(($(wc -c $ag_swap |
-				awk '{print $1}') / 1024 / 1024))
-			[ $ag_swap_size -ne $swap_size ] && {
-				logger "resizing $ag_swap, please wait.."
-				logger "aggressive_mode won't work for some time"
-				swapoff $ag_swap && rm -f $ag_swap &&
-					logger "$ag_swap removed"
-			}
-		}
-
-		# shellcheck disable=SC2005
-		swap_list=$(
-			echo $($MODBIN/jq -r \
-				'.agmode_per_app_configuration[].swap_path' \
-				$CONFIG | grep -wv null)
 		)
 
-		meZram_tswap=0
+		length=$(
+			$MODBIN/jq \
+				'.agmode_per_app_configuration | length' $CONFIG
+		)
 
-		for swap in $swap_list; do
-			[ -f $swap ] && {
-				size=$((\
-					$(wc -c $swap | awk '{print $1}') / 1024 / 1024))
-				meZram_tswap=$((meZram_tswap + size))
-			}
+		logger "swap_size = $swap_size"
+
+		for conf_index in $(seq 0 $((length - 1))); do
+			# shellcheck disable=SC2016
+			$MODBIN/jq --argjson index $conf_index \
+				'.agmode_per_app_configuration[$index]' \
+				$CONFIG | grep -qw $ag_app && index=$conf_index
 		done
 
-		logger "meZram_tswap = $meZram_tswap"
+		# shellcheck disable=SC2016
+		ag_swap=$(
+			$MODBIN/jq -r --argjson index $index \
+				'.agmode_per_app_configuration[$index].swap_path' \
+				$CONFIG
+		)
 
-		[ $swap_size -le $meZram_tswap ] ||
-			[ $swap_size -ge $((meZram_tswap + 256)) ] &&
-			[ ! -f $ag_swap ] && {
-			logger "making $swap_size $ag_swap. please wait..."
-			dd if=/dev/zero of="$ag_swap" bs=1M count=$swap_size
-			chmod 0600 $ag_swap
-			$BIN/mkswap -L meZram-swap $ag_swap &&
-				logger "$ag_swap is made"
+		[ $ag_swap = null ] || [ -z $ag_swap ] && {
+			ag_swap="$LOGDIR/${index}_swap"
+			# shellcheck disable=SC2016
+			$MODBIN/jq \
+				--arg ag_swap $ag_swap \
+				--argjson index $index \
+				'.agmode_per_app_configuration[$index].swap_path
+      |= $ag_swap' $CONFIG |
+				/system/bin/awk \
+					'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG_INT
+			cp -f $CONFIG_INT $CONFIG
 		}
 
-		{
-			[ $swap_size -ge $meZram_tswap ] &&
+		logger "ag_swap = $ag_swap"
+
+		[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
+			swapoff_pids=$(cat /data/tmp/swapoff_pids)
+			# shellcheck disable=SC2116
+			for pid in $(echo $swapoff_pids); do
+				kill -9 $pid &&
+					logger "swapoff_pid $pid killed"
+			done
+			rm /data/tmp/swapoff_pids
+
+			[ -f $ag_swap ] && {
+				ag_swap_size=$(($(wc -c $ag_swap |
+					awk '{print $1}') / 1024 / 1024))
+				[ $ag_swap_size -ne $swap_size ] && {
+					logger "resizing $ag_swap, please wait.."
+					logger "aggressive_mode won't work for some time"
+					swapoff $ag_swap && rm -f $ag_swap &&
+						logger "$ag_swap removed"
+				}
+			}
+
+			# shellcheck disable=SC2005
+			swap_list=$(
+				echo $($MODBIN/jq -r \
+					'.agmode_per_app_configuration[].swap_path' \
+					$CONFIG | grep -wv null)
+			)
+
+			meZram_tswap=0
+
+			for swap in $swap_list; do
+				[ -f $swap ] && {
+					size=$((\
+						$(wc -c $swap | awk '{print $1}') / 1024 / 1024))
+					meZram_tswap=$((meZram_tswap + size))
+				}
+			done
+
+			logger "meZram_tswap = $meZram_tswap"
+
+			[ $swap_size -le $meZram_tswap ] ||
+				[ $swap_size -ge $((meZram_tswap + 256)) ] &&
+				[ ! -f $ag_swap ] && {
+				logger "making $swap_size $ag_swap. please wait..."
+				dd if=/dev/zero of="$ag_swap" bs=1M count=$swap_size
+				chmod 0600 $ag_swap
+				$BIN/mkswap -L meZram-swap $ag_swap &&
+					logger "$ag_swap is made"
+			}
+
+			[ $swap_size -ge $meZram_tswap ] && {
 				for swap in $swap_list; do
 					swapon $swap && logger "$swap is turned on"
 				done
-		} || swapon $ag_swap && logger "$ag_swap is turned on"
-	}
+			} || swapon $ag_swap && logger "$ag_swap is turned on"
 
-	[ $swap_size = null ] || [ -z $swap_size ] &&
-		[ -f $ag_swap ] && {
-		rm -f $ag_swap &&
-			logger "$ag_swap deleted because of config"
+			[ $swap_size = null ] || [ -z $swap_size ] &&
+				[ -f $ag_swap ] && {
+				rm -f $ag_swap &&
+					logger "$ag_swap deleted because of config"
+			}
+		}
 	}
 }
 
@@ -264,7 +281,7 @@ done
 logger i "jq_version = $($MODBIN/jq --version)"
 # reset states and variables to default
 restore_battery_opt
-rm /data/tmp/swapoff_pid
+rm /data/tmp/swapoff_pids
 rm /data/tmp/meZram_skip_swap
 
 # aggressive mode service starts here
@@ -399,7 +416,7 @@ while true; do
 									echo $swap_count >/data/tmp/swap_count
 								} &
 
-								echo $! >>/data/tmp/swapoff_pid
+								echo $! >>/data/tmp/swapoff_pids
 							}
 						done
 
