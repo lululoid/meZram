@@ -201,11 +201,22 @@ config_update() {
 				print "false"
 			}
 		}')
+
+		is_less_v2dot7=$(awk -v version=2.7 \
+			-v version_prev="${version_prev}" \
+			'BEGIN {
+      if (version_prev < version) {
+				print "true"
+			} else {
+				print "false"
+			}
+		}')
 	}
 
 	log_it "is_update = $is_update"
 	log_it "is_less_2 = $is_less_2"
 	log_it "is_less_v2dot4 = $is_less_v2dot4"
+	log_it "is_less_v2dot7 = $is_less_v2dot7"
 
 	{
 		$is_update && {
@@ -242,6 +253,13 @@ agmode_per_app_configuration: .agmode_per_app_configuration
           | del(.wait_time) | del(.rescue_limit)' $CONFIG |
 					/system/bin/awk \
 						'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			}
+
+			$is_less_v2dot7 && {
+				cp -f $MODPATH/meZram-config.json $CONFIG
+				ui_print "  sorry but config is reset"
+				ui_print "  your old config is ${_CONFIG}_$today_date.bcp"
+				sleep 1
 			}
 
 			$MODPATH/modules/bin/jq \

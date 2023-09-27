@@ -392,31 +392,29 @@ while true; do
 					limit_in_kb=51200
 
 					while true; do
-						swaps=$($BIN/fgrep meZram /proc/swaps)
-						swaps_usages=$(
-							echo "$swaps" | awk '{print $4}'
-						)
+						# shellcheck disable=SC2005
+						swaps=$(echo $($MODBIN/jq -r \
+							'.agmode_per_app_configuration[].swap_path' \
+							$CONFIG | grep -wv null))
+						swap_count=$(echo $swaps | wc -l)
 
-						for usage in $swaps_usages; do
-							[ $usage -le $limit_in_kb ] && {
-								swaps_name=$(
-									echo "$swaps" | awk '{print $1}'
-								)
-								[ -z $swap_count ] &&
-									swap_count=$(echo $swaps_name | wc -l)
-								swap=$(
-									echo "$swaps" | grep $usage |
-										awk '{print $1}' | head -n1
-								)
-
-								{
-									swapoff $swap &&
-										logger "$swap turned off"
-									swap_count=$((swap_count - 1))
-									echo $swap_count >/data/tmp/swap_count
-								} &
-
+						for swap in $swaps; do
+							usage=$(
+								grep $swap /proc/swaps | awk '{print $4}'
+							)
+							{
+								[ $usage -le $limit_in_kb ] &&
+									{
+										swapoff $swap && {
+											logger "$swap turned off"
+											swap_count=$((swap_count - 1))
+											echo $swap_count >/data/tmp/swap_count
+										}
+									} &
 								echo $! >>/data/tmp/swapoff_pids
+							} || {
+								logger "$usage > $limit_in_kb"
+								logger "waiting to go down. clear your running apps to make faster swapoff"
 							}
 						done
 

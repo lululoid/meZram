@@ -1,47 +1,79 @@
 {
   "agmode": "on",
-  "config_version": 2.6,
-  "custom_props": {
-  },
-  "rescue_limit": 15,
+  "config_version": 2.7,
+  "custom_props": {},
+  "rescue_limit": 12,
   "agmode_per_app_configuration": [
     {
       "packages": [
-        "com.mobile.legends"
+        "com.netease.racerna",
+        "com.mobile.legends",
+        "com.tencent.ig",
+        "com.netease.garena.pubgm",
+        "com.activision.callofduty.shooter",
+        "com.epicgames.fortnite",
+        "com.badlanders.game",
+        "com.netease.garena.knivesout",
+        "com.netease.garena.rulesofsurvival",
+        "com.funcom.theforest",
+        "com.madfingergames.shadowgunlegends",
+        "com.netease.garena.ffmax",
+        "com.krafton.pubgmnewstate",
+        "com.activision.callofduty.mobile",
+        "com.gameloft.android.ANMP.GloftA9HM",
+        "com.ea.gp.nfs15",
+        "com.zynga.csrracing2",
+        "com.gameloft.android.ANMP.GloftA8HM",
+        "com.gameloft.android.ANMP.GloftAsphalt9",
+        "com.ea.games.nfs14_row",
+        "com.gameloft.android.ANMP.GloftAsphalt8",
+        "com.zynga.csrracing",
+        "com.gameloft.android.ANMP.GloftRR3",
+        "com.ea.games.nfs13_row",
+        "com.gameloft.android.ANMP.GloftRR2",
+        "com.ea.games.nfs12_row",
+        "com.nianticlabs.pokemongo",
+        "com.pokemon.co.masters",
+        "com.pokemon.magikarpjump",
+        "com.pokemon.tcg.online",
+        "com.pokemon.co.quest",
+        "jp.pokemon.pokemonunite",
+        "com.ea.game.nfs14_row"
       ],
       "props": {
         "ro.lmk.use_psi": true,
         "ro.lmk.use_minfree_levels": false,
         "ro.lmk.downgrade_pressure": 100,
-        "ro.lmk.psi_partial_stall_ms": 1,
-        "ro.lmk.psi_complete_stall_ms": 1,
         "ro.lmk.thrashing_limit_decay": 50,
-        "ro.lmk.low": 400
+        "ro.lmk.medium": 50,
+        "ro.lmk.psi_partial_stall_ms": 1,
+        "ro.lmk.psi_complete_stall_ms": 1
       },
       "quick_restore": true
     },
     {
       "packages": [
-        "com.gaurav.avnc"
+        "com.android.chrome",
+        "org.mozilla.firefox",
+        "com.opera.browser",
+        "com.microsoft.emmx",
+        "com.uc.browser.en",
+        "com.brave.browser",
+        "com.maxthon.mxbrowser",
+        "com.puffinlabs.android",
+        "com.vivaldi.browser",
+        "com.dolphin.browser.mini",
+        "com.miui.browser",
+        "com.sogou.mobile.explorer"
       ],
       "props": {
-        "ro.lmk.use_psi": true,
-        "ro.lmk.use_minfree_levels": false,
-        "ro.lmk.downgrade_pressure": 10,
+        "ro.lmk.use_psi": false,
+        "ro.lmk.use_minfree_levels": true,
+        "ro.lmk.downgrade_pressure": 30,
         "ro.lmk.thrashing_limit_decay": 50
       },
-      "swap": "1024MB"
-    },
-    {
-      "packages": [
-        "com.github.android"
-      ],
-      "props": {
-        "ro.lmk.use_psi": true,
-        "ro.lmk.use_minfree_levels": false,
-        "ro.lmk.downgrade_pressure": 100,
-        "ro.lmk.thrashing_limit_decay": 50
-      }
+      "battery_optimized": true,
+      "swap": 512
     }
   ]
 }
