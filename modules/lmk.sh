@@ -47,18 +47,27 @@ logger() {
 	local log=$2
 	local p=$1
 	true && {
-		[ -z $log ] && {
-			log="$1" && p=i
+		[ -z "$p" ] && {
+			while read -r line; do
+				$BIN/log -p i -t meZram "$line"
+			done
 		}
 
-		$BIN/log -p "$p" -t meZram "$log"
+		{
+			[ -z $log ] && [ -n "$p" ] && {
+				log="$1" && p=i
+
+				$BIN/log -p "$p" -t meZram "$log"
+			}
+		} || $BIN/log -p $p -t meZram "$log"
 	}
+	true
 }
 
 # remove a bunch of props
 rm_prop() {
 	for prop in "$@"; do
-		resetprop $prop >/dev/null &&
+		resetprop $prop >/dev/null 2>&1 | logger &&
 			resetprop --delete $prop &&
 			logger "$prop removed"
 	done
@@ -100,16 +109,8 @@ custom_props_apply() {
 			)
 		}
 
-		{
-			resetprop $prop $prop_value &&
-				logger "$prop $prop_value applied"
-		} || {
-			[ -n "$prop" ] && {
-				logger "$prop $prop_value is invalid"
-			}
-		} || {
-			logger w "custom_props empty"
-		}
+		resetprop $prop $prop_value 2>&1 | logger &&
+			logger "$prop $prop_value applied"
 	done
 }
 
@@ -149,7 +150,7 @@ restore_battery_opt() {
 
 	for pkg in $packages_list; do
 		# shellcheck disable=SC2154
-		status=$(dumpsys deviceidle whitelist -$pkg)
+		status=$(dumpsys deviceidle whitelist -$pkg 2>&1 | logger)
 		[ -n "$status" ] &&
 			logger w "$pkg is battery_optimized"
 	done
@@ -161,7 +162,7 @@ restore_props() {
 	# applying lmkd tweaks
 	grep -v '^ *#' <$MODDIR/system.prop |
 		while IFS= read -r prop; do
-			resetprop ${prop//=/ } &&
+			resetprop ${prop//=/ } 2>&1 | logger &&
 				logger "prop ${prop//=/ } applied"
 		done
 
@@ -206,10 +207,8 @@ apply_aggressive_mode() {
               | .props | .[$key]' $CONFIG
 		)
 
-		{
-			resetprop $key $value &&
-				logger i "applying $key $value"
-		} || logger w "$value or $key is invalid"
+		resetprop $key $value 2>&1 | logger &&
+			logger i "applying $key $value"
 	done
 
 	default_optimized_list=$LOGDIR/default_optimized.txt
@@ -221,7 +220,7 @@ apply_aggressive_mode() {
 				>$default_optimized_list
 		default_opt_set=1
 
-		dumpsys deviceidle whitelist +$ag_app &&
+		dumpsys deviceidle whitelist +$ag_app 2>&1 | logger &&
 			logger "$ag_app is excluded from battery_optimized"
 	}
 	$BIN/lmkd --reinit

@@ -230,16 +230,16 @@ config_update() {
 				# only do this onece for config version 2.0
 				$MODPATH/modules/bin/jq \
 					'{agmode: .agmode,
-wait_time: .wait_time,
-config_version: .config_version,
-custom_props: .custom_props,
-agmode_per_app_configuration: .agmode_per_app_configuration
-  | group_by(.props)
-  | map({
-    packages: map(.package),
-    props: .[0].props[0],
-    wait_time: .[0].wait_time
-  })
+          wait_time: .wait_time,
+          config_version: .config_version,
+          custom_props: .custom_props,
+          agmode_per_app_configuration: .agmode_per_app_configuration
+          | group_by(.props)
+          | map({
+            packages: map(.package),
+            props: .[0].props[0],
+            wait_time: .[0].wait_time
+          })
         }' $CONFIG |
 					$MODPATH/modules/bin/jq \
 						'del(.. | nulls)' |

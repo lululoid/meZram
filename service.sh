@@ -68,10 +68,11 @@ ag_swapon() {
 	)
 	ag_swap=$swap_path
 
-	{
-		[[ $swap_path != null ]] &&
-			swapon $ag_swap && logger "$ag_swap is turned on"
-	} || {
+	[[ $swap_path != null ]] &&
+		swapon $ag_swap 2>&1 | logger &&
+		logger "$ag_swap is turned on"
+
+	[ $swap_path = null ] || [ -z $swap_path ] && {
 		# shellcheck disable=SC2016
 		swap_size=$(
 			$MODBIN/jq \
@@ -85,8 +86,6 @@ ag_swapon() {
 				'.agmode_per_app_configuration | length' $CONFIG
 		)
 
-		logger "swap_size = $swap_size"
-
 		for conf_index in $(seq 0 $((length - 1))); do
 			# shellcheck disable=SC2016
 			$MODBIN/jq --argjson index $conf_index \
@@ -96,13 +95,11 @@ ag_swapon() {
 
 		ag_swap="$LOGDIR/${index}_swap"
 
-		logger "ag_swap = $ag_swap"
-
 		[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
 			swapoff_pids=$(cat /data/tmp/swapoff_pids)
 			# shellcheck disable=SC2116
 			for pid in $(echo $swapoff_pids); do
-				kill -9 $pid &&
+				kill -9 $pid 2>&1 | logger &&
 					logger "swapoff_pid $pid killed"
 			done
 			rm /data/tmp/swapoff_pids
@@ -113,8 +110,8 @@ ag_swapon() {
 				[ $ag_swap_size -ne $swap_size ] && {
 					logger "resizing $ag_swap, please wait.."
 					logger "aggressive_mode won't work for some time"
-					swapoff $ag_swap && rm -f $ag_swap &&
-						logger "$ag_swap removed"
+					swapoff $ag_swap 2>&1 | logger && rm -f $ag_swap |
+						logger && logger "$ag_swap removed"
 				}
 			}
 
@@ -135,6 +132,9 @@ ag_swapon() {
 				}
 			done
 
+			logger "ag_swap = $ag_swap"
+			logger "swap_size = $swap_size"
+			logger "swap_list = $swap_list"
 			logger "meZram_tswap = $meZram_tswap"
 
 			[ $swap_size -le $meZram_tswap ] ||
@@ -143,8 +143,7 @@ ag_swapon() {
 				logger "making $swap_size $ag_swap. please wait..."
 				dd if=/dev/zero of="$ag_swap" bs=1M count=$swap_size
 				chmod 0600 $ag_swap
-				$BIN/mkswap -L meZram-swap $ag_swap &&
-					logger "$ag_swap is made"
+				$BIN/mkswap -L meZram-swap $ag_swap 2>&1 | logger
 				# shellcheck disable=SC2016
 				$MODBIN/jq \
 					--arg ag_swap $ag_swap \
@@ -157,11 +156,15 @@ ag_swapon() {
 
 			[ $swap_size -ge $meZram_tswap ] && {
 				for swap in $swap_list; do
-					swapon $swap && logger "$swap is turned on"
+					swapon $swap 2>&1 | logger &&
+						logger "$swap is turned on"
 				done
-			} || swapon $ag_swap && logger "$ag_swap is turned on"
-		} || [ -f $ag_swap ] && {
-			rm -f $ag_swap &&
+			} || swapon $ag_swap 2>&1 | logger &&
+				logger "$ag_swap is turned on"
+		}
+		[ -z $swap_size ] || [ $swap_size = null ] &&
+			[ -f $ag_swap ] && {
+			rm -f $ag_swap 2>&1 | logger &&
 				logger "$ag_swap deleted because of config"
 		}
 	}
@@ -215,15 +218,16 @@ done &
 # save the pid to a prop
 resetprop meZram.log_rotator.pid $!
 
-logger i "NRDEVICES = $NRDEVICES"
-logger i "totalmem = $totalmem"
-logger i "zram_size = $zram_size"
-logger i "lmkd_pid = $lmkd_pid"
+logger "NRDEVICES = $NRDEVICES"
+logger "totalmem = $totalmem"
+logger "zram_size = $zram_size"
+logger "lmkd_pid = $lmkd_pid"
 
 # looking for existing zram path
 for zram0 in /dev/block/zram0 /dev/zram0; do
 	[ "$(ls $zram0)" ] && {
-		swapoff $zram0 && logger i "$zram0 turned off"
+		swapoff $zram0 2>&1 | logger &&
+			logger i "$zram0 turned off"
 		echo 1 >/sys/block/zram0/reset &&
 			logger i "$zram0 RESET"
 		# Set up zram size, then turn on both zram and swap
@@ -239,10 +243,8 @@ for zram0 in /dev/block/zram0 /dev/zram0; do
 	}
 done
 
-{
-	swapon /data/swap_file &&
-		logger i "swap is turned on"
-} || logger w "swap is missing"
+swapon /data/swap_file 2>&1 | logger &&
+	logger i "swap is turned on"
 
 tl=ro.lmk.thrashing_limit
 
@@ -297,8 +299,9 @@ while true; do
 			# aggressive mode activated
 			[ $quick_restore = true ] && {
 				touch /data/tmp/meZram_skip_swap
-				kill -9 $(resetprop meZram.rescue_service.pid) &&
-					logger "rescue service killed because quick_restore"
+				kill -9 $(resetprop meZram.rescue_service.pid) 2>&1 |
+					logger && logger \
+					"rescue service killed because quick_restore"
 				resetprop meZram.rescue_service.pid dead
 			}
 
@@ -348,7 +351,6 @@ while true; do
 							"critical event reached, rescue initiated"
 						logger \
 							"$((totalmem_vir_avl / 1024))MB left"
-						logger "mem_left=$mem_left‰"
 						restore_props
 						meZram_am=$(cat /data/tmp/meZram_am)
 						apply_aggressive_mode $meZram_am &&
@@ -375,36 +377,49 @@ while true; do
 					unset am restoration persist_pid ag_apps
 					rm /data/tmp/meZram_skip_swap
 					limit_in_kb=51200
+					# shellcheck disable=SC2005
+					swaps=$($MODBIN/jq -r \
+						'.agmode_per_app_configuration[].swap_path' \
+						$CONFIG | grep -wv null)
+					swap_count=$(echo "$swaps" | wc -l)
+					echo $swap_count >/data/tmp/swap_count
+					# shellcheck disable=SC2116
+					logger "swaps = $(echo $swaps)"
+					logger "swap_count = $swap_count"
 
 					while true; do
-						# shellcheck disable=SC2005
-						swaps=$(echo $($MODBIN/jq -r \
-							'.agmode_per_app_configuration[].swap_path' \
-							$CONFIG | grep -wv null))
-						swap_count=$(echo $swaps | wc -l)
-
-						for swap in $swaps; do
+						# shellcheck disable=SC2116
+						for swap in $(echo $swaps); do
 							usage=$(
 								grep $swap /proc/swaps | awk '{print $4}'
 							)
-							{
-								[ $usage -le $limit_in_kb ] &&
-									{
-										swapoff $swap && {
-											logger "$swap turned off"
+
+							[ -n "$usage" ] && {
+								{
+									[ $usage -le $limit_in_kb ] &&
+										{
+											swapoff $swap 2>&1 | logger &&
+												logger "$swap turned off"
 											swap_count=$((swap_count - 1))
 											echo $swap_count >/data/tmp/swap_count
-										}
-									} &
-								echo $! >>/data/tmp/swapoff_pids
-							} || {
-								logger "$usage > $limit_in_kb"
-								logger "waiting to go down. clear your running apps to make faster swapoff"
+										} &
+									echo $! >>/data/tmp/swapoff_pids
+								} || {
+									logger "$usage > $limit_in_kb"
+									logger "waiting usage to go down. clear your recents for faster swapoff"
+								}
+							}
+
+							[ -z $usage ] && {
+								swap_count=$((\
+									$(cat /data/tmp/swap_count) - 1))
+								echo $swap_count >/data/tmp/swap_count
 							}
 						done
 
-						[ $(cat /data/tmp/swap_count) -eq 0 ] && {
+						[ $(cat /data/tmp/swap_count) -le 0 ] && {
 							resetprop meZram.swapoff_service_pid dead
+							logger "killing swapoff service"
 							break
 						}
 						sleep 1
