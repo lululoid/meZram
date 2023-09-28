@@ -70,9 +70,7 @@ ag_swapon() {
 
 	{
 		[[ $swap_path != null ]] &&
-			{
-				swapon $ag_swap && logger "$ag_swap is turned on"
-			} || logger "$ag_swap error"
+			swapon $ag_swap && logger "$ag_swap is turned on"
 	} || {
 		# shellcheck disable=SC2016
 		swap_size=$(
@@ -96,25 +94,7 @@ ag_swapon() {
 				$CONFIG | grep -qw $ag_app && index=$conf_index
 		done
 
-		# shellcheck disable=SC2016
-		ag_swap=$(
-			$MODBIN/jq -r --argjson index $index \
-				'.agmode_per_app_configuration[$index].swap_path' \
-				$CONFIG
-		)
-
-		[ $ag_swap = null ] || [ -z $ag_swap ] && {
-			ag_swap="$LOGDIR/${index}_swap"
-			# shellcheck disable=SC2016
-			$MODBIN/jq \
-				--arg ag_swap $ag_swap \
-				--argjson index $index \
-				'.agmode_per_app_configuration[$index].swap_path
-      |= $ag_swap' $CONFIG |
-				/system/bin/awk \
-					'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG_INT
-			cp -f $CONFIG_INT $CONFIG
-		}
+		ag_swap="$LOGDIR/${index}_swap"
 
 		logger "ag_swap = $ag_swap"
 
@@ -165,6 +145,14 @@ ag_swapon() {
 				chmod 0600 $ag_swap
 				$BIN/mkswap -L meZram-swap $ag_swap &&
 					logger "$ag_swap is made"
+				# shellcheck disable=SC2016
+				$MODBIN/jq \
+					--arg ag_swap $ag_swap \
+					--argjson index $index \
+					'.agmode_per_app_configuration[$index].swap_path
+          |= $ag_swap' $CONFIG | /system/bin/awk \
+					'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG_INT
+				cp -f $CONFIG_INT $CONFIG
 			}
 
 			[ $swap_size -ge $meZram_tswap ] && {
@@ -172,12 +160,9 @@ ag_swapon() {
 					swapon $swap && logger "$swap is turned on"
 				done
 			} || swapon $ag_swap && logger "$ag_swap is turned on"
-
-			[ $swap_size = null ] || [ -z $swap_size ] &&
-				[ -f $ag_swap ] && {
-				rm -f $ag_swap &&
-					logger "$ag_swap deleted because of config"
-			}
+		} || [ -f $ag_swap ] && {
+			rm -f $ag_swap &&
+				logger "$ag_swap deleted because of config"
 		}
 	}
 }
