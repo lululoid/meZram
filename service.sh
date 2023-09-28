@@ -68,11 +68,11 @@ ag_swapon() {
 	)
 	ag_swap=$swap_path
 
-	[[ $swap_path != null ]] &&
-		swapon $ag_swap 2>&1 | logger &&
-		logger "$ag_swap is turned on"
-
-	[ $swap_path = null ] || [ -z $swap_path ] && {
+	{
+		[ -n "$swap_path" ] && [[ $swap_path != null ]] &&
+			swapon $ag_swap 2>&1 | logger &&
+			logger "$ag_swap is turned on"
+	} || {
 		# shellcheck disable=SC2016
 		swap_size=$(
 			$MODBIN/jq \
@@ -90,11 +90,15 @@ ag_swapon() {
 			# shellcheck disable=SC2016
 			$MODBIN/jq --argjson index $conf_index \
 				'.agmode_per_app_configuration[$index]' \
-				$CONFIG | grep -qw $ag_app && index=$conf_index
+				$CONFIG | grep -qw $ag_app && {
+				index=$conf_index
+				break
+			}
 		done
-
 		ag_swap="$LOGDIR/${index}_swap"
+	}
 
+	[ $swap_path = null ] || [ -z $swap_path ] && {
 		[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
 			swapoff_pids=$(cat /data/tmp/swapoff_pids)
 			# shellcheck disable=SC2116
@@ -162,6 +166,7 @@ ag_swapon() {
 			} || swapon $ag_swap 2>&1 | logger &&
 				logger "$ag_swap is turned on"
 		}
+
 		[ -z $swap_size ] || [ $swap_size = null ] &&
 			[ -f $ag_swap ] && {
 			rm -f $ag_swap 2>&1 | logger &&
@@ -413,6 +418,7 @@ while true; do
 							[ -z $usage ] && {
 								swap_count=$((\
 									$(cat /data/tmp/swap_count) - 1))
+								swaps=$(echo "$swaps" | grep -wv $swap)
 								echo $swap_count >/data/tmp/swap_count
 							}
 						done
