@@ -73,7 +73,8 @@ ag_swapon() {
 	{
 		[ -n "$swap_path" ] && [[ $swap_path != null ]] &&
 			swapon $ag_swap 2>&1 | logger &&
-			logger "$ag_swap is turned on"
+			logger "$ag_swap is turned on" &&
+			touch /data/tmp/meZram_ag_swapon
 	} || {
 		# shellcheck disable=SC2016
 		swap_size=$(
@@ -163,10 +164,12 @@ ag_swapon() {
 			[ $swap_size -ge $meZram_tswap ] && {
 				for swap in $swap_list; do
 					swapon $swap 2>&1 | logger &&
-						logger "$swap is turned on"
+						logger "$swap is turned on" &&
+						touch /data/tmp/meZram_ag_swapon
 				done
 			} || swapon $ag_swap 2>&1 | logger &&
-				logger "$ag_swap is turned on"
+				logger "$ag_swap is turned on" &&
+				touch /data/tmp/meZram_ag_swapon
 		}
 
 		[ -z $swap_size ] || [ $swap_size = null ] &&
@@ -387,61 +390,65 @@ while true; do
 						logger i "aggressive mode deactivated"
 					unset am restoration persist_pid
 					rm /data/tmp/meZram_skip_swap
-					limit_in_kb=51200
-					# shellcheck disable=SC2005
-					swaps=$($MODBIN/jq -r \
-						'.agmode_per_app_configuration[].swap_path' \
-						$CONFIG | grep -wv null)
-					swap_count=$(echo "$swaps" | wc -l)
-					echo $swap_count >/data/tmp/swap_count
-					# shellcheck disable=SC2116
-					logger "swaps = $(echo $swaps)"
-					logger "swap_count = $swap_count"
 
-					while true; do
+					[ -f /data/tmp/meZram_ag_swapon ] && {
+						limit_in_kb=51200
+						# shellcheck disable=SC2005
+						swaps=$($MODBIN/jq -r \
+							'.agmode_per_app_configuration[].swap_path' \
+							$CONFIG | grep -wv null)
+						swap_count=$(echo "$swaps" | wc -l)
+						echo $swap_count >/data/tmp/swap_count
 						# shellcheck disable=SC2116
-						for swap in $(echo $swaps); do
-							usage=$(
-								grep $swap /proc/swaps | awk '{print $4}'
-							)
+						logger "swaps = $(echo $swaps)"
+						logger "swap_count = $swap_count"
 
-							[ -n "$usage" ] && {
-								{
-									[ $usage -le $limit_in_kb ] &&
-										{
-											swapoff $swap 2>&1 | logger &&
-												logger "$swap turned off"
-											swap_count=$((swap_count - 1))
-											echo $swap_count >/data/tmp/swap_count
-										} &
-									echo $! >>/data/tmp/swapoff_pids
-								} || {
-									logger "$usage > $limit_in_kb"
-									logger "waiting usage to go down. clear your recents for faster swapoff"
+						while true; do
+							# shellcheck disable=SC2116
+							for swap in $(echo $swaps); do
+								usage=$(
+									grep $swap /proc/swaps | awk '{print $4}'
+								)
+
+								[ -n "$usage" ] && {
+									{
+										[ $usage -le $limit_in_kb ] &&
+											{
+												swapoff $swap 2>&1 | logger &&
+													logger "$swap turned off"
+												swap_count=$((swap_count - 1))
+												echo $swap_count >/data/tmp/swap_count
+											} &
+										echo $! >>/data/tmp/swapoff_pids
+									} || {
+										logger "$usage > $limit_in_kb"
+										logger "waiting usage to go down. clear your recents for faster swapoff"
+									}
 								}
-							}
 
-							[ -z $usage ] && {
-								swap_count=$((\
-									$(cat /data/tmp/swap_count) - 1))
-								swaps=$(echo "$swaps" | grep -wv $swap)
-								echo $swap_count >/data/tmp/swap_count
-							}
-						done
+								[ -z $usage ] && {
+									swap_count=$((\
+										$(cat /data/tmp/swap_count) - 1))
+									swaps=$(echo "$swaps" | grep -wv $swap)
+									echo $swap_count >/data/tmp/swap_count
+								}
+							done
 
-						[ $(cat /data/tmp/swap_count) -le 0 ] && {
-							resetprop meZram.swapoff_service_pid dead
-							logger "killing swapoff service"
-							break
-						}
-						sleep 1
-					done &
-					swapoff_service_pid=$!
-					resetprop meZram.swapoff_service_pid \
-						$swapoff_service_pid
-					kill -9 $(resetprop meZram.rescue_service.pid) |
-						logger && logger "rescue_service dead"
-					resetprop meZram.rescue_service.pid dead
+							[ $(cat /data/tmp/swap_count) -le 0 ] && {
+								resetprop meZram.swapoff_service_pid dead
+								logger "killing swapoff service"
+								rm /data/tmp/meZram_ag_swapon
+								break
+							}
+							sleep 1
+						done &
+						swapoff_service_pid=$!
+						resetprop meZram.swapoff_service_pid \
+							$swapoff_service_pid
+						kill -9 $(resetprop meZram.rescue_service.pid) |
+							logger && logger "rescue_service dead"
+						resetprop meZram.rescue_service.pid dead
+					}
 				}
 
 				# read quick_restore
