@@ -336,7 +336,6 @@ while true; do
 
 			[ -z $rescue_service_pid ] ||
 				[ $rescue_service_pid = dead ] &&
-				[ -z $quick_restore ] ||
 				[ $quick_restore = null ] && {
 				logger "starting rescue_service"
 				logger "in case you messed up or i messed up"
