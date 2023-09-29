@@ -296,10 +296,12 @@ while true; do
 			# aggressive mode activated
 			[ $quick_restore = true ] && {
 				touch /data/tmp/meZram_skip_swap
-				kill -9 $(resetprop meZram.rescue_service.pid) 2>&1 |
+				resetprop meZram.rescue_service.pid &&
+					kill -9 \
+						$(resetprop meZram.rescue_service.pid) 2>&1 |
 					logger && logger \
 					"rescue service killed because quick_restore"
-				resetprop meZram.rescue_service.pid dead
+				resetprop --delete meZram.rescue_service.pid
 			}
 
 			[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
@@ -308,7 +310,8 @@ while true; do
 				logger i "aggressive mode activated for $fg_app"
 			# restart persist_service and some variables
 			# if new am app is opened
-			kill -9 $persist_pid && logger "persist reset"
+			kill -9 $persist_pid 2>&1 &&
+				logger "persist reset"
 			unset restoration persist_pid
 
 			# set current am app
@@ -321,8 +324,7 @@ while true; do
 			# calculate total memory + virtual memory
 			echo $am >/data/tmp/meZram_am
 
-			[ -z $rescue_service_pid ] ||
-				[ $rescue_service_pid = dead ] &&
+			[ -z $rescue_service_pid ] &&
 				[ $quick_restore = null ] && {
 				logger "starting rescue_service"
 				logger "in case you messed up or i messed up"
@@ -374,6 +376,7 @@ while true; do
 					restore_battery_opt
 					restore_props &&
 						logger i "aggressive mode deactivated"
+					logger "am = $am"
 					unset am restoration persist_pid
 					rm /data/tmp/meZram_skip_swap
 
@@ -421,7 +424,7 @@ while true; do
 							done
 
 							[ $(cat /data/tmp/swap_count) -le 0 ] && {
-								resetprop meZram.swapoff_service_pid dead
+								resetprop --delete meZram.swapoff_service_pid
 								logger "killing swapoff service"
 								rm /data/tmp/meZram_ag_swapon
 								break
@@ -433,7 +436,7 @@ while true; do
 							$swapoff_service_pid
 						kill -9 $(resetprop meZram.rescue_service.pid) |
 							logger && logger "rescue_service dead"
-						resetprop meZram.rescue_service.pid dead
+						resetprop --delete meZram.rescue_service.pid
 					}
 				}
 

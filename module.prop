@@ -1,7 +1,7 @@
 id=meZram
 name=meZram
 version=v3.2-beta-psi
-versionCode=32025
+versionCode=32029
 author=lululoid
 description=Trying to achieve better multitasking performace by changing ZRAM size and adding SWAP plus LMKD tweaks aim better multitasking while maintain performance. Aggressive mode can be applied for gaming, improve FPS and reduce lag.
 updateJson=https://raw.githubusercontent.com/lululoid/meZram/psi_variant/meZram.json
