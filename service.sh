@@ -44,17 +44,19 @@ read_agmode_app() {
 			tail -n 1 | sed 's/ //g'
 	)
 
-	[ -z $ag_apps ] && {
-		ag_apps=$(
-			$MODBIN/jq -r \
-				'.agmode_per_app_configuration[].packages[]' $CONFIG
-		)
-	}
 	# check if current foreground app is in aggressive
 	# mode config
-	ag_app=$(echo "$ag_apps" | sed -n "/^$fg_app$/p")
+	# shellcheck disable=SC2016
+	ag_app=$(
+		$MODBIN/jq -r \
+			--arg fg_app $fg_app \
+			'.agmode_per_app_configuration[] |
+      select(.packages | index($fg_app))' \
+			$CONFIG
+	)
+
 	{
-		[ -n "$ag_app" ] && true
+		[ -n "$ag_app" ] && ag_app=$fg_app && true
 	} || false
 }
 
@@ -351,17 +353,21 @@ while true; do
 					totalmem_vir_avl=$((swap_free + mem_available))
 					mem_left=$((totalmem_vir_avl * 1000 / totalmem_vir))
 
-					[ $mem_left -le $((rescue_limit * 10)) ] && {
-						logger w \
-							"critical event reached, rescue initiated"
-						logger \
-							"$((totalmem_vir_avl / 1024))MB left"
-						restore_props
-						meZram_am=$(cat /data/tmp/meZram_am)
-						apply_aggressive_mode $meZram_am &&
+					{
+						[ $mem_left -le $((rescue_limit * 10)) ] &&
+							[ -z $rescue ] && {
+							logger w \
+								"critical event reached, rescue initiated"
 							logger \
-								"aggressive mode activated for $meZram_am"
-					}
+								"$((totalmem_vir_avl / 1024))MB of memory left"
+							restore_props
+							meZram_am=$(cat /data/tmp/meZram_am)
+							apply_aggressive_mode $meZram_am &&
+								logger \
+									"aggressive mode activated for $meZram_am"
+							rescue=1
+						}
+					} || unset rescue
 					sleep 1
 				done &
 				resetprop meZram.rescue_service.pid $!
@@ -379,7 +385,7 @@ while true; do
 					restore_battery_opt
 					restore_props &&
 						logger i "aggressive mode deactivated"
-					unset am restoration persist_pid ag_apps
+					unset am restoration persist_pid
 					rm /data/tmp/meZram_skip_swap
 					limit_in_kb=51200
 					# shellcheck disable=SC2005
@@ -433,7 +439,8 @@ while true; do
 					swapoff_service_pid=$!
 					resetprop meZram.swapoff_service_pid \
 						$swapoff_service_pid
-					kill -9 $(resetprop meZram.rescue_service.pid)
+					kill -9 $(resetprop meZram.rescue_service.pid) |
+						logger && logger "rescue_service dead"
 					resetprop meZram.rescue_service.pid dead
 				}
 
