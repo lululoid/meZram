@@ -38,26 +38,13 @@ logrotate() {
 # specified in the config
 read_agmode_app() {
 	fg_app=$(
-		dumpsys activity |
-			$BIN/fgrep -w ResumedActivity |
-			sed -n 's/.*u[0-9]\{1,\} \(.*\)\/.*/  \1/p' |
-			tail -n 1 | sed 's/ //g'
+		dumpsys activity | $BIN/fgrep -w ResumedActivity |
+			awk '{print $4}' | awk -F/ '{print $1}'
 	)
 
 	# check if current foreground app is in aggressive
 	# mode config
-	# shellcheck disable=SC2016
-	ag_app=$(
-		$MODBIN/jq -r \
-			--arg fg_app $fg_app \
-			'.agmode_per_app_configuration[] |
-      select(.packages | index($fg_app))' \
-			$CONFIG
-	)
-
-	{
-		[ -n "$ag_app" ] && ag_app=$fg_app && true
-	} || false
+	ag_app=$($BIN/fgrep -wo $fg_app $CONFIG)
 }
 
 ag_swapon() {
