@@ -353,7 +353,7 @@ while true; do
 							meZram_am=$(cat /data/tmp/meZram_am)
 							apply_aggressive_mode $meZram_am &&
 								logger \
-									"aggressive mode activated for $meZram_am"
+									"aggressive mode reactivated for $meZram_am"
 							rescue=1
 						}
 					} || unset rescue

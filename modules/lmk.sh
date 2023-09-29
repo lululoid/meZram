@@ -136,7 +136,6 @@ lmkd_props_clean() {
 # restore default battery optimization setting
 restore_battery_opt() {
 	local packages_list
-	local status
 	packages_list=$(
 		$MODBIN/jq -r \
 			'.agmode_per_app_configuration[].packages[]' \
@@ -148,11 +147,9 @@ restore_battery_opt() {
 		packages_list=$(echo "$packages_list" | grep -wv $pkg)
 	done <$default_optimized_list
 
+	logger "removing app from battery_optimized exclusion"
 	for pkg in $packages_list; do
-		# shellcheck disable=SC2154
-		status=$(dumpsys deviceidle whitelist -$pkg 2>&1 | logger)
-		[ -n "$status" ] &&
-			logger w "$pkg is battery_optimized"
+		dumpsys deviceidle whitelist -$pkg 2>&1 | logger
 	done
 
 	unset default_opt_set
@@ -216,8 +213,7 @@ apply_aggressive_mode() {
 	$battery_optimized && [ -n "$battery_optimized" ] &&
 		[ -z $default_opt_set ] && {
 		dumpsys deviceidle whitelist |
-			sed 's/^[^,]*,//;s/,[^,]*$//' \
-				>$default_optimized_list
+			sed 's/^[^,]*,//;s/,[^,]*$//' >$default_optimized_list
 		default_opt_set=1
 
 		dumpsys deviceidle whitelist +$ag_app 2>&1 | logger &&
