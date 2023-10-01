@@ -310,8 +310,7 @@ while true; do
 				logger i "aggressive mode activated for $fg_app"
 			# restart persist_service and some variables
 			# if new am app is opened
-			kill -9 $persist_pid 2>&1 &&
-				logger "persist reset"
+			kill -9 $persist_pid && logger "persist reset"
 			unset restoration persist_pid
 
 			# set current am app
@@ -344,21 +343,22 @@ while true; do
 					totalmem_vir_avl=$((swap_free + mem_available))
 					mem_left=$((totalmem_vir_avl * 1000 / totalmem_vir))
 
-					{
-						[ $mem_left -le $((rescue_limit * 10)) ] &&
-							[ -z $rescue ] && {
-							logger w \
-								"critical event reached, rescue initiated"
+					[ $mem_left -le $((rescue_limit * 10)) ] &&
+						[ -z $rescue ] && {
+						logger w \
+							"critical event reached, rescue initiated"
+						logger \
+							"$((totalmem_vir_avl / 1024))MB of memory left"
+						restore_props
+						meZram_am=$(cat /data/tmp/meZram_am)
+						apply_aggressive_mode $meZram_am &&
 							logger \
-								"$((totalmem_vir_avl / 1024))MB of memory left"
-							restore_props
-							meZram_am=$(cat /data/tmp/meZram_am)
-							apply_aggressive_mode $meZram_am &&
-								logger \
-									"aggressive mode reactivated for $meZram_am"
-							rescue=1
-						}
-					} || unset rescue
+								"aggressive mode reactivated for $meZram_am"
+						rescue=1
+					}
+
+					[ $mem_left -gt $((rescue_limit * 10)) ] &&
+						unset rescue
 					sleep 1
 				done &
 				resetprop meZram.rescue_service.pid $!
