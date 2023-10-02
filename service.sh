@@ -45,6 +45,7 @@ read_agmode_app() {
 	# check if current foreground app is in aggressive
 	# mode config
 	ag_app=$($BIN/fgrep -wo $fg_app $CONFIG)
+	[ $ag_app != android ]
 }
 
 ag_swapon() {
