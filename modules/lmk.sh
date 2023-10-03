@@ -209,9 +209,13 @@ apply_aggressive_mode() {
 	done
 
 	default_optimized_list=$LOGDIR/default_optimized.txt
-	# shellcheck disable=SC3010
+	# shellcheck disable=SC3010,SC2154
 	$battery_optimized && [ -n "$battery_optimized" ] &&
-		[ -z $default_opt_set ] && {
+		[ -z $default_opt_set ] &&
+		# /data/tmp/meZram_skip_swap also mean quick_restore.
+		# should not initiate exclude battery optimization
+		# if high demand ag_app in running
+		[ ! -f /data/tmp/meZram_skip_swap ] && {
 		dumpsys deviceidle whitelist |
 			sed 's/^[^,]*,//;s/,[^,]*$//' >$default_optimized_list
 		default_opt_set=1
