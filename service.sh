@@ -44,7 +44,7 @@ read_agmode_app() {
 
 	# check if current foreground app is in aggressive
 	# mode config
-	ag_app=$($BIN/fgrep -wo $fg_app $CONFIG)
+	ag_app=$($BIN/fgrep -wo "$fg_app" $CONFIG)
 	[ $ag_app != android ]
 }
 
@@ -351,15 +351,17 @@ while true; do
 						logger \
 							"$((totalmem_vir_avl / 1024))MB of memory left"
 						restore_props
-						meZram_am=$(cat /data/tmp/meZram_am)
-						apply_aggressive_mode $meZram_am &&
-							logger \
-								"aggressive mode reactivated for $meZram_am"
 						rescue=1
 					}
 
 					[ $mem_left -gt $((rescue_limit * 10)) ] &&
+						[ -n "$rescue" ] && {
+						meZram_am=$(cat /data/tmp/meZram_am)
+						apply_aggressive_mode $meZram_am &&
+							logger \
+								"aggressive mode reactivated for $meZram_am"
 						unset rescue
+					}
 					sleep 1
 				done &
 				resetprop meZram.rescue_service.pid $!
