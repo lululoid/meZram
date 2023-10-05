@@ -204,7 +204,8 @@ apply_aggressive_mode() {
               | .props | .[$key]' $CONFIG
 		)
 
-		resetprop $key $value 2>&1 | logger &&
+    # double quote because of true or false value
+		resetprop "$key" "$value" 2>&1 | logger &&
 			logger i "applying $key $value"
 	done
 
