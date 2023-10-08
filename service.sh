@@ -350,8 +350,10 @@ while true; do
 							"critical event reached, rescue initiated"
 						logger \
 							"$((totalmem_vir_avl / 1024))MB of memory left"
-						restore_props
-						rescue=1
+
+						pressures=$(head /proc/pressure/*)
+						logger "$pressures"
+						restore_props && rescue=1
 					}
 
 					[ $mem_left -gt $((rescue_limit * 10)) ] &&
