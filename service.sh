@@ -340,9 +340,22 @@ while true; do
 					)
 					totalmem_vir_avl=$(((\
 						swap_free + mem_available / 1024)))
+					io_psi=$(
+						sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
+							/proc/pressure/io
+					)
+					is_io_rescue=$(awk \
+						-v rescue_limit="${rescue_limit}" \
+						-v io_psi="${io_psi}" \
+						'BEGIN {
+              if (io_psi >= rescue_limit) {
+        				print "true"
+        			} else {
+        				print "false"
+        			}
+        		}')
 
-					[ $totalmem_vir_avl -le $rescue_limit ] &&
-						[ -z $rescue ] && {
+					$is_io_rescue && [ -z $rescue ] && {
 						logger w \
 							"critical event reached, rescue initiated"
 						logger \
@@ -353,8 +366,7 @@ while true; do
 						restore_props && rescue=1
 					}
 
-					[ $totalmem_vir_avl -gt $rescue_limit ] &&
-						[ -n "$rescue" ] && {
+					! $is_io_rescue && [ -n "$rescue" ] && {
 						meZram_am=$(cat /data/tmp/meZram_am)
 						apply_aggressive_mode $meZram_am &&
 							logger \
