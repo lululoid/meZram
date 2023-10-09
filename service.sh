@@ -39,7 +39,7 @@ logrotate() {
 read_agmode_app() {
 	fg_app=$(
 		dumpsys activity | $BIN/fgrep -w ResumedActivity |
-			awk '{print $4}' | awk -F/ '{print $1}'
+			awk '{print $4}' | awk -F/ '{print $1}' | tail -n1
 	)
 
 	# check if current foreground app is in aggressive
@@ -308,7 +308,7 @@ while true; do
 			[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
 			# swap should be turned on first to accomodate lmkd
 			apply_aggressive_mode $ag_app &&
-				logger i "aggressive mode activated for $fg_app"
+				logger i "aggressive mode activated for $ag_app"
 			# restart persist_service and some variables
 			# if new am app is opened
 			kill -9 $persist_pid && logger "persist reset"
@@ -328,35 +328,32 @@ while true; do
 				[ $quick_restore = null ] && {
 				logger "starting rescue_service"
 				logger "in case you messed up or i messed up"
-				total_swap=$(
-					free | $BIN/fgrep Swap | awk '{print $2}'
-				)
-				totalmem_vir=$((totalmem + total_swap))
 				rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
 
 				while true; do
 					# calculate memory and swap free and or available
-					swap_free=$(free | $BIN/fgrep Swap |
-						awk '{print $4}')
+					swap_free=$(
+						free | $BIN/fgrep Swap | awk '{print $4}'
+					)
 					mem_available=$(
 						free | $BIN/fgrep Mem | awk '{print $7}'
 					)
-					totalmem_vir_avl=$((swap_free + mem_available))
-					mem_left=$((totalmem_vir_avl * 1000 / totalmem_vir))
+					totalmem_vir_avl=$(((\
+						swap_free + mem_available / 1024)))
 
-					[ $mem_left -le $((rescue_limit * 10)) ] &&
+					[ $totalmem_vir_avl -le $rescue_limit ] &&
 						[ -z $rescue ] && {
 						logger w \
 							"critical event reached, rescue initiated"
 						logger \
-							"$((totalmem_vir_avl / 1024))MB of memory left"
+							"${totalmem_vir_avl}MB of memory left"
 
 						pressures=$(head /proc/pressure/*)
 						logger "$pressures"
 						restore_props && rescue=1
 					}
 
-					[ $mem_left -gt $((rescue_limit * 10)) ] &&
+					[ $totalmem_vir_avl -gt $rescue_limit ] &&
 						[ -n "$rescue" ] && {
 						meZram_am=$(cat /data/tmp/meZram_am)
 						apply_aggressive_mode $meZram_am &&
