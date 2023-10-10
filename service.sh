@@ -329,20 +329,18 @@ while true; do
 				logger "starting rescue_service"
 				logger "in case you messed up or i messed up"
 				rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
+				rescue_mem_psi_limit=$(
+					$MODBIN/jq .rescue_mem_psi_limit $CONFIG
+				)
 
 				while true; do
-					# calculate memory and swap free and or available
-					swap_free=$(
-						free | $BIN/fgrep Swap | awk '{print $4}'
-					)
-					mem_available=$(
-						free | $BIN/fgrep Mem | awk '{print $7}'
-					)
-					totalmem_vir_avl=$(((\
-						swap_free + mem_available / 1024)))
 					io_psi=$(
 						sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
 							/proc/pressure/io
+					)
+					mem_psi=$(
+						sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
+							/proc/pressure/memory
 					)
 					is_io_rescue=$(awk \
 						-v rescue_limit="${rescue_limit}" \
@@ -354,8 +352,28 @@ while true; do
         				print "false"
         			}
         		}')
+					is_mem_rescue=$(awk \
+						-v rescue_mem_psi_limit="${rescue_mem_psi_limit}" \
+						-v mem_psi="${mem_psi}" \
+						'BEGIN {
+              if (mem_psi >= rescue_mem_psi_limit) {
+        				print "true"
+        			} else {
+        				print "false"
+        			}
+        		}')
 
-					$is_io_rescue && [ -z $rescue ] && {
+					$is_io_rescue || $is_mem_rescue &&
+						[ -z $rescue ] && {
+						# calculate memory and swap free and or available
+						swap_free=$(
+							free | $BIN/fgrep Swap | awk '{print $4}'
+						)
+						mem_available=$(
+							free | $BIN/fgrep Mem | awk '{print $7}'
+						)
+						totalmem_vir_avl=$(((\
+							swap_free + mem_available) / 1024))
 						logger w \
 							"critical event reached, rescue initiated"
 						logger \
@@ -366,7 +384,8 @@ while true; do
 						restore_props && rescue=1
 					}
 
-					! $is_io_rescue && [ -n "$rescue" ] && {
+					! $is_io_rescue && ! $is_mem_rescue &&
+						[ -n "$rescue" ] && {
 						meZram_am=$(cat /data/tmp/meZram_am)
 						apply_aggressive_mode $meZram_am &&
 							logger \
@@ -393,6 +412,7 @@ while true; do
 					logger "am = $am"
 					unset am restoration persist_pid
 					rm /data/tmp/meZram_skip_swap
+					rm /data/tmp/swapoff_pids
 
 					[ -f /data/tmp/meZram_ag_swapon ] && {
 						limit_in_kb=51200

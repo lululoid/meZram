@@ -2,7 +2,8 @@
   "agmode": "on",
   "config_version": 2.8,
   "custom_props": {},
-  "rescue_limit": 40,
+  "rescue_limit": 27,
+  "rescue_mem_psi_limit": 27,
   "agmode_per_app_configuration": [
     {
       "packages": [
@@ -68,7 +69,7 @@
       "props": {
         "ro.lmk.use_psi": false,
         "ro.lmk.use_minfree_levels": true,
-        "ro.lmk.downgrade_pressure": 30,
+        "ro.lmk.downgrade_pressure": 10,
         "ro.lmk.thrashing_limit_decay": 50
       },
       "battery_optimized": true,

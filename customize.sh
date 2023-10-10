@@ -264,7 +264,8 @@ config_update() {
 
 			$MODPATH/modules/bin/jq \
 				'del(.config_version)
-        | del (.rescue_limit)' "$CONFIG" |
+        | del(.rescue_limit)
+        | del(.rescue_mem_psi_limit)' "$CONFIG" |
 				/system/bin/awk \
 					'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 			# Slurp entire config
