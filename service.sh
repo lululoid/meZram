@@ -421,7 +421,7 @@ while true; do
         			}
         		}')
 
-					$is_io_rescue || $is_mem_rescue &&
+					$is_mem_rescue || $is_io_rescue &&
 						[ -z $rescue ] && {
 						# calculate memory and swap free and or available
 						swap_free=$(
