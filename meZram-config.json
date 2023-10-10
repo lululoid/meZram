@@ -2,8 +2,8 @@
   "agmode": "on",
   "config_version": 2.8,
   "custom_props": {},
-  "rescue_limit": 27,
-  "rescue_mem_psi_limit": 27,
+  "rescue_limit": 32,
+  "rescue_mem_psi_limit": 32,
   "agmode_per_app_configuration": [
     {
       "packages": [
