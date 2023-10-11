@@ -474,10 +474,11 @@ while true; do
 
 					[ -f /data/tmp/meZram_ag_swapon ] && {
 						swapoff_service
-						kill -9 $(resetprop meZram.rescue_service.pid) |
-							logger && logger "rescue_service dead"
-						resetprop --delete meZram.rescue_service.pid
 					}
+
+					kill -9 $(resetprop meZram.rescue_service.pid) |
+						logger && logger "rescue_service dead"
+					resetprop --delete meZram.rescue_service.pid
 				}
 
 				# read quick_restore
