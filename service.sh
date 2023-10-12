@@ -38,13 +38,14 @@ logrotate() {
 # specified in the config
 read_agmode_app() {
 	fg_app=$(
-		dumpsys activity | $BIN/fgrep -w ResumedActivity |
-			awk '{print $4}' | awk -F/ '{print $1}' | tail -n1
+		dumpsys activity activities |
+			$MODBIN/sed -n \
+				'/\bResumedActivity\b/s/.*u0 \(.*\)\/.*/\1/p'
 	)
 
 	# check if current foreground app is in aggressive
 	# mode config
-	ag_app=$($BIN/fgrep -wo "$fg_app" $CONFIG)
+	ag_app=$($BIN/fgrep -wo $fg_app $CONFIG)
 	[ $ag_app != android ]
 }
 
@@ -59,7 +60,7 @@ ag_swapon() {
 	ag_swap=$swap_path
 
 	{
-		[ -n "$swap_path" ] && [[ $swap_path != null ]] &&
+		[ $swap_path != null ] &&
 			swapon $ag_swap 2>&1 | logger &&
 			logger "$ag_swap is turned on" &&
 			touch /data/tmp/meZram_ag_swapon
@@ -69,7 +70,7 @@ ag_swapon() {
 			$MODBIN/jq \
 				--arg ag_app $ag_app \
 				'.agmode_per_app_configuration[]
-      | select(.packages[] == $ag_app) | .swap' $CONFIG
+        | select(.packages[] == $ag_app) | .swap' $CONFIG
 		)
 
 		length=$(
@@ -90,7 +91,7 @@ ag_swapon() {
 	}
 
 	[ $swap_path = null ] || [ -z $swap_path ] && {
-		[ -n "$swap_size" ] && [[ $swap_size != null ]] && {
+		[ $swap_size != null ] && {
 			swapoff_pids=$(cat /data/tmp/swapoff_pids)
 			# shellcheck disable=SC2116
 			for pid in $(echo $swapoff_pids); do
@@ -205,10 +206,9 @@ swapoff_service() {
 			}
 
 			[ -z $usage ] && {
-				swap_count=$((\
-					$(cat /data/tmp/swap_count) - 1))
+				echo $(($(cat /data/tmp/swap_count) - 1)) \
+					>/data/tmp/swap_count
 				swaps=$(echo "$swaps" | grep -wv $swap)
-				echo $swap_count >/data/tmp/swap_count
 			}
 		done
 
@@ -328,92 +328,88 @@ rm /data/tmp/meZram_skip_swap
 
 # aggressive mode service starts here
 while true; do
-	# Read configuration for aggressive mode
-	agmode=$(sed -n 's/"agmode": "\(.*\)",/\1/p' $CONFIG)
-
-	[ $agmode = on ] && {
-		# if the foreground app match app in aggressive mode list
-		# then activate aggressive mode
-		read_agmode_app && {
-			# am = aggressive mode, if am is not activated or
-			# am is different than the last am then
-			# activate aggressive mode
-			# this is for efficiency reason
-			[ -z "$am" ] || [[ $ag_app != "$am" ]]
-		} && {
-			# shellcheck disable=SC2016
-			quick_restore=$(
-				$MODBIN/jq \
-					--arg ag_app $ag_app \
-					'.agmode_per_app_configuration[]
+	# if the foreground app match app in aggressive mode list
+	# then activate aggressive mode
+	read_agmode_app && {
+		# am = aggressive mode, if am is not activated or
+		# am is different than the last am then
+		# activate aggressive mode
+		# this is for efficiency reason
+		[ -z "$am" ] || [ $ag_app != "$am" ]
+	} && {
+		# shellcheck disable=SC2016
+		quick_restore=$(
+			$MODBIN/jq \
+				--arg ag_app $ag_app \
+				'.agmode_per_app_configuration[]
             | select(.packages[] == $ag_app)
             | .quick_restore' $CONFIG
+		)
+
+		# the logic is to make it only run once after
+		# aggressive mode activated
+		[ $quick_restore = true ] && {
+			touch /data/tmp/meZram_skip_swap
+			resetprop meZram.rescue_service.pid &&
+				kill -9 \
+					$(resetprop meZram.rescue_service.pid) 2>&1 |
+				logger && logger \
+				"rescue service killed because quick_restore"
+			resetprop --delete meZram.rescue_service.pid
+			swapoff_service
+		}
+
+		[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
+		# swap should be turned on first to accomodate lmkd
+		apply_aggressive_mode $ag_app &&
+			logger i "aggressive mode activated for $ag_app"
+		# restart persist_service and some variables
+		# if new am app is opened
+		kill -9 $persist_pid && logger "persist reset"
+		unset restoration persist_pid
+
+		# set current am app
+		am=$ag_app
+		rescue_service_pid=$(
+			resetprop meZram.rescue_service.pid
+		)
+
+		# rescue service for critical thrashing
+		# calculate total memory + virtual memory
+		echo $am >/data/tmp/meZram_am
+
+		[ -z $rescue_service_pid ] &&
+			[ $quick_restore = null ] && {
+			logger "starting rescue_service"
+			logger "in case you messed up or i messed up"
+			rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
+			rescue_mem_psi_limit=$(
+				$MODBIN/jq .rescue_mem_psi_limit $CONFIG
 			)
 
-			# the logic is to make it only run once after
-			# aggressive mode activated
-			[ $quick_restore = true ] && {
-				touch /data/tmp/meZram_skip_swap
-				resetprop meZram.rescue_service.pid &&
-					kill -9 \
-						$(resetprop meZram.rescue_service.pid) 2>&1 |
-					logger && logger \
-					"rescue service killed because quick_restore"
-				resetprop --delete meZram.rescue_service.pid
-				swapoff_service
-			}
-
-			[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
-			# swap should be turned on first to accomodate lmkd
-			apply_aggressive_mode $ag_app &&
-				logger i "aggressive mode activated for $ag_app"
-			# restart persist_service and some variables
-			# if new am app is opened
-			kill -9 $persist_pid && logger "persist reset"
-			unset restoration persist_pid
-
-			# set current am app
-			am=$ag_app
-			rescue_service_pid=$(
-				resetprop meZram.rescue_service.pid
-			)
-
-			# rescue service for critical thrashing
-			# calculate total memory + virtual memory
-			echo $am >/data/tmp/meZram_am
-
-			[ -z $rescue_service_pid ] &&
-				[ $quick_restore = null ] && {
-				logger "starting rescue_service"
-				logger "in case you messed up or i messed up"
-				rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
-				rescue_mem_psi_limit=$(
-					$MODBIN/jq .rescue_mem_psi_limit $CONFIG
+			while true; do
+				io_psi=$(
+					sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
+						/proc/pressure/io
 				)
-
-				while true; do
-					io_psi=$(
-						sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
-							/proc/pressure/io
-					)
-					mem_psi=$(
-						sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
-							/proc/pressure/memory
-					)
-					is_io_rescue=$(awk \
-						-v rescue_limit="${rescue_limit}" \
-						-v io_psi="${io_psi}" \
-						'BEGIN {
+				mem_psi=$(
+					sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
+						/proc/pressure/memory
+				)
+				is_io_rescue=$(awk \
+					-v rescue_limit="${rescue_limit}" \
+					-v io_psi="${io_psi}" \
+					'BEGIN {
               if (io_psi >= rescue_limit) {
         				print "true"
         			} else {
         				print "false"
         			}
         		}')
-					is_mem_rescue=$(awk \
-						-v rescue_mem_psi_limit="${rescue_mem_psi_limit}" \
-						-v mem_psi="${mem_psi}" \
-						'BEGIN {
+				is_mem_rescue=$(awk \
+					-v rescue_mem_psi_limit="${rescue_mem_psi_limit}" \
+					-v mem_psi="${mem_psi}" \
+					'BEGIN {
               if (mem_psi >= rescue_mem_psi_limit) {
         				print "true"
         			} else {
@@ -421,95 +417,91 @@ while true; do
         			}
         		}')
 
-					$is_mem_rescue || $is_io_rescue &&
-						[ -z $rescue ] && {
-						# calculate memory and swap free and or available
-						swap_free=$(
-							free | $BIN/fgrep Swap | awk '{print $4}'
-						)
-						mem_available=$(
-							free | $BIN/fgrep Mem | awk '{print $7}'
-						)
-						totalmem_vir_avl=$(((\
-							swap_free + mem_available) / 1024))
-						logger w \
-							"critical event reached, rescue initiated"
-						logger \
-							"${totalmem_vir_avl}MB of memory left"
+				$is_mem_rescue || $is_io_rescue &&
+					[ -z $rescue ] && {
+					# calculate memory and swap free and or available
+					swap_free=$(
+						free | $BIN/fgrep Swap | awk '{print $4}'
+					)
+					mem_available=$(
+						free | $BIN/fgrep Mem | awk '{print $7}'
+					)
+					totalmem_vir_avl=$(((\
+						swap_free + mem_available) / 1024))
+					logger w \
+						"critical event reached, rescue initiated"
+					logger \
+						"${totalmem_vir_avl}MB of memory left"
 
-						pressures=$(head /proc/pressure/*)
-						logger "$pressures"
-						restore_props && rescue=1
-					}
-
-					! $is_io_rescue && ! $is_mem_rescue &&
-						[ -n "$rescue" ] && {
-						meZram_am=$(cat /data/tmp/meZram_am)
-						apply_aggressive_mode $meZram_am &&
-							logger \
-								"aggressive mode reactivated for $meZram_am"
-						unset rescue
-					}
-					sleep 1
-				done &
-				resetprop meZram.rescue_service.pid $!
-			}
-		}
-
-		# check if am is activated
-		[ -n "$am" ] && {
-			# if theres no am app curently open or in foreground
-			# and persist_service is not running
-			# then restore states and variables
-			! read_agmode_app && {
-				persist_ps=$($BIN/ps -p $persist_pid | sed 1d)
-				[ $restoration -eq 1 ] && [ -z $persist_ps ] && {
-					restore_battery_opt
-					restore_props &&
-						logger i "aggressive mode deactivated"
-					logger "am = $am"
-					unset am restoration persist_pid
-					rm /data/tmp/meZram_skip_swap
-					rm /data/tmp/swapoff_pids
-
-					[ -f /data/tmp/meZram_ag_swapon ] && {
-						swapoff_service
-					}
-
-					kill -9 $(resetprop meZram.rescue_service.pid) |
-						logger && logger "rescue_service dead"
-					resetprop --delete meZram.rescue_service.pid
+					pressures=$(head /proc/pressure/*)
+					logger "$pressures"
+					restore_props && rescue=1
 				}
 
-				# read quick_restore
-				# shellcheck disable=SC2016
-				quick_restore=$(
-					$MODBIN/jq \
-						--arg am $am \
-						'.agmode_per_app_configuration[]
+				! $is_io_rescue && ! $is_mem_rescue &&
+					[ -n "$rescue" ] && {
+					meZram_am=$(cat /data/tmp/meZram_am)
+					apply_aggressive_mode $meZram_am &&
+						logger \
+							"aggressive mode reactivated for $meZram_am"
+					unset rescue
+				}
+				sleep 1
+			done &
+			resetprop meZram.rescue_service.pid $!
+		}
+	}
+
+	# check if am is activated
+	[ -n "$am" ] && {
+		# if theres no am app curently open or in foreground
+		# and persist_service is not running
+		# then restore states and variables
+		! read_agmode_app && {
+			persist_ps=$($BIN/ps -p $persist_pid | sed 1d)
+			[ $restoration -eq 1 ] && [ -z $persist_ps ] && {
+				restore_props
+				restore_battery_opt &&
+					logger i "aggressive mode deactivated"
+				logger "am = $am"
+				unset am restoration persist_pid
+				rm /data/tmp/meZram_skip_swap
+				rm /data/tmp/swapoff_pids
+
+				[ -f /data/tmp/meZram_ag_swapon ] && {
+					swapoff_service
+				}
+
+				kill -9 $(resetprop meZram.rescue_service.pid) |
+					logger && logger "rescue_service dead"
+				resetprop --delete meZram.rescue_service.pid
+			}
+
+			# read quick_restore
+			# shellcheck disable=SC2016
+			quick_restore=$(
+				$MODBIN/jq \
+					--arg am $am \
+					'.agmode_per_app_configuration[]
             | select(.packages[] == $am)
             | .quick_restore' $CONFIG
-				)
+			)
 
-				# the logic is to make it only run once after
-				# aggressive mode activated
-				[ -z $quick_restore ] ||
-					[ $quick_restore = null ] &&
-					[ -n "$(pidof $am)" ] &&
-					[ -z $persist_pid ] && {
-					logger \
-						"wait $am to close before exiting aggressive mode"
-					# never use variable for a subshell, i got really
-					# annoying trouble because i forgot of this fact
-					while true; do
-						[ -z $(pidof $am) ] && break
-						sleep 1
-					done &
-					# restore if persist_service is done
-					persist_pid=$!
-				}
-				restoration=1
+			# the logic is to make it only run once after
+			# aggressive mode activated
+			[ $quick_restore = null ] &&
+				[ -z $persist_pid ] && {
+				logger \
+					"wait $am to close before exiting aggressive mode"
+				# never use variable for a subshell, i got really
+				# annoying trouble because i forgot of this fact
+				while pidof $am; do
+					sleep 1
+				done &
+				# restore if persist_service is done
+				persist_pid=$!
 			}
+			restoration=1
 		}
 	}
 	# after optimizing the code i reduce sleep from 6 to 1 and
@@ -523,12 +515,9 @@ resetprop meZram.aggressive_mode.pid $!
 # sync service because i can't read from internal
 # for some reason? tell me why please
 while true; do
-	is_update=$(
-		cp -uv /sdcard/meZram-config.json \
-			/data/adb/meZram/meZram-config.json
-	)
-
-	echo $is_update | $BIN/fgrep -wo ">" &&
+	cp -uv /sdcard/meZram-config.json \
+		/data/adb/meZram/meZram-config.json |
+		$BIN/fgrep -wo ">" &&
 		logger i "config updated"
 	sleep 1
 done &

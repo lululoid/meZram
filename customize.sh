@@ -202,7 +202,7 @@ config_update() {
 			}
 		}')
 
-		is_less_v2dot7=$(awk -v version=2.7 \
+		is_less_v3dot0=$(awk -v version=3.0 \
 			-v version_prev="${version_prev}" \
 			'BEGIN {
       if (version_prev < version) {
@@ -216,7 +216,7 @@ config_update() {
 	log_it "is_update = $is_update"
 	log_it "is_less_2 = $is_less_2"
 	log_it "is_less_v2dot4 = $is_less_v2dot4"
-	log_it "is_less_v2dot7 = $is_less_v2dot7"
+	log_it "is_less_v3dot0 = $is_less_v3dot0"
 
 	{
 		$is_update && {
@@ -255,17 +255,21 @@ config_update() {
 						'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 			}
 
-			$is_less_v2dot7 && {
+			$is_less_v3dot0 && {
 				cp -f $MODPATH/meZram-config.json $CONFIG
-				ui_print "  sorry but config is reset"
-				ui_print "  your old config is ${_CONFIG}_$today_date.bcp"
+				ui_print "  Sorry but config is reset"
+				ui_print "  Your old config is ${_CONFIG}_$today_date.bcp"
+        ui_print "  Config for various games is already set"
+        ui_print "  Mobile Legends, Ace Racer, Terraria, Minecraft, etc."
+        ui_print "  Please check config for more details"
 				sleep 1
 			}
 
 			$MODPATH/modules/bin/jq \
 				'del(.config_version)
         | del(.rescue_limit)
-        | del(.rescue_mem_psi_limit)' "$CONFIG" |
+        | del(.rescue_mem_psi_limit)
+        | del(.agmode)' "$CONFIG" |
 				/system/bin/awk \
 					'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
 			# Slurp entire config

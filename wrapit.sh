@@ -49,4 +49,5 @@ mv "$changelog_file" "$module_name-v${version}_$versionCode-beta-psi-changelog.m
 	-x!pic \
 	-x!tmp \
 	-x!test* \
-  -x!*patch
+  -x!*patch \
+  -x!modules/bin/yq
