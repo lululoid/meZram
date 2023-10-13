@@ -282,24 +282,24 @@ logger "lmkd_pid = $lmkd_pid"
 for zram0 in /dev/block/zram0 /dev/zram0; do
 	[ "$(ls $zram0)" ] && {
 		swapoff $zram0 2>&1 | logger &&
-			logger i "$zram0 turned off"
+			logger "$zram0 turned off"
 		echo 1 >/sys/block/zram0/reset &&
-			logger i "$zram0 RESET"
+			logger "$zram0 RESET"
 		# Set up zram size, then turn on both zram and swap
 		echo $zram_size >/sys/block/zram0/disksize &&
-			logger i "set $zram0 disksize to $zram_size"
+			logger "set $zram0 disksize to $zram_size"
 		# Set up maxium cpu streams
-		logger i \
+		logger \
 			"making $zram0 and set max_comp_streams=$NRDEVICES"
 		echo $NRDEVICES >/sys/block/zram0/max_comp_streams
 		mkswap $zram0
-		$BIN/swapon -p 69 "$zram0" && logger i "$zram0 turned on"
+		$BIN/swapon -p 69 "$zram0" && logger "$zram0 turned on"
 		break
 	}
 done
 
 swapon /data/swap_file 2>&1 | logger &&
-	logger i "swap is turned on"
+	logger "swap is turned on"
 
 tl=ro.lmk.thrashing_limit
 
@@ -314,13 +314,13 @@ while true; do
 		}
 		custom_props_apply
 		$BIN/lmkd --reinit &&
-			logger i "custom props applied"
+			logger "custom props applied"
 		break
 	}
 	sleep 1
 done
 
-logger i "jq_version = $($MODBIN/jq --version)"
+logger "jq_version = $($MODBIN/jq --version)"
 # reset states and variables to default
 restore_battery_opt
 rm /data/tmp/swapoff_pids
@@ -330,13 +330,11 @@ rm /data/tmp/meZram_skip_swap
 while true; do
 	# if the foreground app match app in aggressive mode list
 	# then activate aggressive mode
-	read_agmode_app && {
+	read_agmode_app && [[ $ag_app != "$am" ]] && {
 		# am = aggressive mode, if am is not activated or
 		# am is different than the last am then
 		# activate aggressive mode
 		# this is for efficiency reason
-		[ -z "$am" ] || [ $ag_app != "$am" ]
-	} && {
 		# shellcheck disable=SC2016
 		quick_restore=$(
 			$MODBIN/jq \
@@ -362,7 +360,7 @@ while true; do
 		[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
 		# swap should be turned on first to accomodate lmkd
 		apply_aggressive_mode $ag_app &&
-			logger i "aggressive mode activated for $ag_app"
+			logger "aggressive mode activated for $ag_app"
 		# restart persist_service and some variables
 		# if new am app is opened
 		kill -9 $persist_pid && logger "persist reset"
@@ -518,7 +516,7 @@ while true; do
 	cp -uv /sdcard/meZram-config.json \
 		/data/adb/meZram/meZram-config.json |
 		$BIN/fgrep -wo ">" &&
-		logger i "config updated"
+		logger "config updated"
 	sleep 1
 done &
 
