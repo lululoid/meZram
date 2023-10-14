@@ -50,4 +50,5 @@ mv "$changelog_file" "$module_name-v${version}_$versionCode-beta-psi-changelog.m
 	-x!tmp \
 	-x!test* \
   -x!*patch \
-  -x!modules/bin/yq
+  -x!modules/bin/yq \
+  -x!cleaner
