@@ -189,19 +189,23 @@ swapoff_service() {
 				grep $swap /proc/swaps | awk '{print $4}'
 			)
 
-			[ -n "$usage" ] && {
-				{
-					[ $usage -le $limit_in_kb ] &&
-						{
-							swapoff $swap 2>&1 | logger &&
-								logger "$swap turned off"
-							swap_count=$((swap_count - 1))
-							echo $swap_count >/data/tmp/swap_count
-						} &
+			! $BIN/fgrep -q "$swap" /data/tmp/swapping_off && {
+				[ $usage -le $limit_in_kb ] && {
+					{
+						swapoff $swap 2>&1 | logger &&
+							logger "$swap turned off"
+						swap_count=$((swap_count - 1))
+						echo $swap_count >/data/tmp/swap_count
+					} &
 					echo $! >>/data/tmp/swapoff_pids
-				} || {
+					echo "$swap" >>/data/tmp/swapping_off
+				}
+
+				[ $usage -gt $limit_in_kb ] &&
+					[ -z $swapoff_wait ] && {
 					logger "$usage > $limit_in_kb"
 					logger "waiting usage to go down. clear your recents for faster swapoff"
+					swapoff_wait=1
 				}
 			}
 
@@ -216,6 +220,8 @@ swapoff_service() {
 			resetprop --delete meZram.swapoff_service_pid
 			logger "killing swapoff service"
 			rm /data/tmp/meZram_ag_swapon
+			echo "" >/data/tmp/swapping_off
+			unset swapoff_wait
 			break
 		}
 		sleep 1
@@ -324,7 +330,7 @@ logger "jq_version = $($MODBIN/jq --version)"
 # reset states and variables to default
 restore_battery_opt
 rm /data/tmp/swapoff_pids
-rm /data/tmp/meZram_skip_swap
+echo "" >/data/tmp/swapping_off
 
 # aggressive mode service starts here
 while true; do
@@ -347,7 +353,6 @@ while true; do
 		# the logic is to make it only run once after
 		# aggressive mode activated
 		[ $quick_restore = true ] && {
-			touch /data/tmp/meZram_skip_swap
 			resetprop meZram.rescue_service.pid &&
 				kill -9 \
 					$(resetprop meZram.rescue_service.pid) 2>&1 |
@@ -357,7 +362,7 @@ while true; do
 			swapoff_service
 		}
 
-		[ ! -f /data/tmp/meZram_skip_swap ] && ag_swapon
+		ag_swapon
 		# swap should be turned on first to accomodate lmkd
 		apply_aggressive_mode $ag_app &&
 			logger "aggressive mode activated for $ag_app"
@@ -463,7 +468,6 @@ while true; do
 					logger i "aggressive mode deactivated"
 				logger "am = $am"
 				unset am restoration persist_pid
-				rm /data/tmp/meZram_skip_swap
 				rm /data/tmp/swapoff_pids
 
 				[ -f /data/tmp/meZram_ag_swapon ] && {
