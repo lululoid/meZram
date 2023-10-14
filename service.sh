@@ -386,8 +386,11 @@ while true; do
 			logger "starting rescue_service"
 			logger "in case you messed up or i messed up"
 			rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
-			rescue_mem_psi_limit=$(
-				$MODBIN/jq .rescue_mem_psi_limit $CONFIG
+			rescue_mem_limit=$(
+				$MODBIN/jq .rescue_mem_limit $CONFIG
+			)
+			rescue_cpu_limit=$(
+				$MODBIN/jq .rescue_cpu_limit $CONFIG
 			)
 
 			while true; do
@@ -398,6 +401,10 @@ while true; do
 				mem_psi=$(
 					sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
 						/proc/pressure/memory
+				)
+				cpu_psi=$(
+					sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
+						/proc/pressure/cpu
 				)
 				is_io_rescue=$(awk \
 					-v rescue_limit="${rescue_limit}" \
@@ -410,17 +417,27 @@ while true; do
         			}
         		}')
 				is_mem_rescue=$(awk \
-					-v rescue_mem_psi_limit="${rescue_mem_psi_limit}" \
+					-v rescue_mem_limit="${rescue_mem_limit}" \
 					-v mem_psi="${mem_psi}" \
 					'BEGIN {
-              if (mem_psi >= rescue_mem_psi_limit) {
+              if (mem_psi >= rescue_mem_limit) {
+        				print "true"
+        			} else {
+        				print "false"
+        			}
+        		}')
+				is_cpu_rescue=$(awk \
+					-v rescue_cpu_limit="${rescue_cpu_limit}" \
+					-v cpu_psi="${cpu_psi}" \
+					'BEGIN {
+              if (cpu_psi >= rescue_cpu_limit) {
         				print "true"
         			} else {
         				print "false"
         			}
         		}')
 
-				$is_mem_rescue || $is_io_rescue &&
+				$is_mem_rescue || $is_io_rescue || $is_cpu_rescue &&
 					[ -z $rescue ] && {
 					# calculate memory and swap free and or available
 					swap_free=$(
