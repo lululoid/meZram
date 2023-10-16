@@ -109,7 +109,7 @@ custom_props_apply() {
 			)
 		}
 
-		resetprop $prop $prop_value 2>&1 | logger &&
+		resetprop -n $prop $prop_value 2>&1 | logger &&
 			logger "$prop $prop_value applied"
 	done
 }
@@ -159,7 +159,7 @@ restore_props() {
 	# applying lmkd tweaks
 	grep -v '^ *#' <$MODDIR/system.prop |
 		while IFS= read -r prop; do
-			resetprop ${prop//=/ } 2>&1 | logger &&
+			resetprop -n ${prop//=/ } 2>&1 | logger &&
 				logger "prop ${prop//=/ } applied"
 		done
 
@@ -206,7 +206,7 @@ apply_aggressive_mode() {
 
 		# double quote because of true or false value
 		# shellcheck disable=SC2046
-		resetprop $key $(echo $value) 2>&1 | logger &&
+		resetprop -n $key $(echo $value) 2>&1 | logger &&
 			logger i "applying $key $value"
 	done
 

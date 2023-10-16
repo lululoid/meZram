@@ -171,7 +171,7 @@ ag_swapon() {
 
 swapoff_service() {
 	local limit_in_kb swaps swap_count usage swapoff_service_pid
-	limit_in_kb=61440
+	limit_in_kb=71680
 	# shellcheck disable=SC2005
 	swaps=$($MODBIN/jq -r \
 		'.agmode_per_app_configuration[].swap_path' \
