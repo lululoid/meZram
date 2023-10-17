@@ -226,9 +226,7 @@ swapoff_service() {
 		}
 		sleep 1
 	done &
-	swapoff_service_pid=$!
-	resetprop meZram.swapoff_service_pid \
-		$swapoff_service_pid
+	resetprop meZram.swapoff_service_pid $!
 }
 
 # logging service, keeping the log alive bcz system sometimes
@@ -360,6 +358,13 @@ while true; do
 				"rescue service killed because quick_restore"
 			resetprop --delete meZram.rescue_service.pid
 			swapoff_service
+		}
+
+		resetprop meZram.swapoff_service_pid &&
+			kill -9 $(resetprop meZram.swapoff_service_pid) 2>&1 |
+			logger && {
+			resetprop --delete meZram.swapoff_service_pid
+			logger "swapoff_service is killed"
 		}
 
 		ag_swapon
