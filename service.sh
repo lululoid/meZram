@@ -45,22 +45,24 @@ read_agmode_app() {
 
 	# check if current foreground app is in aggressive
 	# mode config
-	ag_app=$($BIN/fgrep -wo $fg_app $CONFIG)
-	[ $ag_app != android ]
+	ag_app=$(
+		$BIN/fgrep -wo $fg_app $CONFIG | $BIN/grep -v "^android$"
+	)
 }
 
 ag_swapon() {
 	# shellcheck disable=SC2016
 	swap_path=$(
-		$MODBIN/jq -r \
+		$MODBIN/jq \
 			--arg ag_app $ag_app \
 			'.agmode_per_app_configuration[] |
-    select(.packages[] == $ag_app) | .swap_path' $CONFIG
+      select(.packages[] == $ag_app) | .swap_path' $CONFIG |
+			$MODBIN/jq -r 'select(. != null)'
 	)
 	ag_swap=$swap_path
 
 	{
-		[ $swap_path != null ] &&
+		[ -z $swap_path ] &&
 			swapon $ag_swap 2>&1 | logger &&
 			logger "$ag_swap is turned on" &&
 			touch /data/tmp/meZram_ag_swapon
@@ -70,7 +72,8 @@ ag_swapon() {
 			$MODBIN/jq \
 				--arg ag_app $ag_app \
 				'.agmode_per_app_configuration[]
-        | select(.packages[] == $ag_app) | .swap' $CONFIG
+        | select(.packages[] == $ag_app) | .swap' $CONFIG |
+				$MODBIN/jq -r 'select(. != null)'
 		)
 
 		length=$(
@@ -90,8 +93,8 @@ ag_swapon() {
 		ag_swap="$LOGDIR/${index}_swap"
 	}
 
-	[ $swap_path = null ] || [ -z $swap_path ] && {
-		[ $swap_size != null ] && {
+	[ -z $swap_path ] && {
+		[ -n "$swap_size" ] && {
 			swapoff_pids=$(cat /data/tmp/swapoff_pids)
 			# shellcheck disable=SC2116
 			for pid in $(echo $swapoff_pids); do
@@ -113,9 +116,9 @@ ag_swapon() {
 
 			# shellcheck disable=SC2005
 			swap_list=$(
-				echo $($MODBIN/jq -r \
+				echo $($MODBIN/jq \
 					'.agmode_per_app_configuration[].swap_path' \
-					$CONFIG | grep -wv null)
+					$CONFIG | $MODBIN/jq -r 'select(. != null)')
 			)
 
 			meZram_tswap=0
@@ -161,8 +164,7 @@ ag_swapon() {
 				touch /data/tmp/meZram_ag_swapon
 		}
 
-		[ -z $swap_size ] || [ $swap_size = null ] &&
-			[ -f $ag_swap ] && {
+		[ -z $swap_size ] && [ -f $ag_swap ] && {
 			rm -f $ag_swap 2>&1 | logger &&
 				logger "$ag_swap deleted because of config"
 		}
@@ -170,12 +172,14 @@ ag_swapon() {
 }
 
 swapoff_service() {
-	local limit_in_kb swaps swap_count usage swapoff_service_pid
+	local limit_in_kb swaps swap_count usage
 	limit_in_kb=71680
 	# shellcheck disable=SC2005
-	swaps=$($MODBIN/jq -r \
-		'.agmode_per_app_configuration[].swap_path' \
-		$CONFIG | grep -wv null)
+	swaps=$(
+		$MODBIN/jq \
+			'.agmode_per_app_configuration[].swap_path' \
+			"$CONFIG" | $MODBIN/jq -r 'select(. != null)'
+	)
 	swap_count=$(echo "$swaps" | wc -l)
 	echo $swap_count >/data/tmp/swap_count
 	# shellcheck disable=SC2116
@@ -313,7 +317,7 @@ while true; do
 		lmkd_props_clean
 		[ $(resetprop ro.miui.ui.version.code) ] && {
 			rm_prop $tl &&
-				logger i \
+				logger \
 					"MIUI not support thrashing_limit customization"
 		}
 		custom_props_apply
@@ -345,7 +349,8 @@ while true; do
 				--arg ag_app $ag_app \
 				'.agmode_per_app_configuration[]
             | select(.packages[] == $ag_app)
-            | .quick_restore' $CONFIG
+            | .quick_restore' $CONFIG |
+				$MODBIN/jq -r 'select(. != null)'
 		)
 
 		# the logic is to make it only run once after
@@ -387,7 +392,7 @@ while true; do
 		echo $am >/data/tmp/meZram_am
 
 		[ -z $rescue_service_pid ] &&
-			[ $quick_restore = null ] && {
+			[ -z $quick_restore ] && {
 			logger "starting rescue_service"
 			logger "in case you messed up or i messed up"
 			rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
@@ -504,7 +509,7 @@ while true; do
 			# read quick_restore
 			# shellcheck disable=SC2016
 			quick_restore=$(
-				$MODBIN/jq \
+				$MODBIN/jq -r \
 					--arg am $am \
 					'.agmode_per_app_configuration[]
             | select(.packages[] == $am)
