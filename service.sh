@@ -56,13 +56,13 @@ ag_swapon() {
 		$MODBIN/jq \
 			--arg ag_app $ag_app \
 			'.agmode_per_app_configuration[] |
-      select(.packages[] == $ag_app) | .swap_path' $CONFIG |
+        select(.packages[] == $ag_app) | .swap_path' $CONFIG |
 			$MODBIN/jq -r 'select(. != null)'
 	)
 	ag_swap=$swap_path
 
 	{
-		[ -z $swap_path ] &&
+		[ -n "$swap_path" ] &&
 			swapon $ag_swap 2>&1 | logger &&
 			logger "$ag_swap is turned on" &&
 			touch /data/tmp/meZram_ag_swapon
@@ -230,7 +230,13 @@ swapoff_service() {
 		}
 		sleep 1
 	done &
-	resetprop meZram.swapoff_service_pid $!
+	resetprop -p meZram.swapoff_service_pid $!
+}
+
+# Extract values from /proc/pressure using sed
+read_pressure_value() {
+	local pressure_file="$1"
+	sed 's/some avg10=\([0-9.]*\).*/\1/;2d' $pressure_file
 }
 
 # logging service, keeping the log alive bcz system sometimes
@@ -249,14 +255,14 @@ while true; do
 			--file=$LOGDIR/lmkd.log &
 		# save the pid to variable and prop
 		lmkd_logger_pid=$!
-		resetprop meZram.lmkd_logger.pid $lmkd_logger_pid
+		resetprop -p meZram.lmkd_logger.pid $lmkd_logger_pid
 	}
 	meZram_logger_pid=$(/system/bin/ps -p $meZram_logger_pid \
 		2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
 	[ -z $meZram_logger_pid ] && {
 		$BIN/logcat -v time -s meZram --file=$LOGDIR/meZram.log &
 		meZram_logger_pid=$!
-		resetprop meZram.logger.pid $meZram_logger_pid
+		resetprop -p meZram.logger.pid $meZram_logger_pid
 	}
 
 	# limit log size to 10MB then restart the service
@@ -264,13 +270,13 @@ while true; do
 	[ $lmkd_log_size -ge 10485760 ] && {
 		kill -9 $lmkd_logger_pid
 		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
-		resetprop meZram.lmkd_logger.pid dead
+		resetprop -p meZram.lmkd_logger.pid dead
 	}
 
 	[ $meZram_log_size -ge 10485760 ] && {
 		kill -9 $meZram_logger_pid
 		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
-		resetprop meZram.logger.pid dead
+		resetprop -p meZram.logger.pid dead
 	}
 
 	logrotate $LOGDIR/*lmkd.log
@@ -279,7 +285,7 @@ while true; do
 done &
 
 # save the pid to a prop
-resetprop meZram.log_rotator.pid $!
+resetprop -p meZram.log_rotator.pid $!
 
 logger "NRDEVICES = $NRDEVICES"
 logger "totalmem = $totalmem"
@@ -355,7 +361,7 @@ while true; do
 
 		# the logic is to make it only run once after
 		# aggressive mode activated
-		[ $quick_restore = true ] && {
+		[ $quick_restore ] && {
 			resetprop meZram.rescue_service.pid &&
 				kill -9 \
 					$(resetprop meZram.rescue_service.pid) 2>&1 |
@@ -365,7 +371,8 @@ while true; do
 			swapoff_service
 		}
 
-		resetprop meZram.swapoff_service_pid &&
+		[ -z $quick_restore ] &&
+			resetprop meZram.swapoff_service_pid &&
 			kill -9 $(resetprop meZram.swapoff_service_pid) 2>&1 |
 			logger && {
 			resetprop --delete meZram.swapoff_service_pid
@@ -388,7 +395,6 @@ while true; do
 		)
 
 		# rescue service for critical thrashing
-		# calculate total memory + virtual memory
 		echo $am >/data/tmp/meZram_am
 
 		[ -z $rescue_service_pid ] &&
@@ -404,18 +410,9 @@ while true; do
 			)
 
 			while true; do
-				io_psi=$(
-					sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
-						/proc/pressure/io
-				)
-				mem_psi=$(
-					sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
-						/proc/pressure/memory
-				)
-				cpu_psi=$(
-					sed 's/some avg10=\([0-9.]*\).*/\1/;2d' \
-						/proc/pressure/cpu
-				)
+				io_psi=$(read_pressure_value /proc/pressure/io)
+				mem_psi=$(read_pressure_value /proc/pressure/memory)
+				cpu_psi=$(read_pressure_value /proc/pressure/cpu)
 				is_io_rescue=$(awk \
 					-v rescue_limit="${rescue_limit}" \
 					-v io_psi="${io_psi}" \
@@ -425,7 +422,7 @@ while true; do
         			} else {
         				print "false"
         			}
-        		}')
+        	}')
 				is_mem_rescue=$(awk \
 					-v rescue_mem_limit="${rescue_mem_limit}" \
 					-v mem_psi="${mem_psi}" \
@@ -435,7 +432,7 @@ while true; do
         			} else {
         				print "false"
         			}
-        		}')
+        	}')
 				is_cpu_rescue=$(awk \
 					-v rescue_cpu_limit="${rescue_cpu_limit}" \
 					-v cpu_psi="${cpu_psi}" \
@@ -445,7 +442,7 @@ while true; do
         			} else {
         				print "false"
         			}
-        		}')
+        	}')
 
 				$is_mem_rescue || $is_io_rescue || $is_cpu_rescue &&
 					[ -z $rescue ] && {
