@@ -8,6 +8,7 @@ export YELLOW_BAD='\033[33m'
 export RESET='\033[0m'
 export YELLOW='\033[93m'
 BIN=/system/bin
+default_optimized_list=$LOGDIR/default_optimized.txt
 
 # why I create this function?
 is_number() {
@@ -143,11 +144,11 @@ restore_battery_opt() {
 	)
 
 	# save the list to /data/adb/meZram
-	while IFS= read -r pkg; do
+	# shellcheck disable=SC2013
+	for pkg in $(cat $default_optimized_list); do
 		packages_list=$(echo "$packages_list" | grep -wv $pkg)
-	done <$default_optimized_list
+	done
 
-	logger "removing app from battery_optimized exclusion"
 	for pkg in $packages_list; do
 		dumpsys deviceidle whitelist -$pkg 2>&1 | logger
 	done
@@ -210,20 +211,20 @@ apply_aggressive_mode() {
 			logger i "applying $key $value"
 	done
 
-	default_optimized_list=$LOGDIR/default_optimized.txt
 	# shellcheck disable=SC3010,SC2154
 	$battery_optimized && [ -n "$battery_optimized" ] &&
-		[ -z $default_opt_set ] &&
+		[ -z $default_opt_set ] && {
 		# /data/tmp/meZram_skip_swap also mean quick_restore.
 		# should not initiate exclude battery optimization
 		# if high demand ag_app in running
-		[ ! -f /data/tmp/meZram_skip_swap ] && {
-		dumpsys deviceidle whitelist |
-			sed 's/^[^,]*,//;s/,[^,]*$//' >$default_optimized_list
-		default_opt_set=1
+		! $MODBIN/ps -p $no_whitelisting && {
+			dumpsys deviceidle whitelist |
+				sed 's/^[^,]*,//;s/,[^,]*$//' >$default_optimized_list
+			default_opt_set=1
 
-		dumpsys deviceidle whitelist +$ag_app 2>&1 | logger &&
-			logger "$ag_app is excluded from battery_optimized"
+			dumpsys deviceidle whitelist +$ag_app 2>&1 | logger &&
+				logger "$ag_app is excluded from battery_optimized"
+		}
 	}
 	$BIN/lmkd --reinit
 }

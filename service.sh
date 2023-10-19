@@ -369,6 +369,15 @@ while true; do
 				"rescue service killed because quick_restore"
 			resetprop --delete meZram.rescue_service.pid
 			swapoff_service
+
+			! $MODBIN/ps -p $no_whitelisting && {
+				while pidof $ag_app; do
+					sleep 1
+				done &
+
+				no_whitelisting=$!
+				logger "no_whitelisting pid is $no_whitelisting"
+			}
 		}
 
 		[ -z $quick_restore ] &&
@@ -485,8 +494,8 @@ while true; do
 		# and persist_service is not running
 		# then restore states and variables
 		! read_agmode_app && {
-			persist_ps=$($BIN/ps -p $persist_pid | sed 1d)
-			[ $restoration -eq 1 ] && [ -z $persist_ps ] && {
+			[ $restoration -eq 1 ] &&
+				! $MODBIN/ps -p $persist_pid && {
 				restore_props
 				restore_battery_opt &&
 					logger i "aggressive mode deactivated"
