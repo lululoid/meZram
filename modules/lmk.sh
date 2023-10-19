@@ -189,7 +189,7 @@ apply_aggressive_mode() {
 			'.agmode_per_app_configuration[]
           | select(.packages[] == $ag_app)
           | .battery_optimized' \
-			$CONFIG
+			$CONFIG | $MODBIN/jq 'select(. != null)'
 	)
 
 	lmkd_props_clean
@@ -208,23 +208,24 @@ apply_aggressive_mode() {
 		# double quote because of true or false value
 		# shellcheck disable=SC2046
 		resetprop -p $key $(echo $value) 2>&1 | logger &&
-			logger i "applying $key $value"
+			logger "applying $key $value"
 	done
 
 	# shellcheck disable=SC3010,SC2154
-	$battery_optimized && [ -n "$battery_optimized" ] &&
-		[ -z $default_opt_set ] && {
-		# /data/tmp/meZram_skip_swap also mean quick_restore.
+	[ $battery_optimized ] &&
 		# should not initiate exclude battery optimization
-		# if high demand ag_app in running
+		# if high demand ag_app in running or in other words
+		# no white listing
 		! $MODBIN/ps -p $no_whitelisting && {
+		[ -z $default_opt_set ] && {
 			dumpsys deviceidle whitelist |
-				sed 's/^[^,]*,//;s/,[^,]*$//' >$default_optimized_list
+				sed 's/^[^,]*,//;s/,[^,]*$//' \
+					>$default_optimized_list
 			default_opt_set=1
-
-			dumpsys deviceidle whitelist +$ag_app 2>&1 | logger &&
-				logger "$ag_app is excluded from battery_optimized"
 		}
+
+		dumpsys deviceidle whitelist +$ag_app 2>&1 | logger &&
+			logger "$ag_app is excluded from battery_optimized"
 	}
 	$BIN/lmkd --reinit
 }
