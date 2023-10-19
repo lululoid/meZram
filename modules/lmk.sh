@@ -158,11 +158,11 @@ restore_battery_opt() {
 
 restore_props() {
 	# applying lmkd tweaks
-	grep -v '^ *#' <$MODDIR/system.prop |
-		while IFS= read -r prop; do
-			resetprop -p ${prop//=/ } 2>&1 | logger &&
-				logger "prop ${prop//=/ } applied"
-		done
+	# shellcheck disable=SC2013
+	for prop in $(cat $MODDIR/system.prop); do
+		resetprop -p ${prop//=/ } 2>&1 | logger &&
+			logger "prop ${prop//=/ } applied"
+	done
 
 	lmkd_props_clean
 	custom_props_apply && $BIN/lmkd --reinit &&
