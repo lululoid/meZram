@@ -373,10 +373,12 @@ while true; do
 			! $MODBIN/ps -p $no_whitelisting && {
 				while pidof $ag_app; do
 					sleep 1
-				done &
+				done && resetprop -d meZram.no_whitelisting.pid &
 
 				no_whitelisting=$!
-				logger "no_whitelisting pid is $no_whitelisting"
+				logger "no_whitelisting because quick_restore"
+				resetprop -p meZram.no_whitelisting.pid \
+					$no_whitelisting
 			}
 		}
 
@@ -384,7 +386,7 @@ while true; do
 			resetprop meZram.swapoff_service_pid &&
 			kill -9 $(resetprop meZram.swapoff_service_pid) 2>&1 |
 			logger && {
-			resetprop --delete meZram.swapoff_service_pid
+			resetprop -d meZram.swapoff_service_pid
 			logger "swapoff_service is killed"
 		}
 
