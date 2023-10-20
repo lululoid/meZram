@@ -236,7 +236,7 @@ swapoff_service() {
 # Extract values from /proc/pressure using sed
 read_pressure_value() {
 	local pressure_file="$1"
-	sed 's/some avg10=\([0-9.]*\).*/\1/;2d' $pressure_file
+	sed 's/some avg10=\([0-9]*\).*/\1/;2d' $pressure_file
 }
 
 # logging service, keeping the log alive bcz system sometimes
@@ -424,46 +424,14 @@ while true; do
 				io_psi=$(read_pressure_value /proc/pressure/io)
 				mem_psi=$(read_pressure_value /proc/pressure/memory)
 				cpu_psi=$(read_pressure_value /proc/pressure/cpu)
-				is_io_rescue=$(awk \
-					-v rescue_limit="${rescue_limit}" \
-					-v io_psi="${io_psi}" \
-					'BEGIN {
-              if (io_psi >= rescue_limit) {
-        				print "true"
-        			} else {
-        				print "false"
-        			}
-        	}')
-				is_mem_rescue=$(awk \
-					-v rescue_mem_limit="${rescue_mem_limit}" \
-					-v mem_psi="${mem_psi}" \
-					'BEGIN {
-              if (mem_psi >= rescue_mem_limit) {
-        				print "true"
-        			} else {
-        				print "false"
-        			}
-        	}')
-				is_cpu_rescue=$(awk \
-					-v rescue_cpu_limit="${rescue_cpu_limit}" \
-					-v cpu_psi="${cpu_psi}" \
-					'BEGIN {
-              if (cpu_psi >= rescue_cpu_limit) {
-        				print "true"
-        			} else {
-        				print "false"
-        			}
-        	}')
 
-				$is_mem_rescue || $is_io_rescue || $is_cpu_rescue &&
+				[ $mem_psi -gt $rescue_mem_limit ] ||
+					[ $io_psi -gt $rescue_limit ] ||
+					[ $cpu_psi -gt $rescue_cpu_limit ] &&
 					[ -z $rescue ] && {
 					# calculate memory and swap free and or available
-					swap_free=$(
-						free | $BIN/fgrep Swap | awk '{print $4}'
-					)
-					mem_available=$(
-						free | $BIN/fgrep Mem | awk '{print $7}'
-					)
+					swap_free=$(free | awk '/Swap:/ {print $4}')
+					mem_available=$(free | awk '/Mem:/ {print $7}')
 					totalmem_vir_avl=$(((\
 						swap_free + mem_available) / 1024))
 					logger w \
@@ -476,7 +444,8 @@ while true; do
 					restore_props && rescue=1
 				}
 
-				! $is_io_rescue && ! $is_mem_rescue &&
+				[ $io_psi -lt $rescue_limit ] &&
+					[ $mem_psi -lt $rescue_mem_limit ] &&
 					[ -n "$rescue" ] && {
 					meZram_am=$(cat /data/tmp/meZram_am)
 					apply_aggressive_mode $meZram_am &&
