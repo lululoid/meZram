@@ -190,7 +190,8 @@ swapoff_service() {
 		# shellcheck disable=SC2116
 		for swap in $(echo $swaps); do
 			usage=$(
-				grep $swap /proc/swaps | awk '{print $4}'
+				awk -v swap="$swap" \
+					'$1 == swap {print $4}' /proc/swaps
 			)
 
 			! $BIN/fgrep -q "$swap" /data/tmp/swapping_off && {
@@ -221,7 +222,7 @@ swapoff_service() {
 		done
 
 		[ $(cat /data/tmp/swap_count) -le 0 ] && {
-			resetprop --delete meZram.swapoff_service_pid
+			resetprop -d meZram.swapoff_service_pid
 			logger "killing swapoff service"
 			rm /data/tmp/meZram_ag_swapon
 			echo "" >/data/tmp/swapping_off
@@ -242,24 +243,20 @@ read_pressure_value() {
 # logging service, keeping the log alive bcz system sometimes
 # kill them for unknown reason
 while true; do
-	lmkd_log_size=$(wc -c <$LOGDIR/lmkd.log | awk '{print $1}')
-	meZram_log_size=$(wc -c <$LOGDIR/meZram.log |
-		awk '{print $1}')
+	lmkd_log_size=$(stat -c %s $LOGDIR/lmkd.log)
+	meZram_log_size=$(stat -c %s $LOGDIR/meZram.log)
 	today_date=$(date +%R-%a-%d-%m-%Y)
 
 	# check for loggers pid, if it's don't exist start one
-	lmkd_logger_pid=$(/system/bin/ps -p $lmkd_logger_pid \
-		2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
-	[ -z $lmkd_logger_pid ] && {
+	! kill -0 $lmkd_logger_pid && {
 		$BIN/logcat -v time --pid $lmkd_pid \
 			--file=$LOGDIR/lmkd.log &
 		# save the pid to variable and prop
 		lmkd_logger_pid=$!
 		resetprop -p meZram.lmkd_logger.pid $lmkd_logger_pid
 	}
-	meZram_logger_pid=$(/system/bin/ps -p $meZram_logger_pid \
-		2>/dev/null | sed '1d' | tail -n 1 | awk '{print $2}')
-	[ -z $meZram_logger_pid ] && {
+
+	! kill -0 $meZram_logger_pid && {
 		$BIN/logcat -v time -s meZram --file=$LOGDIR/meZram.log &
 		meZram_logger_pid=$!
 		resetprop -p meZram.logger.pid $meZram_logger_pid
@@ -367,10 +364,10 @@ while true; do
 					$(resetprop meZram.rescue_service.pid) 2>&1 |
 				logger && logger \
 				"rescue service killed because quick_restore"
-			resetprop --delete meZram.rescue_service.pid
+			resetprop -d meZram.rescue_service.pid
 			swapoff_service
 
-			! $MODBIN/ps -p $no_whitelisting && {
+			! kill -0 $no_whitelisting && {
 				while pidof $ag_app; do
 					sleep 1
 				done && resetprop -d meZram.no_whitelisting.pid &
@@ -425,9 +422,9 @@ while true; do
 				mem_psi=$(read_pressure_value /proc/pressure/memory)
 				cpu_psi=$(read_pressure_value /proc/pressure/cpu)
 
-				[ $mem_psi -gt $rescue_mem_limit ] ||
-					[ $io_psi -gt $rescue_limit ] ||
-					[ $cpu_psi -gt $rescue_cpu_limit ] &&
+				[ $mem_psi -ge $rescue_mem_limit ] ||
+					[ $io_psi -ge $rescue_limit ] ||
+					[ $cpu_psi -ge $rescue_cpu_limit ] &&
 					[ -z $rescue ] && {
 					# calculate memory and swap free and or available
 					swap_free=$(free | awk '/Swap:/ {print $4}')
@@ -466,7 +463,7 @@ while true; do
 		# then restore states and variables
 		! read_agmode_app && {
 			[ $restoration -eq 1 ] &&
-				! $MODBIN/ps -p $persist_pid && {
+				! kill -0 $persist_pid && {
 				restore_props
 				restore_battery_opt &&
 					logger i "aggressive mode deactivated"
@@ -480,7 +477,7 @@ while true; do
 
 				kill -9 $(resetprop meZram.rescue_service.pid) |
 					logger && logger "rescue_service dead"
-				resetprop --delete meZram.rescue_service.pid
+				resetprop -d meZram.rescue_service.pid
 			}
 
 			# read quick_restore

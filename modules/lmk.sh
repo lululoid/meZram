@@ -140,16 +140,11 @@ restore_battery_opt() {
 	packages_list=$(
 		$MODBIN/jq -r \
 			'.agmode_per_app_configuration[].packages[]' \
-			$CONFIG
+			$CONFIG | grep -wv "$default_optimized_list"
 	)
 
-	# save the list to /data/adb/meZram
-	# shellcheck disable=SC2013
-	for pkg in $(cat $default_optimized_list); do
-		packages_list=$(echo "$packages_list" | grep -wv $pkg)
-	done
-
-	for pkg in $packages_list; do
+	# shellcheck disable=SC2116
+	for pkg in $(echo $packages_list); do
 		dumpsys deviceidle whitelist -$pkg 2>&1 | logger
 	done
 
@@ -216,7 +211,7 @@ apply_aggressive_mode() {
 		# should not initiate exclude battery optimization
 		# if high demand ag_app in running or in other words
 		# no white listing
-		! $MODBIN/ps -p $no_whitelisting && {
+		! kill -0 $no_whitelisting && {
 		[ -z $default_opt_set ] && {
 			dumpsys deviceidle whitelist |
 				sed 's/^[^,]*,//;s/,[^,]*$//' \
