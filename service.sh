@@ -231,7 +231,7 @@ swapoff_service() {
 		}
 		sleep 1
 	done &
-	resetprop -p meZram.swapoff_service_pid $!
+	resetprop -n -p meZram.swapoff_service_pid $!
 }
 
 # Extract values from /proc/pressure using sed
@@ -253,13 +253,13 @@ while true; do
 			--file=$LOGDIR/lmkd.log &
 		# save the pid to variable and prop
 		lmkd_logger_pid=$!
-		resetprop -p meZram.lmkd_logger.pid $lmkd_logger_pid
+		resetprop -n -p meZram.lmkd_logger.pid $lmkd_logger_pid
 	}
 
 	! kill -0 $meZram_logger_pid && {
 		$BIN/logcat -v time -s meZram --file=$LOGDIR/meZram.log &
 		meZram_logger_pid=$!
-		resetprop -p meZram.logger.pid $meZram_logger_pid
+		resetprop -n -p meZram.logger.pid $meZram_logger_pid
 	}
 
 	# limit log size to 10MB then restart the service
@@ -267,13 +267,13 @@ while true; do
 	[ $lmkd_log_size -ge 10485760 ] && {
 		kill -9 $lmkd_logger_pid
 		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
-		resetprop -p meZram.lmkd_logger.pid dead
+		resetprop -n -p meZram.lmkd_logger.pid dead
 	}
 
 	[ $meZram_log_size -ge 10485760 ] && {
 		kill -9 $meZram_logger_pid
 		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
-		resetprop -p meZram.logger.pid dead
+		resetprop -n -p meZram.logger.pid dead
 	}
 
 	logrotate $LOGDIR/*lmkd.log
@@ -282,7 +282,7 @@ while true; do
 done &
 
 # save the pid to a prop
-resetprop -p meZram.log_rotator.pid $!
+resetprop -n -p meZram.log_rotator.pid $!
 
 logger "NRDEVICES = $NRDEVICES"
 logger "totalmem = $totalmem"
@@ -374,7 +374,7 @@ while true; do
 
 				no_whitelisting=$!
 				logger "no_whitelisting because quick_restore"
-				resetprop -p meZram.no_whitelisting.pid \
+				resetprop -n -p meZram.no_whitelisting.pid \
 					$no_whitelisting
 			}
 		}
@@ -466,7 +466,7 @@ while true; do
 				! kill -0 $persist_pid && {
 				restore_props
 				restore_battery_opt &&
-					logger i "aggressive mode deactivated"
+					logger "aggressive mode deactivated"
 				logger "am = $am"
 				unset am restoration persist_pid
 				rm /data/tmp/swapoff_pids
@@ -509,7 +509,6 @@ while true; do
 	}
 	# after optimizing the code i reduce sleep from 6 to 1 and
 	# still don't know why it's has performance issue last time
-	# big idiot big smile :) big brain
 	sleep 1
 done &
 

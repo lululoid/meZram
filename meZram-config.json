@@ -1,9 +1,9 @@
 {
-  "config_version": 3.1,
+  "config_version": 3.2,
   "custom_props": {},
-  "rescue_limit": 30,
-  "rescue_mem_limit": 28,
-  "rescue_cpu_limit": 77,
+  "rescue_limit": 29,
+  "rescue_mem_limit": 29,
+  "rescue_cpu_limit": 36,
   "agmode_per_app_configuration": [
     {
       "packages": [
@@ -119,24 +119,23 @@
     },
     {
       "packages": [
-        "id.dana",
         "com.gojek.gopay",
-        "com.gojek.app",
-        "com.bnc.finance",
-        "com.shopee.mitra.id",
-        "dkapp.jue.vkn",
-        "dkapp.pha.jpr",
-        "dkapp.ike.wmz",
-        "dkapp.fks.rft",
-        "dkapp.pkh.tan",
-        "dkapp.xav.uzu",
-        "dkapp.aee.kyb",
-        "com.tokopedia.kelontongapp",
-        "dkapp.tdx.jqn",
-        "app.revanced.manager.flutter",
-        "dkapp.nss.ffv",
-        "com.finaccel.android",
-        "dkapp.ojh.xni"
+        "id.dana",
+        "com.brimo",
+        "com.jago.digitalBanking",
+        "com.bca.mbanking",
+        "com.cimbniaga.mobile",
+        "com.bni.mbn",
+        "com.bri.mobile",
+        "com.panin.mobile",
+        "com.jenius.jenius",
+        "com.mandirifiesta",
+        "com.mandiriku",
+        "com.ovo.id",
+        "com.linkaja",
+        "com.shopeepay",
+        "com.akulaku",
+        "com.i2i.cekresi"
       ],
       "props": {
         "ro.lmk.use_psi": false,
