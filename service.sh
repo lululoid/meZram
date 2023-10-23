@@ -95,9 +95,9 @@ ag_swapon() {
 
 	[ -z $swap_path ] && {
 		[ -n "$swap_size" ] && {
-			swapoff_pids=$(cat /data/tmp/swapoff_pids)
-			# shellcheck disable=SC2116
-			for pid in $(echo $swapoff_pids); do
+			swapoff_pids=/data/tmp/swapoff_pids
+			# shellcheck disable=SC2116,SC2013
+			for pid in $(cat $swapoff_pids); do
 				kill -9 $pid 2>&1 | logger &&
 					logger "swapoff_pid $pid killed"
 			done
@@ -438,7 +438,9 @@ while true; do
 
 					pressures=$(head /proc/pressure/*)
 					logger "$pressures"
-					restore_props && rescue=1
+					restore_props
+					restore_battery_opt
+					rescue=1
 				}
 
 				[ $io_psi -lt $rescue_limit ] &&
