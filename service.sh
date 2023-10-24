@@ -469,7 +469,9 @@ while true; do
 						pidof $app && {
 						agp_alive=1
 						[ -z $agp_log ] && {
-							logger "am apps = $(cat /data/tmp/am_apps)"
+							# shellcheck disable=SC2005
+							logger \
+								"am apps = $(echo $(cat /data/tmp/am_apps))"
 							logger "wait for all am apps closed"
 							agp_log=1
 						}
