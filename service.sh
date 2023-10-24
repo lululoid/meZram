@@ -336,6 +336,7 @@ logger "jq_version = $($MODBIN/jq --version)"
 restore_battery_opt
 rm /data/tmp/swapoff_pids
 echo "" >/data/tmp/swapping_off
+echo "" >/data/tmp/am_apps
 
 # aggressive mode service starts here
 while true; do
@@ -394,7 +395,7 @@ while true; do
 		# restart persist_service and some variables
 		# if new am app is opened
 		kill -9 $persist_pid && logger "persist reset"
-		unset restoration persist_pid
+		unset restoration persist_pid agp_log
 
 		# set current am app
 		am=$ag_app
@@ -464,22 +465,38 @@ while true; do
 		# and persist_service is not running
 		# then restore states and variables
 		! read_agmode_app && {
-			[ $restoration -eq 1 ] &&
-				! kill -0 $persist_pid && {
-				restore_props
-				restore_battery_opt &&
-					logger "aggressive mode deactivated"
-				logger "am = $am"
-				unset am restoration persist_pid
-				rm /data/tmp/swapoff_pids
+			[ $restoration -eq 1 ] && {
+				# shellcheck disable=SC2013
+				for app in $(cat /data/tmp/am_apps); do
+					[ -z $agp_alive ] &&
+						pidof $app && {
+						agp_alive=1
+						[ -z $agp_log ] && {
+							logger "wait for all am apps closed"
+							agp_log=1
+						}
+					}
+				done
 
-				[ -f /data/tmp/meZram_ag_swapon ] && {
-					swapoff_service
-				}
+				{
+					[ -z $agp_alive ] && ! kill -0 $persist_pid && {
+						restore_props
+						restore_battery_opt &&
+							logger "aggressive mode deactivated"
+						logger "am = $am"
+						unset am restoration persist_pid
+						rm /data/tmp/swapoff_pids
 
-				kill -9 $(resetprop meZram.rescue_service.pid) |
-					logger && logger "rescue_service dead"
-				resetprop -d meZram.rescue_service.pid
+						[ -f /data/tmp/meZram_ag_swapon ] && {
+							swapoff_service
+						}
+
+						kill -9 $(resetprop meZram.rescue_service.pid) |
+							logger && logger "rescue_service dead"
+						resetprop -d meZram.rescue_service.pid
+						echo "" >/data/tmp/am_apps
+					}
+				} || unset agp_alive
 			}
 
 			# read quick_restore
@@ -505,6 +522,7 @@ while true; do
 				done &
 				# restore if persist_service is done
 				persist_pid=$!
+				echo $am >>/data/tmp/am_apps
 			}
 			restoration=1
 		}
