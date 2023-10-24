@@ -392,10 +392,8 @@ while true; do
 		# swap should be turned on first to accomodate lmkd
 		apply_aggressive_mode $ag_app &&
 			logger "aggressive mode activated for $ag_app"
-		# restart persist_service and some variables
-		# if new am app is opened
-		kill -9 $persist_pid && logger "persist reset"
-		unset restoration persist_pid agp_log
+		# reset variables if new am app is opened
+		unset restoration agp_log
 
 		# set current am app
 		am=$ag_app
@@ -462,7 +460,6 @@ while true; do
 	# check if am is activated
 	[ -n "$am" ] && {
 		# if theres no am app curently open or in foreground
-		# and persist_service is not running
 		# then restore states and variables
 		! read_agmode_app && {
 			[ $restoration -eq 1 ] && {
@@ -472,6 +469,7 @@ while true; do
 						pidof $app && {
 						agp_alive=1
 						[ -z $agp_log ] && {
+							logger "am apps = $(cat /data/tmp/am_apps)"
 							logger "wait for all am apps closed"
 							agp_log=1
 						}
@@ -479,12 +477,12 @@ while true; do
 				done
 
 				{
-					[ -z $agp_alive ] && ! kill -0 $persist_pid && {
+					[ -z $agp_alive ] && {
 						restore_props
 						restore_battery_opt &&
 							logger "aggressive mode deactivated"
 						logger "am = $am"
-						unset am restoration persist_pid
+						unset am restoration
 						rm /data/tmp/swapoff_pids
 
 						[ -f /data/tmp/meZram_ag_swapon ] && {
@@ -511,18 +509,9 @@ while true; do
 
 			# the logic is to make it only run once after
 			# aggressive mode activated
-			[ $quick_restore = null ] &&
-				[ -z $persist_pid ] && {
-				logger \
-					"wait $am to close before exiting aggressive mode"
-				# never use variable for a subshell, i got really
-				# annoying trouble because i forgot of this fact
-				while pidof $am; do
-					sleep 1
-				done &
-				# restore if persist_service is done
-				persist_pid=$!
-				echo $am >>/data/tmp/am_apps
+			[ $quick_restore = null ] && {
+				! $BIN/fgrep $am /data/tmp/am_apps &&
+					echo $am >>/data/tmp/am_apps
 			}
 			restoration=1
 		}
