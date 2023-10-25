@@ -381,11 +381,12 @@ while true; do
 		}
 
 		[ -z $quick_restore ] &&
-			resetprop meZram.swapoff_service_pid &&
+			resetprop meZram.swapoff_service_pid && {
 			kill -9 $(resetprop meZram.swapoff_service_pid) 2>&1 |
-			logger && {
-			resetprop -d meZram.swapoff_service_pid
-			logger "swapoff_service is killed"
+				logger && {
+				resetprop -d meZram.swapoff_service_pid
+				logger "swapoff_service is killed"
+			}
 		}
 
 		ag_swapon

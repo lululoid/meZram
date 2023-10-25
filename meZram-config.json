@@ -1,9 +1,9 @@
 {
   "config_version": 3.2,
   "custom_props": {},
-  "rescue_limit": 29,
+  "rescue_limit": 28,
   "rescue_mem_limit": 29,
-  "rescue_cpu_limit": 36,
+  "rescue_cpu_limit": 35,
   "agmode_per_app_configuration": [
     {
       "packages": [
@@ -83,7 +83,8 @@
         "com.vivaldi.browser",
         "com.dolphin.browser.mini",
         "com.miui.browser",
-        "com.sogou.mobile.explorer"
+        "com.sogou.mobile.explorer",
+        "org.mozilla.focus"
       ],
       "props": {
         "ro.lmk.use_psi": false,

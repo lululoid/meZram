@@ -259,9 +259,9 @@ config_update() {
 				cp -f $MODPATH/meZram-config.json $CONFIG
 				ui_print "  Sorry but config is reset"
 				ui_print "  Your old config is ${_CONFIG}_$today_date.bcp"
-        ui_print "  Config for various games is already set"
-        ui_print "  Mobile Legends, Ace Racer, Terraria, Minecraft, etc."
-        ui_print "  Please check config for more details"
+				ui_print "  Config for various games is already set"
+				ui_print "  Mobile Legends, Ace Racer, Terraria, Minecraft, etc."
+				ui_print "  Please check config for more details"
 				sleep 1
 			}
 
@@ -269,6 +269,7 @@ config_update() {
 				'del(.config_version)
         | del(.rescue_limit)
         | del(.rescue_mem_psi_limit)
+        | del(.rescue_cpu_psi_limit)
         | del(.agmode)' "$CONFIG" |
 				/system/bin/awk \
 					'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
