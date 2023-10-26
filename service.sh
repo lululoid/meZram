@@ -61,12 +61,21 @@ ag_swapon() {
 	)
 	ag_swap=$swap_path
 
-	{
-		[ -n "$swap_path" ] &&
-			swapon $ag_swap 2>&1 | logger &&
+	[ -n "$swap_path" ] && {
+		swapon $ag_swap 2>&1 | logger &&
 			logger "$ag_swap is turned on" &&
 			touch /data/tmp/meZram_ag_swapon
-	} || {
+
+		swapoff_pids=/data/tmp/swapoff_pids
+		# shellcheck disable=SC2116,SC2013
+		for pid in $(cat $swapoff_pids); do
+			kill -15 $pid 2>&1 | logger &&
+				logger "swapoff_pid $pid killed"
+		done
+		echo "" >/data/tmp/swapoff_pids
+	}
+
+	[ -z $swap_path ] && {
 		# shellcheck disable=SC2016
 		swap_size=$(
 			$MODBIN/jq \
@@ -91,18 +100,8 @@ ag_swapon() {
 			}
 		done
 		ag_swap="$LOGDIR/${index}_swap"
-	}
 
-	[ -z $swap_path ] && {
 		[ -n "$swap_size" ] && {
-			swapoff_pids=/data/tmp/swapoff_pids
-			# shellcheck disable=SC2116,SC2013
-			for pid in $(cat $swapoff_pids); do
-				kill -9 $pid 2>&1 | logger &&
-					logger "swapoff_pid $pid killed"
-			done
-			rm /data/tmp/swapoff_pids
-
 			[ -f $ag_swap ] && {
 				ag_swap_size=$(($(wc -c $ag_swap |
 					awk '{print $1}') / 1024 / 1024))
@@ -334,7 +333,7 @@ done
 logger "jq_version = $($MODBIN/jq --version)"
 # reset states and variables to default
 restore_battery_opt
-rm /data/tmp/swapoff_pids
+echo "" >/data/tmp/swapoff_pids
 echo "" >/data/tmp/swapping_off
 echo "" >/data/tmp/am_apps
 
@@ -486,7 +485,7 @@ while true; do
 							logger "aggressive mode deactivated"
 						logger "am = $am"
 						unset am restoration
-						rm /data/tmp/swapoff_pids
+						echo "" >/data/tmp/swapoff_pids
 
 						[ -f /data/tmp/meZram_ag_swapon ] && {
 							swapoff_service
