@@ -137,14 +137,17 @@ lmkd_props_clean() {
 # restore default battery optimization setting
 restore_battery_opt() {
 	local packages_list
-	packages_list=$(
-		$MODBIN/jq -r \
-			'.agmode_per_app_configuration[].packages[]' \
-			$CONFIG | grep -wv "$default_optimized_list"
-	)
+	$MODBIN/jq -r \
+		'.agmode_per_app_configuration[].packages[]' $CONFIG \
+		>/data/tmp/meZram_packages_list
 
-	# shellcheck disable=SC2116
-	for pkg in $(echo $packages_list); do
+	# shellcheck disable=SC2013
+	for app in $(cat $default_optimized_list); do
+		grep -wv $app /data/tmp/meZram_packages_list
+	done
+
+	# shellcheck disable=SC2013
+	for pkg in $(cat /data/tmp/meZram_packages_list); do
 		dumpsys deviceidle whitelist -$pkg 2>&1 | logger
 	done
 
