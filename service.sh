@@ -101,7 +101,7 @@ ag_swapon() {
 				kill -9 $pid 2>&1 | logger &&
 					logger "swapoff_pid $pid killed"
 			done
-			rm /data/tmp/swapoff_pids
+			echo "" >/data/tmp/swapoff_pids
 
 			[ -f $ag_swap ] && {
 				ag_swap_size=$(($(wc -c $ag_swap |
@@ -334,7 +334,7 @@ done
 logger "jq_version = $($MODBIN/jq --version)"
 # reset states and variables to default
 restore_battery_opt
-rm /data/tmp/swapoff_pids
+echo "" >/data/tmp/swapoff_pids
 echo "" >/data/tmp/swapping_off
 echo "" >/data/tmp/am_apps
 
@@ -353,18 +353,14 @@ while true; do
 				--arg ag_app $ag_app \
 				'.agmode_per_app_configuration[]
             | select(.packages[] == $ag_app)
-            | .quick_restore' $CONFIG |
-				$MODBIN/jq -r 'select(. != null)'
+            | .quick_restore' $CONFIG
 		)
 
 		# the logic is to make it only run once after
 		# aggressive mode activated
-		[ $quick_restore ] && {
+		[ $quick_restore = true ] && {
 			restore_battery_opt
-			resetprop meZram.rescue_service.pid &&
-				kill -9 \
-					$(resetprop meZram.rescue_service.pid) 2>&1 |
-				logger && logger \
+			kill -9 $rescue_service_pid 2>&1 | logger && logger \
 				"rescue service killed because quick_restore"
 			resetprop -d meZram.rescue_service.pid
 			swapoff_service
@@ -381,13 +377,16 @@ while true; do
 			}
 		}
 
-		[ -z $quick_restore ] &&
+		[ $quick_restore = null ] && {
 			resetprop meZram.swapoff_service_pid && {
-			kill -9 $(resetprop meZram.swapoff_service_pid) 2>&1 |
-				logger && {
-				resetprop -d meZram.swapoff_service_pid
-				logger "swapoff_service is killed"
+				kill -9 $(resetprop meZram.swapoff_service_pid) 2>&1 |
+					logger && {
+					resetprop -d meZram.swapoff_service_pid
+					logger "swapoff_service is killed"
+				}
 			}
+			! $BIN/fgrep $ag_app /data/tmp/am_apps &&
+				echo $ag_app >>/data/tmp/am_apps
 		}
 
 		ag_swapon
@@ -399,15 +398,12 @@ while true; do
 
 		# set current am app
 		am=$ag_app
-		rescue_service_pid=$(
-			resetprop meZram.rescue_service.pid
-		)
 
 		# rescue service for critical thrashing
 		echo $am >/data/tmp/meZram_am
 
-		[ -z $rescue_service_pid ] &&
-			[ -z $quick_restore ] && {
+		! resetprop meZram.rescue_service.pid &&
+			[ $quick_restore = null ] && {
 			logger "starting rescue_service"
 			logger "in case you messed up or i messed up"
 			rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
@@ -444,8 +440,8 @@ while true; do
 					rescue=1
 				}
 
-				[ $io_psi -lt $rescue_limit ] &&
-					[ $mem_psi -lt $rescue_mem_limit ] &&
+				[ $io_psi -lt $((rescue_limit - 1)) ] &&
+					[ $mem_psi -lt $((rescue_mem_limit - 1)) ] &&
 					[ -n "$rescue" ] && {
 					meZram_am=$(cat /data/tmp/meZram_am)
 					apply_aggressive_mode $meZram_am &&
@@ -455,7 +451,8 @@ while true; do
 				}
 				sleep 1
 			done &
-			resetprop meZram.rescue_service.pid $!
+			rescue_service_pid=$!
+			resetprop meZram.rescue_service.pid $rescue_service_pid
 		}
 	}
 
@@ -487,7 +484,7 @@ while true; do
 							logger "aggressive mode deactivated"
 						logger "am = $am"
 						unset am restoration
-						rm /data/tmp/swapoff_pids
+						echo "" >/data/tmp/swapoff_pids
 
 						[ -f /data/tmp/meZram_ag_swapon ] && {
 							swapoff_service
@@ -499,23 +496,6 @@ while true; do
 						echo "" >/data/tmp/am_apps
 					}
 				} || unset agp_alive
-			}
-
-			# read quick_restore
-			# shellcheck disable=SC2016
-			quick_restore=$(
-				$MODBIN/jq -r \
-					--arg am $am \
-					'.agmode_per_app_configuration[]
-            | select(.packages[] == $am)
-            | .quick_restore' $CONFIG
-			)
-
-			# the logic is to make it only run once after
-			# aggressive mode activated
-			[ $quick_restore = null ] && {
-				! $BIN/fgrep $am /data/tmp/am_apps &&
-					echo $am >>/data/tmp/am_apps
 			}
 			restoration=1
 		}

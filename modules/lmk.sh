@@ -136,7 +136,6 @@ lmkd_props_clean() {
 
 # restore default battery optimization setting
 restore_battery_opt() {
-	local packages_list
 	$MODBIN/jq -r \
 		'.agmode_per_app_configuration[].packages[]' $CONFIG \
 		>/data/tmp/meZram_packages_list
