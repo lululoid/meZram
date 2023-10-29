@@ -50,6 +50,25 @@ read_agmode_app() {
 	)
 }
 
+ag_reswapon() {
+	local swapf=$1
+
+	! resetprop meZram.ag_swapon.pid && {
+		while true; do
+			[ -z $swaped ] && {
+				swapon $swapf && {
+					logger "$swapf is turned on"
+					touch /data/tmp/meZram_ag_swapon
+					resetprop -d meZram.ag_swapon.pid
+					break
+				}
+				swaped=1
+			}
+		done &
+		resetprop meZram.ag_swapon.pid $!
+	}
+}
+
 ag_swapon() {
 	# shellcheck disable=SC2016
 	swap_path=$(
@@ -63,9 +82,7 @@ ag_swapon() {
 
 	{
 		[ -n "$swap_path" ] &&
-			swapon $ag_swap 2>&1 | logger &&
-			logger "$ag_swap is turned on" &&
-			touch /data/tmp/meZram_ag_swapon
+			ag_reswapon "$ag_swap"
 	} || {
 		# shellcheck disable=SC2016
 		swap_size=$(
@@ -378,13 +395,6 @@ while true; do
 		}
 
 		[ $quick_restore = null ] && {
-			resetprop meZram.swapoff_service_pid && {
-				kill -9 $(resetprop meZram.swapoff_service_pid) 2>&1 |
-					logger && {
-					resetprop -d meZram.swapoff_service_pid
-					logger "swapoff_service is killed"
-				}
-			}
 			! $BIN/fgrep $ag_app /data/tmp/am_apps &&
 				echo $ag_app >>/data/tmp/am_apps
 		}
