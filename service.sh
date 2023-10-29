@@ -240,14 +240,13 @@ swapoff_service() {
 
 		[ $(cat /data/tmp/swap_count) -le 0 ] && {
 			resetprop -d meZram.swapoff_service_pid
-			logger "killing swapoff service"
 			rm /data/tmp/meZram_ag_swapon
 			echo "" >/data/tmp/swapping_off
 			unset swapoff_wait
 			break
 		}
 		sleep 1
-	done &
+	done && logger "swapoff service killed" &
 	resetprop -n -p meZram.swapoff_service_pid $!
 }
 
