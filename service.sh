@@ -540,3 +540,18 @@ done &
 # save the service pid
 # TODO make option to kill all service in agmode command
 resetprop meZram.config_sync.pid $!
+
+# lookout for unnecesarry props show up when screen is off
+# this happened on MIUI 14 chinese ROM, probably on all
+# MIUI 14
+while true; do
+	eval \
+		$($MODBIN/sed -n '/mIsScreenOn/{s/.*= \(.*\)/\1/;p;q}') &&
+		resetprop sys.lmk.minfree_levels && {
+		restore_props
+		logger "fuck MIUI, they're dead anyways"
+	}
+	sleep 5
+done &
+
+resetprop meZram.fuck.miui.pid $!
