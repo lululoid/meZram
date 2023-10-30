@@ -55,15 +55,13 @@ ag_reswapon() {
 
 	! resetprop meZram.ag_swapon.pid && {
 		while true; do
-			[ -z $swaped ] && {
-				swapon $swapf && {
-					logger "$swapf is turned on"
-					touch /data/tmp/meZram_ag_swapon
-					resetprop -d meZram.ag_swapon.pid
-					break
-				}
-				swaped=1
+			swapon $swapf && {
+				logger "$swapf is turned on"
+				touch /data/tmp/meZram_ag_swapon
+				resetprop -d meZram.ag_swapon.pid
+				break
 			}
+			sleep 1
 		done &
 		resetprop meZram.ag_swapon.pid $!
 	}
