@@ -55,11 +55,19 @@ ag_reswapon() {
 
 	! resetprop meZram.ag_swapon.pid && {
 		while true; do
-			swapon $swapf && {
-				logger "$swapf is turned on"
-				touch /data/tmp/meZram_ag_swapon
-				resetprop -d meZram.ag_swapon.pid
-				break
+			{
+				swapon $swapf && {
+					logger "$swapf is turned on"
+					touch /data/tmp/meZram_ag_swapon
+					resetprop -d meZram.ag_swapon.pid
+					break
+				}
+			} || {
+				! resetprop meZram.swapoff_service_pid &&
+					swapon $swapf 2>&1 | grep -q busy && {
+					resetprop -d meZram.ag_swapon.pid
+					break
+				}
 			}
 			sleep 1
 		done &
@@ -249,7 +257,7 @@ swapoff_service() {
 			break
 		}
 		sleep 1
-	done && logger "swapoff service killed" &
+	done && logger "swapoff service closed" &
 	resetprop -n -p meZram.swapoff_service_pid $!
 }
 
