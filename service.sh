@@ -115,8 +115,13 @@ ag_swapon() {
 			swapoff_pids=/data/tmp/swapoff_pids
 			# shellcheck disable=SC2116,SC2013
 			for pid in $(cat $swapoff_pids); do
-				kill -15 $pid 2>&1 | logger &&
-					logger "swapoff_pid $pid killed"
+				while kill -0 $pid; do
+					[ -z $logged ] && {
+						logger "waiting swapoff_pid $pid closed"
+						logged=1
+					}
+					sleep 1
+				done && unset logged
 			done
 			echo "" >/data/tmp/swapoff_pids
 
@@ -499,8 +504,8 @@ while true; do
 							swapoff_service
 						}
 
-						kill -15 $(resetprop meZram.rescue_service.pid) |
-							logger && logger "rescue_service dead"
+						kill -15 $rescue_service_pid | logger &&
+							logger "rescue_service killed"
 						resetprop -d meZram.rescue_service.pid
 						echo "" >/data/tmp/am_apps
 					}
