@@ -115,7 +115,7 @@ ag_swapon() {
 			swapoff_pids=/data/tmp/swapoff_pids
 			# shellcheck disable=SC2116,SC2013
 			for pid in $(cat $swapoff_pids); do
-				kill -9 $pid 2>&1 | logger &&
+				kill -15 $pid 2>&1 | logger &&
 					logger "swapoff_pid $pid killed"
 			done
 			echo "" >/data/tmp/swapoff_pids
@@ -281,13 +281,13 @@ while true; do
 	# limit log size to 10MB then restart the service
 	# if it's exceed it
 	[ $lmkd_log_size -ge 10485760 ] && {
-		kill -9 $lmkd_logger_pid
+		kill -15 $lmkd_logger_pid
 		mv $LOGDIR/lmkd.log "$LOGDIR/$today_date-lmkd.log"
 		resetprop -n -p meZram.lmkd_logger.pid dead
 	}
 
 	[ $meZram_log_size -ge 10485760 ] && {
-		kill -9 $meZram_logger_pid
+		kill -15 $meZram_logger_pid
 		mv $LOGDIR/meZram.log "$LOGDIR/$today_date-meZram.log"
 		resetprop -n -p meZram.logger.pid dead
 	}
@@ -376,7 +376,7 @@ while true; do
 		# aggressive mode activated
 		[ $quick_restore = true ] && {
 			restore_battery_opt
-			kill -9 $rescue_service_pid 2>&1 | logger && logger \
+			kill -15 $rescue_service_pid 2>&1 | logger && logger \
 				"rescue service killed because quick_restore"
 			resetprop -d meZram.rescue_service.pid
 			swapoff_service
@@ -499,7 +499,7 @@ while true; do
 							swapoff_service
 						}
 
-						kill -9 $(resetprop meZram.rescue_service.pid) |
+						kill -15 $(resetprop meZram.rescue_service.pid) |
 							logger && logger "rescue_service dead"
 						resetprop -d meZram.rescue_service.pid
 						echo "" >/data/tmp/am_apps
