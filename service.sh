@@ -58,7 +58,7 @@ ag_reswapon() {
 			{
 				swapon $swapf && {
 					logger "$swapf is turned on"
-					touch /data/tmp/meZram_ag_swapon
+					touch /data/local/tmp/meZram_ag_swapon
 					resetprop -d meZram.ag_swapon.pid
 					break
 				}
@@ -118,7 +118,7 @@ ag_swapon() {
 
 	[ -z $swap_path ] && {
 		[ -n "$swap_size" ] && {
-			swapoff_pids=/data/tmp/swapoff_pids
+			swapoff_pids=/data/local/tmp/swapoff_pids
 			# shellcheck disable=SC2116,SC2013
 			for pid in $(cat $swapoff_pids); do
 				while kill -0 $pid; do
@@ -129,7 +129,7 @@ ag_swapon() {
 					sleep 1
 				done && unset logged
 			done
-			echo "" >/data/tmp/swapoff_pids
+			echo "" >/data/local/tmp/swapoff_pids
 
 			[ -f $ag_swap ] && {
 				ag_swap_size=$(($(wc -c $ag_swap |
@@ -185,11 +185,11 @@ ag_swapon() {
 				for swap in $swap_list; do
 					swapon $swap 2>&1 | logger &&
 						logger "$swap is turned on" &&
-						touch /data/tmp/meZram_ag_swapon
+						touch /data/local/tmp/meZram_ag_swapon
 				done
 			} || swapon $ag_swap 2>&1 | logger &&
 				logger "$ag_swap is turned on" &&
-				touch /data/tmp/meZram_ag_swapon
+				touch /data/local/tmp/meZram_ag_swapon
 		}
 
 		[ -z $swap_size ] && [ -f $ag_swap ] && {
@@ -209,7 +209,7 @@ swapoff_service() {
 			"$CONFIG" | $MODBIN/jq -r 'select(. != null)'
 	)
 	swap_count=$(echo "$swaps" | wc -l)
-	echo $swap_count >/data/tmp/swap_count
+	echo $swap_count >/data/local/tmp/swap_count
 	# shellcheck disable=SC2116
 	logger "swaps = $(echo $swaps)"
 	logger "swap_count = $swap_count"
@@ -222,16 +222,16 @@ swapoff_service() {
 					'$1 == swap {print $4}' /proc/swaps
 			)
 
-			! $BIN/fgrep -q "$swap" /data/tmp/swapping_off && {
+			! $BIN/fgrep -q "$swap" /data/local/tmp/swapping_off && {
 				[ $usage -le $limit_in_kb ] && {
 					{
 						swapoff $swap 2>&1 | logger &&
 							logger "$swap turned off"
 						swap_count=$((swap_count - 1))
-						echo $swap_count >/data/tmp/swap_count
+						echo $swap_count >/data/local/tmp/swap_count
 					} &
-					echo $! >>/data/tmp/swapoff_pids
-					echo "$swap" >>/data/tmp/swapping_off
+					echo $! >>/data/local/tmp/swapoff_pids
+					echo "$swap" >>/data/local/tmp/swapping_off
 				}
 
 				[ $usage -gt $limit_in_kb ] &&
@@ -243,16 +243,16 @@ swapoff_service() {
 			}
 
 			[ -z $usage ] && {
-				echo $(($(cat /data/tmp/swap_count) - 1)) \
-					>/data/tmp/swap_count
+				echo $(($(cat /data/local/tmp/swap_count) - 1)) \
+					>/data/local/tmp/swap_count
 				swaps=$(echo "$swaps" | grep -wv $swap)
 			}
 		done
 
-		[ $(cat /data/tmp/swap_count) -le 0 ] && {
+		[ $(cat /data/local/tmp/swap_count) -le 0 ] && {
 			resetprop -d meZram.swapoff_service_pid
-			rm /data/tmp/meZram_ag_swapon
-			echo "" >/data/tmp/swapping_off
+			rm /data/local/tmp/meZram_ag_swapon
+			echo "" >/data/local/tmp/swapping_off
 			unset swapoff_wait
 			break
 		}
@@ -361,9 +361,9 @@ done
 logger "jq_version = $($MODBIN/jq --version)"
 # reset states and variables to default
 restore_battery_opt
-echo "" >/data/tmp/swapoff_pids
-echo "" >/data/tmp/swapping_off
-echo "" >/data/tmp/am_apps
+echo "" >/data/local/tmp/swapoff_pids
+echo "" >/data/local/tmp/swapping_off
+echo "" >/data/local/tmp/am_apps
 
 # aggressive mode service starts here
 while true; do
@@ -405,8 +405,8 @@ while true; do
 		}
 
 		[ $quick_restore = null ] && {
-			! $BIN/fgrep $ag_app /data/tmp/am_apps &&
-				echo $ag_app >>/data/tmp/am_apps
+			! $BIN/fgrep $ag_app /data/local/tmp/am_apps &&
+				echo $ag_app >>/data/local/tmp/am_apps
 		}
 
 		ag_swapon
@@ -420,7 +420,7 @@ while true; do
 		am=$ag_app
 
 		# rescue service for critical thrashing
-		echo $am >/data/tmp/meZram_am
+		echo $am >/data/local/tmp/meZram_am
 
 		! resetprop meZram.rescue_service.pid &&
 			[ $quick_restore = null ] && {
@@ -463,7 +463,7 @@ while true; do
 				[ $io_psi -lt $((rescue_limit - 1)) ] &&
 					[ $mem_psi -lt $((rescue_mem_limit - 1)) ] &&
 					[ -n "$rescue" ] && {
-					meZram_am=$(cat /data/tmp/meZram_am)
+					meZram_am=$(cat /data/local/tmp/meZram_am)
 					apply_aggressive_mode $meZram_am &&
 						logger \
 							"aggressive mode reactivated for $meZram_am"
@@ -483,14 +483,14 @@ while true; do
 		! read_agmode_app && {
 			[ $restoration -eq 1 ] && {
 				# shellcheck disable=SC2013
-				for app in $(cat /data/tmp/am_apps); do
+				for app in $(cat /data/local/tmp/am_apps); do
 					[ -z $agp_alive ] &&
 						pidof $app && {
 						agp_alive=1
 						[ -z $agp_log ] && {
 							# shellcheck disable=SC2005
 							logger \
-								"am apps = $(echo $(cat /data/tmp/am_apps))"
+								"am apps = $(echo $(cat /data/local/tmp/am_apps))"
 							logger "wait for all am apps closed"
 							agp_log=1
 						}
@@ -504,16 +504,16 @@ while true; do
 							logger "aggressive mode deactivated"
 						logger "am = $am"
 						unset am restoration
-						echo "" >/data/tmp/swapoff_pids
+						echo "" >/data/local/tmp/swapoff_pids
 
-						[ -f /data/tmp/meZram_ag_swapon ] && {
+						[ -f /data/local/tmp/meZram_ag_swapon ] && {
 							swapoff_service
 						}
 
 						kill -15 $rescue_service_pid | logger &&
 							logger "rescue_service killed"
 						resetprop -d meZram.rescue_service.pid
-						echo "" >/data/tmp/am_apps
+						echo "" >/data/local/tmp/am_apps
 					}
 				} || unset agp_alive
 			}

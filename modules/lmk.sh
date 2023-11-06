@@ -138,15 +138,15 @@ lmkd_props_clean() {
 restore_battery_opt() {
 	$MODBIN/jq -r \
 		'.agmode_per_app_configuration[].packages[]' $CONFIG \
-		>/data/tmp/meZram_packages_list
+		>/data/local/tmp/meZram_packages_list
 
 	# shellcheck disable=SC2013
 	for app in $(cat $default_optimized_list); do
-		grep -wv $app /data/tmp/meZram_packages_list
+		grep -wv $app /data/local/tmp/meZram_packages_list
 	done
 
 	# shellcheck disable=SC2013
-	for pkg in $(cat /data/tmp/meZram_packages_list); do
+	for pkg in $(cat /data/local/tmp/meZram_packages_list); do
 		dumpsys deviceidle whitelist -$pkg 2>&1 | logger
 	done
 
@@ -202,9 +202,7 @@ apply_aggressive_mode() {
               | .props | .[$key]' $CONFIG
 		)
 
-		# double quote because of true or false value
-		# shellcheck disable=SC2046
-		resetprop -n -p $key $(echo $value) 2>&1 | logger &&
+		resetprop -n -p $key $value 2>&1 | logger &&
 			logger "applying $key $value"
 	done
 
