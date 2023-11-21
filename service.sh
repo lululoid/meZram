@@ -10,10 +10,8 @@ BIN=/system/bin
 MODBIN=/data/adb/modules/meZram/modules/bin
 # read the cpu cores amount
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
-totalmem=$(
-	free | grep -e "^Mem:" | sed -e 's/^Mem: *//' -e 's/  *.*//'
-)
-zram_size=$((totalmem * 1024 / 2))
+totalmem=$($BIN/free | awk '/^Mem:/ {print $2}')
+zram_size=$totalmem
 lmkd_pid=$(pidof lmkd)
 
 # loading modules
@@ -310,32 +308,17 @@ done &
 
 # save the pid to a prop
 resetprop -n -p meZram.log_rotator.pid $!
+# disable miui memory extension
+resetprop persist.miui.extm.enable &&
+	resetprop persist.miui.extm.enable 0
 
 logger "NRDEVICES = $NRDEVICES"
 logger "totalmem = $totalmem"
 logger "zram_size = $zram_size"
 logger "lmkd_pid = $lmkd_pid"
 
-# looking for existing zram path
-for zram0 in /dev/block/zram0 /dev/zram0; do
-	[ "$(ls $zram0)" ] && {
-		swapoff $zram0 2>&1 | logger &&
-			logger "$zram0 turned off"
-		echo 1 >/sys/block/zram0/reset &&
-			logger "$zram0 RESET"
-		# Set up zram size, then turn on both zram and swap
-		echo $zram_size >/sys/block/zram0/disksize &&
-			logger "set $zram0 disksize to $zram_size"
-		# Set up maxium cpu streams
-		logger \
-			"making $zram0 and set max_comp_streams=$NRDEVICES"
-		echo $NRDEVICES >/sys/block/zram0/max_comp_streams
-		mkswap $zram0
-		$BIN/swapon -p 69 "$zram0" && logger "$zram0 turned on"
-		break
-	}
-done
-
+resize_zram $totalmem
+set_mem_limit
 swapon /data/swap_file 2>&1 | logger &&
 	logger "swap is turned on"
 

@@ -224,3 +224,25 @@ apply_aggressive_mode() {
 	}
 	$BIN/lmkd --reinit
 }
+
+set_mem_limit() {
+	totalmem=$($BIN/free | awk '/^Mem:/ {print $2}')
+	mem_limit=$(awk -v size="$totalmem" \
+		'BEGIN { printf "%.0f\n", size * 0.65 }')
+
+	echo $mem_limit >/sys/block/zram0/mem_limit
+}
+
+resize_zram() {
+	local zram=/dev/block/zram0
+	local size=$1
+
+	swapoff $zram && logger "$zram turned off"
+	echo 1 >/sys/block/zram0/reset &&
+		logger "$zram RESET"
+	echo $size >/sys/block/zram0/disksize &&
+		logger "set $zram disksize to $size"
+	mkswap $zram
+	$BIN/swapon -p 69 "$zram" && logger "$zram turned on"
+	set_mem_limit
+}
