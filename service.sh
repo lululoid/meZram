@@ -156,6 +156,10 @@ while true; do
 		restore_props
 		logger "fuck MIUI, they're dead anyways"
 	}
+
+	if ! kill -0 $(getprop meZram.aggressive_mode.pid); then
+		$MODDIR/meZram.sh
+	fi
 	sleep 5
 done &
 

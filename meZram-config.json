@@ -1,7 +1,7 @@
 {
   "config_version": 3.3,
   "custom_props": {},
-  "rescue_limit": 512,
+  "rescue_limit": 350,
   "agmode_per_app_configuration": [
     {
       "packages": [
