@@ -4,6 +4,7 @@ totalmem=$(
 	free | grep -e "^Mem:" |
 		sed -e 's/^Mem: *//' -e 's/  *.*//'
 )
+MODBIN=$MODPATH/modules/bin
 
 unzip -o $ZIPFILE -x 'META-INF/*' -d $MODPATH >&2
 set_perm_recursive $MODPATH 0 0 0755 0644
@@ -288,6 +289,8 @@ config_update() {
 		cp -u $_CONFIG $CONFIG &&
 			$loaded && ui_print "> Config loaded" && unset loaded
 	}
+
+	$MODBIN/jq '.config_version' $CONFIG || abort "Update config failed"
 }
 
 # start installation
