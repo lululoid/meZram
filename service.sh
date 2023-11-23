@@ -58,7 +58,7 @@ ag_reswapon() {
 	! resetprop meZram.ag_swapon.pid && {
 		while true; do
 			{
-				swapon $swapf && {
+				$BIN/swapon -p 68 $swapf && {
 					logger "$swapf is turned on"
 					touch /data/local/tmp/meZram_ag_swapon
 					resetprop -d meZram.ag_swapon.pid
@@ -321,7 +321,7 @@ logger "totalmem = $totalmem"
 logger "zram_size = $zram_size"
 logger "lmkd_pid = $lmkd_pid"
 
-resize_zram $totalmem
+resize_zram $zram_size
 set_mem_limit
 swapon /data/swap_file 2>&1 | logger &&
 	logger "swap is turned on"
