@@ -7,7 +7,7 @@ ag_reswapon() {
 	! resetprop meZram.ag_swapon.pid && {
 		while true; do
 			{
-				$BIN/swapon -p 68 $swapf && {
+				$BIN/swapon -p 68 "$swapf" && {
 					logger "$swapf is turned on"
 					touch /data/local/tmp/meZram_ag_swapon
 					resetprop -d meZram.ag_swapon.pid
@@ -15,7 +15,8 @@ ag_reswapon() {
 				}
 			} || {
 				! resetprop meZram.swapoff_service_pid &&
-					swapon $swapf 2>&1 | grep -q busy && {
+					$BIN/swapon -p 68 "$swapf" 2>&1 |
+					grep -q busy && {
 					resetprop -d meZram.ag_swapon.pid
 					break
 				}
@@ -134,11 +135,11 @@ ag_swapon() {
 
 			[ $swap_size -ge $meZram_tswap ] && {
 				for swap in $swap_list; do
-					swapon $swap 2>&1 | logger &&
+					$BIN/swapon -p 68 $swap 2>&1 | logger &&
 						logger "$swap is turned on" &&
 						touch /data/local/tmp/meZram_ag_swapon
 				done
-			} || swapon $ag_swap 2>&1 | logger &&
+			} || $BIN/swapon -p 68 $ag_swap 2>&1 | logger &&
 				logger "$ag_swap is turned on" &&
 				touch /data/local/tmp/meZram_ag_swapon
 		}
@@ -312,7 +313,8 @@ while true; do
 					restore_battery_opt
 
 					while true; do
-						if [ $(free | awk '/Mem:/ {print $7}') -gt $rescue_limit ]; then
+						if [ $(free | awk '/Mem:/ {print $7}') -gt \
+							$rescue_limit ]; then
 							agm=1
 							break
 						elif [[ $(cat /data/local/tmp/meZram_am) != $meZram_am ]]; then

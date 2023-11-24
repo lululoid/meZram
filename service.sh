@@ -14,21 +14,22 @@ MODBIN=/data/adb/modules/meZram/modules/bin
 # read the cpu cores amount
 NRDEVICES=$(grep -c ^processor /proc/cpuinfo | sed 's/^0$/1/')
 totalmem=$($BIN/free | awk '/^Mem:/ {print $2}')
-zram_size=$totalmem
+zram_size=$(awk -v size="$totalmem" \
+	'BEGIN { printf "%.0f\n", size * 0.65 }')
 lmkd_pid=$(pidof lmkd)
 
 export CONFIG
 export MODBIN
-export BIN
 export LOGDIR
 export CONFIG_INT
 export MODDIR
+export BIN
 
 # loading modules
 . $MODDIR/modules/lmk.sh
 
 # keep the specified logs no more than 5
-logrotate() {
+Logrotate() {
 	local count=0
 
 	for log in "$@"; do
@@ -101,7 +102,7 @@ logger "zram_size = $zram_size"
 logger "lmkd_pid = $lmkd_pid"
 
 resize_zram $zram_size
-set_mem_limit
+# set_mem_limit
 swapon /data/swap_file 2>&1 | logger &&
 	logger "swap is turned on"
 
