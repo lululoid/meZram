@@ -156,9 +156,9 @@ resetprop meZram.config_sync.pid $!
 # this happened on MIUI 14 chinese ROM, probably on all
 # MIUI 14
 while true; do
-	eval \
-		$($MODBIN/sed -n '/mIsScreenOn/{s/.*= \(.*\)/\1/;p;q}') &&
-		resetprop sys.lmk.minfree_levels && {
+	eval $(
+		$MODBIN/sed -n '/mIsScreenOn/{s/.*= \(.*\)/\1/;p;q}'
+	) && resetprop sys.lmk.minfree_levels && {
 		restore_props
 		logger "fuck MIUI, they're dead anyways"
 	}
@@ -167,7 +167,7 @@ while true; do
 		reset_svs
 		$MODDIR/meZram.sh
 	fi
-	sleep 5
+	sleep 4
 done &
 
 resetprop meZram.fuck.miui.pid $!

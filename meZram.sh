@@ -4,6 +4,8 @@
 ag_reswapon() {
 	local swapf=$1
 
+	# wait swapoff done before swapon again because i can't
+	# kill swapoff. Why?
 	! resetprop meZram.ag_swapon.pid && {
 		while true; do
 			{
@@ -39,6 +41,7 @@ ag_swapon() {
 	ag_swap=$swap_path
 
 	{
+		# directly swapon if the path is in the config
 		[ -n "$swap_path" ] &&
 			ag_reswapon "$ag_swap"
 	} || {
@@ -154,6 +157,8 @@ ag_swapon() {
 swapoff_service() {
 	local limit_in_kb swaps swap_count usage
 	limit_in_kb=71680
+
+	# listing existing swap_path from config
 	# shellcheck disable=SC2005
 	swaps=$(
 		$MODBIN/jq \
@@ -185,6 +190,7 @@ swapoff_service() {
 				echo $! >>/data/local/tmp/swapoff_pids
 			}
 
+			# wait swap usage to go down to prevent slow swapoff
 			[ $usage -gt $limit_in_kb ] &&
 				[ -z $swapoff_wait ] && {
 				logger "$usage > $limit_in_kb"
@@ -199,6 +205,7 @@ swapoff_service() {
 			}
 		done
 
+		# break if all swaps is swapped off
 		[ $(cat /data/local/tmp/swap_count) -le 0 ] && {
 			resetprop -d meZram.swapoff_service_pid
 			rm /data/local/tmp/meZram_ag_swapon
@@ -225,13 +232,14 @@ read_agmode_app() {
 		$BIN/fgrep -wo $fg_app $CONFIG | $BIN/grep -v "^android$"
 	)
 }
+
 # aggressive mode service starts here
 while true; do
 	# if the foreground app match app in aggressive mode list
 	# then activate aggressive mode
 	read_agmode_app && [[ $ag_app != "$am" ]] && {
 		# am = aggressive mode, if am is not activated or
-		# am is different than the last am then
+		# am app is different than the last am app then
 		# activate aggressive mode
 		# this is for efficiency reason
 		# shellcheck disable=SC2016
@@ -243,13 +251,17 @@ while true; do
 					| .quick_restore' $CONFIG
 		)
 
-		# the logic is to make it only run once after
-		# aggressive mode activated
+		# quick_restore will not wait for am apps to be closed
+		# before quitting aggressive_mode
 		[ $quick_restore = true ] && {
+			# restore battery optimization exclusion
 			restore_battery_opt
+			# quick_restore supposed to be for gaming
 			kill -15 $rescue_service_pid 2>&1 | logger && logger \
 				"rescue service killed because quick_restore"
 			resetprop -d meZram.rescue_service.pid
+			# swap is useless for gaming app or app that need low
+			# latency
 			swapoff_service
 
 			! kill -0 $no_whitelisting && {
@@ -264,6 +276,7 @@ while true; do
 			}
 		}
 
+		# save am apps list without quick_restore
 		[ $quick_restore = null ] && {
 			! $BIN/fgrep $ag_app /data/local/tmp/am_apps &&
 				echo $ag_app >>/data/local/tmp/am_apps
@@ -282,6 +295,11 @@ while true; do
 		# rescue service for critical thrashing
 		echo $am >/data/local/tmp/meZram_am
 
+		# tweak for memory heavy app like xserver running linux
+		# environtment
+		# it will tweak lmkd to not killing apps even when RAM is low
+		# viravl = available RAM + FREE SWAP + FREE ZRAM
+		# shellcheck disable=SC2016
 		viravl=$(
 			$MODBIN/jq --arg ag_app "$ag_app" \
 				'.agmode_per_app_configuration[]
@@ -289,6 +307,7 @@ while true; do
           | .viravl' $CONFIG
 		)
 
+		# only turn on viravl when app is opened to avoid freezing
 		if [ $viravl = true ]; then
 			[ -z $viravl_log ] &&
 				logger "using viravl as limit" && viravl_log=1
@@ -300,12 +319,14 @@ while true; do
 			unset viravl_log
 		fi
 
+		# rescue service to prevent system freeze
+		# thia service act like lmkd plugin
 		! resetprop meZram.rescue_service.pid &&
 			[ $quick_restore = null ] && {
 			logger "starting rescue_service"
 			logger "in case you messed up or i messed up"
 			rescue_limit=$($MODBIN/jq .rescue_limit $CONFIG)
-			rescue_limit=$(($rescue_limit * 1024))
+			rescue_limit=$((rescue_limit * 1024))
 
 			while true; do
 				# calculate memory and swap free and or available
@@ -318,6 +339,8 @@ while true; do
 					mem_available=$(free | awk '/Mem:/ {print $7}')
 				fi
 
+				# restore lmkd props and battery optimization
+				# when near OOM
 				[ $mem_available -le $rescue_limit ] && {
 					meZram_am=$(cat /data/local/tmp/meZram_am)
 
@@ -336,7 +359,7 @@ while true; do
 							$rescue_limit ]; then
 							agm=1
 							break
-						elif [[ $(cat /data/local/tmp/meZram_am) != $meZram_am ]]; then
+						elif [[ $(cat /data/local/tmp/meZram_am) != "$meZram_am" ]]; then
 							break
 						fi
 						sleep 1
@@ -377,6 +400,8 @@ while true; do
 					}
 				done
 
+				# deactivate aggressive_mode and swaps
+				# when all am_apps is closed
 				{
 					[ -z $agp_alive ] && {
 						restore_props
