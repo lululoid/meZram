@@ -140,6 +140,50 @@ make_swap() {
 	/system/bin/mkswap -L meZram-swap "$2" >/dev/null
 }
 
+compare_num() {
+	local version=$1
+	local operator=$2
+	local version0=$3
+
+	if [ $operator = ">" ]; then
+		result=$(
+			awk \
+				-v version="${version}" \
+				-v version_prev="${version0}" \
+				'BEGIN {
+			  if (version > version_prev) {
+				  print "true"
+			  } else {
+				  print "false"
+			  }
+		  }'
+		)
+	elif [ $operator = "<" ]; then
+		result=$(
+			awk \
+				-v version="${version}" \
+				-v version_prev="${version0}" \
+				'BEGIN {
+			  if (version < version_prev) {
+				  print "true"
+			  } else {
+				  print "false"
+			  }
+		  }'
+		)
+	else
+		return 1
+	fi
+
+	if [ $result = true ]; then
+		ui_print "$result"
+		return 0
+	else
+		ui_print "$result"
+		return 1
+	fi
+}
+
 config_update() {
 	# Updating config
 	local LOGDIR=/data/adb/meZram
@@ -174,45 +218,10 @@ config_update() {
 
 	# Update if version is higher than previous version
 	[ -n "$version_prev" ] && {
-		is_update=$(awk -v version="${version}" \
-			-v version_prev="${version_prev}" \
-			'BEGIN {
-			if (version > version_prev) {
-				print "true"
-			} else {
-				print "false"
-			}
-		}')
-
-		is_less_2=$(awk -v version=2.0 \
-			-v version_prev="${version_prev}" \
-			'BEGIN {
-      if (version_prev < version) {
-				print "true"
-			} else {
-				print "false"
-			}
-		}')
-
-		is_less_v2dot4=$(awk -v version=2.4 \
-			-v version_prev="${version_prev}" \
-			'BEGIN {
-      if (version_prev < version) {
-				print "true"
-			} else {
-				print "false"
-			}
-		}')
-
-		is_less_v3dot0=$(awk -v version=3.0 \
-			-v version_prev="${version_prev}" \
-			'BEGIN {
-      if (version_prev < version) {
-				print "true"
-			} else {
-				print "false"
-			}
-		}')
+		is_update=$(compare_num "$version" ">" $version_prev)
+		is_less_2=$(compare_num "$version" "<" "2")
+		is_less_v2dot4=$(compare_num "$version" "<" "2.4")
+		is_less_v3dot0=$(compare_num "$version" "<" 3)
 	}
 
 	log_it "is_update = $is_update"
@@ -267,14 +276,16 @@ config_update() {
 				sleep 1
 			}
 
-			$MODPATH/modules/bin/jq \
-				'del(.config_version)
-        | del(.rescue_limit)
-        | del(.rescue_mem_psi_limit)
-        | del(.rescue_cpu_psi_limit)
-        | del(.agmode)' "$CONFIG" |
-				/system/bin/awk \
-					'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			compare_num "$version" "<" "3.3" && {
+				$MODPATH/modules/bin/jq \
+					'del(.config_version)
+          | del(.rescue_limit)
+          | del(.rescue_mem_psi_limit)
+          | del(.rescue_cpu_psi_limit)
+          | del(.agmode)' "$CONFIG" |
+					/system/bin/awk \
+						'BEGIN{RS="";getline<"-";print>ARGV[1]}' $CONFIG
+			}
 			# Slurp entire config
 			$MODPATH/modules/bin/jq \
 				-s '.[0] * .[1]' $MODPATH/meZram-config.json $CONFIG |
@@ -290,7 +301,7 @@ config_update() {
 			$loaded && ui_print "> Config loaded" && unset loaded
 	}
 
-	$MODBIN/jq '.config_version' $CONFIG || abort "Update config failed"
+	$MODBIN/jq '.config_version' $CONFIG >/dev/null || abort "Update config failed"
 }
 
 # start installation
