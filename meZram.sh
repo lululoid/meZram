@@ -174,24 +174,22 @@ swapoff_service() {
 					'$1 == swap {print $4}' /proc/swaps
 			)
 
-			! $BIN/fgrep -q "$swap" /data/local/tmp/swapping_off && {
-				[ $usage -le $limit_in_kb ] && {
-					{
-						swapoff $swap 2>&1 | logger &&
-							logger "$swap turned off"
-						swap_count=$((swap_count - 1))
-						echo $swap_count >/data/local/tmp/swap_count
-					} &
-					echo $! >>/data/local/tmp/swapoff_pids
-					echo "$swap" >>/data/local/tmp/swapping_off
-				}
+			[ $usage -le $limit_in_kb ] &&
+				[ $(cat /data/local/tmp/swap_count) -gt 0 ] && {
+				{
+					swap_count=$((swap_count - 1))
+					echo $swap_count >/data/local/tmp/swap_count
+					swapoff $swap 2>&1 | logger &&
+						logger "$swap turned off"
+				} &
+				echo $! >>/data/local/tmp/swapoff_pids
+			}
 
-				[ $usage -gt $limit_in_kb ] &&
-					[ -z $swapoff_wait ] && {
-					logger "$usage > $limit_in_kb"
-					logger "waiting usage to go down. clear your recents for faster swapoff"
-					swapoff_wait=1
-				}
+			[ $usage -gt $limit_in_kb ] &&
+				[ -z $swapoff_wait ] && {
+				logger "$usage > $limit_in_kb"
+				logger "waiting usage to go down. clear your recents for faster swapoff"
+				swapoff_wait=1
 			}
 
 			[ -z $usage ] && {
@@ -204,7 +202,6 @@ swapoff_service() {
 		[ $(cat /data/local/tmp/swap_count) -le 0 ] && {
 			resetprop -d meZram.swapoff_service_pid
 			rm /data/local/tmp/meZram_ag_swapon
-			echo "" >/data/local/tmp/swapping_off
 			unset swapoff_wait
 			break
 		}
