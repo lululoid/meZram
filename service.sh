@@ -29,7 +29,7 @@ export BIN
 . $MODDIR/modules/lmk.sh
 
 # keep the specified logs no more than 5
-Logrotate() {
+logrotate() {
 	local count=0
 
 	for log in "$@"; do
@@ -87,6 +87,7 @@ while true; do
 
 	logrotate $LOGDIR/*lmkd.log
 	logrotate $LOGDIR/*meZram.log
+	logrotate /data/local/tmp/meZram.log
 	sleep 1
 done &
 
@@ -127,10 +128,14 @@ done
 
 logger "jq_version = $($MODBIN/jq --version)"
 # reset states and variables to default
-restore_battery_opt
-echo "" >/data/local/tmp/swapoff_pids
-echo "" >/data/local/tmp/swapping_off
-echo "" >/data/local/tmp/am_apps
+reset_svs() {
+	restore_battery_opt
+	echo "" >/data/local/tmp/swapoff_pids
+	echo "" >/data/local/tmp/swapping_off
+	echo "" >/data/local/tmp/am_apps
+}
+
+reset_svs
 
 $MODDIR/meZram.sh
 # sync service because i can't read from internal
@@ -159,6 +164,7 @@ while true; do
 	}
 
 	if ! kill -0 $(getprop meZram.aggressive_mode.pid); then
+		reset_svs
 		$MODDIR/meZram.sh
 	fi
 	sleep 5
