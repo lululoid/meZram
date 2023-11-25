@@ -282,6 +282,20 @@ while true; do
 		# rescue service for critical thrashing
 		echo $am >/data/local/tmp/meZram_am
 
+		viravl=$(
+			$MODBIN/jq --arg ag_app "com.gaurav.avnc" \
+				'.agmode_per_app_configuration[]
+          | select(.packages[] == $ag_app)
+          | .viravl' $CONFIG
+		)
+
+		[ $viravl = true ] && ! resetprop meZram.viravl && {
+			logger "using viravl as limit"
+			kill $(resetprop meZram.rescue_service.pid)
+			resetprop -d meZram.rescue_service.pid
+			resetprop meZram.viravl true
+		}
+
 		! resetprop meZram.rescue_service.pid &&
 			[ $quick_restore = null ] && {
 			logger "starting rescue_service"
@@ -292,9 +306,13 @@ while true; do
 			while true; do
 				# calculate memory and swap free and or available
 				swap_free=$(free | awk '/Swap:/ {print $4}')
-				mem_available=$(free | awk '/Mem:/ {print $7}')
-				totalmem_vir_avl=$(((\
-					swap_free + mem_available) / 1024))
+				totalmem_vir_avl=$((swap_free + mem_available))
+
+				if [ $viravl = true ]; then
+					mem_available=$totalmem_vir_avl
+				else
+					mem_available=$(free | awk '/Mem:/ {print $7}')
+				fi
 
 				[ $mem_available -le $rescue_limit ] && {
 					meZram_am=$(cat /data/local/tmp/meZram_am)
@@ -302,7 +320,7 @@ while true; do
 					logger w \
 						"critical event reached, rescue initiated"
 					logger \
-						"${totalmem_vir_avl}MB of vir_avl left"
+						"$((totalmem_vir_avl / 1024))MB of vir_avl left"
 					logger \
 						"$((mem_available / 1024))MB of RAM left"
 
@@ -371,6 +389,8 @@ while true; do
 						kill -15 $rescue_service_pid | logger &&
 							logger "rescue_service killed"
 						resetprop -d meZram.rescue_service.pid
+						resetprop -d meZram.viravl
+
 						echo "" >/data/local/tmp/am_apps
 					}
 				} || unset agp_alive
