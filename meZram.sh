@@ -283,18 +283,22 @@ while true; do
 		echo $am >/data/local/tmp/meZram_am
 
 		viravl=$(
-			$MODBIN/jq --arg ag_app "com.gaurav.avnc" \
+			$MODBIN/jq --arg ag_app "$ag_app" \
 				'.agmode_per_app_configuration[]
           | select(.packages[] == $ag_app)
           | .viravl' $CONFIG
 		)
 
-		[ $viravl = true ] && ! resetprop meZram.viravl && {
-			logger "using viravl as limit"
+		if [ $viravl = true ]; then
+			[ -z $viravl_log ] &&
+				logger "using viravl as limit" && viravl_log=1
 			kill $(resetprop meZram.rescue_service.pid)
 			resetprop -d meZram.rescue_service.pid
 			resetprop meZram.viravl true
-		}
+		else
+			resetprop -d meZram.viravl
+			unset viravl_log
+		fi
 
 		! resetprop meZram.rescue_service.pid &&
 			[ $quick_restore = null ] && {
@@ -308,7 +312,7 @@ while true; do
 				swap_free=$(free | awk '/Swap:/ {print $4}')
 				totalmem_vir_avl=$((swap_free + mem_available))
 
-				if [ $viravl = true ]; then
+				if [ $(resetprop meZram.viravl) = true ]; then
 					mem_available=$totalmem_vir_avl
 				else
 					mem_available=$(free | awk '/Mem:/ {print $7}')
@@ -390,7 +394,6 @@ while true; do
 							logger "rescue_service killed"
 						resetprop -d meZram.rescue_service.pid
 						resetprop -d meZram.viravl
-
 						echo "" >/data/local/tmp/am_apps
 					}
 				} || unset agp_alive
